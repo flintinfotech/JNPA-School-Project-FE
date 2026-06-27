@@ -26,6 +26,10 @@ export default function App() {
 
   const isLoginPage = location.pathname === "/login";
   const isUsersPage = location.pathname === "/users";
+  const isHomePage = location.pathname === "/";
+
+  // Pages where footer should not appear
+  const hideFooter = isLoginPage || isUsersPage || isHomePage;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -69,7 +73,7 @@ export default function App() {
         </Routes>
       </div>
 
-      {!isLoginPage && !isUsersPage && <Footer />}
+      {!hideFooter && <Footer />}
     </div>
   );
 }
