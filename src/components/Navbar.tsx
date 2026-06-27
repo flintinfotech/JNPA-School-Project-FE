@@ -1,27 +1,28 @@
 import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import SchoolLogo from '../assets/SchoolLogo.avif'
 
 const menuColumns = [
   {
     links: [
-      { label: 'About Us', href: '#' },
-      { label: 'Alumni', href: '#' },
-      { label: 'Academics', href: '#' },
-      { label: 'Admissions', href: '#' },
-      { label: 'Awards', href: '#' },
+      { label: 'About Us', href: '/about-us' },
+      { label: 'Alumni', href: '/alumni' },
+      { label: 'Academics', href: '/academics' },
+      { label: 'Admissions', href: '/admissions' },
+      { label: 'Awards', href: '/awards' },
     ],
   },
   {
     links: [
-      { label: 'Campus', href: '#' },
-      { label: 'Careers', href: '#' },
-      { label: 'Events', href: '#' },
-      { label: 'Student Life', href: '#' },
+      { label: 'Campus', href: '/campus' },
+      { label: 'Careers', href: '/careers' },
+      { label: 'Events', href: '/events' },
+      { label: 'Student Life', href: '/student-life' },
     ],
   },
   {
     links: [
-      { label: 'Results & University Placements', href: '#' },
+      { label: 'Results & University Placements', href: '/results-and-placements' },
     ],
     showVirtual: true,
   },
@@ -29,6 +30,12 @@ const menuColumns = [
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const navigate = useNavigate()
+
+  const handleNav = (href: string) => {
+    setMenuOpen(false)
+    navigate(href)
+  }
 
   return (
     <nav className="nav-root">
@@ -203,6 +210,12 @@ export default function Navbar() {
           text-transform: uppercase;
           transition: color 0.15s, padding-left 0.15s;
           white-space: nowrap;
+          cursor: pointer;
+          background: none;
+          border: none;
+          text-align: left;
+          width: 100%;
+          font-family: inherit;
         }
 
         .nav-exp-col a:hover {
@@ -224,12 +237,12 @@ export default function Navbar() {
           border-radius: 3px;
           transition: background 0.18s !important;
           white-space: nowrap;
+          text-decoration: none;
         }
 
         .nav-virtual-btn:hover {
           background: #f5a800 !important;
           color: #1a3a6b !important;
-          padding-left: 20px !important;
         }
 
         .nav-exp-bottom {
@@ -299,6 +312,7 @@ export default function Navbar() {
           border-radius: 3px;
           border-bottom: none !important;
           width: fit-content;
+          text-decoration: none;
         }
 
         /* ── Responsive ── */
@@ -325,10 +339,10 @@ export default function Navbar() {
 
       {/* Collapsed bar */}
       <div className={`nav-collapsed${menuOpen ? ' hidden' : ''}`}>
-        <a href="#" className="nav-collapsed-logo">
+        <Link to="/" className="nav-collapsed-logo">
           <img src={SchoolLogo} alt="JNPV Logo" className="nav-collapsed-icon" />
           <span className="nav-collapsed-name">JNPV <span>Education</span></span>
-        </a>
+        </Link>
         <button className="nav-menu-btn" onClick={() => setMenuOpen(true)}>
           MENU <span className="nav-arrow" />
         </button>
@@ -351,7 +365,9 @@ export default function Navbar() {
             {menuColumns.map((col, i) => (
               <div className="nav-exp-col" key={i}>
                 {col.links.map((link) => (
-                  <a key={link.label} href={link.href}>{'> '}{link.label}</a>
+                  <a key={link.label} onClick={() => handleNav(link.href)}>
+                    {'> '}{link.label}
+                  </a>
                 ))}
                 {col.showVirtual && (
                   <a href="#" className="nav-virtual-btn">Virtual School</a>
@@ -370,10 +386,10 @@ export default function Navbar() {
 
       {/* Mobile bar */}
       <div className="nav-mobile-bar">
-        <a href="#" className="nav-collapsed-logo">
+        <Link to="/" className="nav-collapsed-logo">
           <img src={SchoolLogo} alt="JNPV Logo" className="nav-collapsed-icon" />
           <span className="nav-collapsed-name">JNPV <span>Education</span></span>
-        </a>
+        </Link>
         <button
           className="nav-mobile-toggle"
           onClick={() => setMenuOpen((o) => !o)}
@@ -386,9 +402,9 @@ export default function Navbar() {
       {/* Mobile slide-down */}
       <div className={`nav-mobile-menu${menuOpen ? ' open' : ''}`}>
         {menuColumns.flatMap((c) => c.links).map((link) => (
-          <a key={link.label} href={link.href} onClick={() => setMenuOpen(false)}>
+          <Link key={link.label} to={link.href} onClick={() => setMenuOpen(false)}>
             {link.label}
-          </a>
+          </Link>
         ))}
         <a href="#" className="nav-mobile-virtual" onClick={() => setMenuOpen(false)}>
           Virtual School
