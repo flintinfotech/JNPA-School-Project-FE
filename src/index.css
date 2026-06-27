@@ -1,0 +1,10 @@
+@import "tailwindcss";
+.table-wrapper .ant-pagination {
+  display: flex !important;
+  justify-content: space-between !important;
+  width: 100%;
+}
+
+.table-wrapper .ant-pagination-total-text {
+  margin-right: auto !important;
+}
