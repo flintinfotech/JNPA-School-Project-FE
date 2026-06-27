@@ -1,37 +1,35 @@
-import { useState } from 'react'
-import SchoolLogo from '../assets/SchoolLogo.avif'
+import { useState } from "react";
+import SchoolLogo from "../assets/SchoolLogo.avif";
 
 const menuColumns = [
   {
     links: [
-      { label: 'About Us', href: '#' },
-      { label: 'Alumni', href: '#' },
-      { label: 'Academics', href: '#' },
-      { label: 'Admissions', href: '#' },
-      { label: 'Awards', href: '#' },
+      { label: "About Us", href: "#" },
+      { label: "Alumni", href: "#" },
+      { label: "Academics", href: "#" },
+      { label: "Admissions", href: "#" },
+      { label: "Awards", href: "#" },
     ],
   },
   {
     links: [
-      { label: 'Campus', href: '#' },
-      { label: 'Careers', href: '#' },
-      { label: 'Events', href: '#' },
-      { label: 'Student Life', href: '#' },
+      { label: "Campus", href: "#" },
+      { label: "Careers", href: "#" },
+      { label: "Events", href: "#" },
+      { label: "Student Life", href: "#" },
     ],
   },
   {
-    links: [
-      { label: 'Results & University Placements', href: '#' },
-    ],
+    links: [{ label: "Results & University Placements", href: "#" }],
     showVirtual: true,
   },
-]
+];
 
 export default function Navbar() {
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <nav className="nav-root">
+    <nav className='nav-root'>
       <style>{`
         .nav-root {
           position: sticky;
@@ -40,7 +38,7 @@ export default function Navbar() {
           font-family: 'Segoe UI', system-ui, sans-serif;
           border-bottom: 4px solid #f5a800;
           box-shadow: 0 2px 12px rgba(0,0,0,0.12);
-          background: #1a3a6b;
+          background:transparent;
         }
 
         /* ── Collapsed bar ── */
@@ -50,8 +48,8 @@ export default function Navbar() {
           justify-content: space-between;
           background: #1a3a6b;
           padding: 0 64px;
-          height: 64px;
-          max-height: 64px;
+          height: 60px;
+          max-height: 60px;
           overflow: hidden;
           opacity: 1;
           transition: max-height 0.38s cubic-bezier(0.4,0,0.2,1), opacity 0.28s ease;
@@ -87,6 +85,29 @@ export default function Navbar() {
         }
 
         .nav-collapsed-name span { color: #f5a800; }
+
+        @media (max-width: 860px) {
+  .nav-root { background: transparent; }   /* added */
+  .nav-collapsed { display: none !important; }
+  .nav-expanded { display: none !important; }
+  .nav-mobile-toggle {
+    display: flex !important;
+    position: absolute;
+    right: 20px;
+    bottom: -36px;
+    z-index: 250;
+  }
+  .nav-mobile-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #1a3a6b;
+    padding: 0 20px;
+    height: 0;
+  }
+  .nav-mobile-menu { display: flex; }
+}
+  
 
         /* ── MENU button ── */
         .nav-menu-btn {
@@ -142,16 +163,16 @@ export default function Navbar() {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          padding: 28px 48px;
+          padding: 28px 48px 28px 200px;
           gap: 10px;
           flex-shrink: 0;
-          min-width: 220px;
+          min-width: 260px;
         }
 
         .nav-exp-logo-icon {
-          width: 110px;
-          height: 110px;
-          border-radius: 50%;
+          width: 130px;
+          height: 130px;
+          border-radius: 0;
           object-fit: contain;
         }
 
@@ -185,8 +206,9 @@ export default function Navbar() {
 
         .nav-exp-cols {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          column-gap: 48px;
+          grid-template-columns: repeat(3, max-content);
+           column-gap: 190px;
+          justify-content: center;
           flex: 1;
         }
 
@@ -239,15 +261,17 @@ export default function Navbar() {
         }
 
         /* ── Mobile ── */
-        .nav-mobile-toggle {
-          display: none;
-          flex-direction: column;
-          gap: 5px;
-          cursor: pointer;
-          background: none;
-          border: none;
-          padding: 6px;
-        }
+    .nav-mobile-toggle {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  background: #f5a800;   /* changed: none → #f5a800, same as desktop MENU button */
+  border: none;
+  border-radius: 4px;     /* added: small rounding so it reads as a button like desktop */
+  padding: 10px 12px;     /* changed: 6px → 10px 12px, proper tap-target size to match button look */
+}
 
         .nav-mobile-toggle span {
           display: block;
@@ -268,7 +292,7 @@ export default function Navbar() {
           transition: max-height 0.38s cubic-bezier(0.4,0,0.2,1), opacity 0.28s ease;
         }
 
-        .nav-mobile-menu.open { max-height: 700px; opacity: 1; }
+        .nav-mobile-menu.open { max-height: 500px; opacity: 1; }
 
         .nav-mobile-menu a {
           display: block;
@@ -301,18 +325,35 @@ export default function Navbar() {
           width: fit-content;
         }
 
+        .nav-menu-float {
+  position: absolute;
+  right: 64px;
+  bottom: -37px;
+  z-index: 250;
+}
+
+@media (max-width: 860px) {
+  .nav-menu-float { display: none !important; }
+}
+
         /* ── Responsive ── */
         @media (max-width: 860px) {
           .nav-collapsed { display: none !important; }
           .nav-expanded { display: none !important; }
-          .nav-mobile-toggle { display: flex !important; }
+          .nav-mobile-toggle {
+    display: flex !important;
+    position: absolute;   /* added */
+    right: 20px;           /* added */
+    bottom: -36px;         /* added — same float-down amount as desktop's nav-menu-float */
+    z-index: 250;          /* added */
+  }
           .nav-mobile-bar {
             display: flex;
             align-items: center;
             justify-content: space-between;
             background: #1a3a6b;
             padding: 0 20px;
-            height: 60px;
+            height: 0;
           }
           .nav-mobile-menu { display: flex; }
         }
@@ -323,77 +364,71 @@ export default function Navbar() {
         }
       `}</style>
 
-      {/* Collapsed bar */}
-      <div className={`nav-collapsed${menuOpen ? ' hidden' : ''}`}>
-        <a href="#" className="nav-collapsed-logo">
-          <img src={SchoolLogo} alt="JNPV Logo" className="nav-collapsed-icon" />
-          <span className="nav-collapsed-name">JNPV <span>Education</span></span>
-        </a>
-        <button className="nav-menu-btn" onClick={() => setMenuOpen(true)}>
-          MENU <span className="nav-arrow" />
-        </button>
-      </div>
-
       {/* Expanded mega menu */}
-      <div className={`nav-expanded${menuOpen ? ' open' : ''}`}>
+      <div className={`nav-expanded${menuOpen ? " open" : ""}`}>
         {/* Logo left */}
-        <div className="nav-exp-logo">
-          <img src={SchoolLogo} alt="JNPV Logo" className="nav-exp-logo-icon" />
-          <div className="nav-exp-logo-text">
-            <span className="nav-exp-logo-name">JNPV</span>
-            <span className="nav-exp-logo-sub">Education</span>
+        <div className='nav-exp-logo'>
+          <img src={SchoolLogo} alt='JNPV Logo' className='nav-exp-logo-icon' />
+          <div className='nav-exp-logo-text'>
+            <span className='nav-exp-logo-name'>JNPV</span>
+            <span className='nav-exp-logo-sub'>Education</span>
           </div>
         </div>
 
         {/* Columns + close right */}
-        <div className="nav-exp-right">
-          <div className="nav-exp-cols">
+        <div className='nav-exp-right'>
+          <div className='nav-exp-cols'>
             {menuColumns.map((col, i) => (
-              <div className="nav-exp-col" key={i}>
+              <div className='nav-exp-col' key={i}>
                 {col.links.map((link) => (
-                  <a key={link.label} href={link.href}>{'> '}{link.label}</a>
+                  <a key={link.label} href={link.href}>
+                    {"> "}
+                    {link.label}
+                  </a>
                 ))}
-                {col.showVirtual && (
+                {/* {col.showVirtual && (
                   <a href="#" className="nav-virtual-btn">Virtual School</a>
-                )}
+                )} */}
               </div>
             ))}
-          </div>
-
-          <div className="nav-exp-bottom">
-            <button className="nav-menu-btn" onClick={() => setMenuOpen(false)}>
-              MENU <span className="nav-arrow up" />
-            </button>
           </div>
         </div>
       </div>
 
+      <button
+        className='nav-menu-btn nav-menu-float'
+        onClick={() => setMenuOpen((o) => !o)}
+      >
+        MENU <span className={`nav-arrow${menuOpen ? " up" : ""}`} />
+      </button>
+
       {/* Mobile bar */}
-      <div className="nav-mobile-bar">
-        <a href="#" className="nav-collapsed-logo">
-          <img src={SchoolLogo} alt="JNPV Logo" className="nav-collapsed-icon" />
-          <span className="nav-collapsed-name">JNPV <span>Education</span></span>
-        </a>
+      <div className='nav-mobile-bar'>
         <button
-          className="nav-mobile-toggle"
+          className='nav-mobile-toggle'
           onClick={() => setMenuOpen((o) => !o)}
-          aria-label="Toggle menu"
+          aria-label='Toggle menu'
         >
-          <span /><span /><span />
+          <span />
+          <span />
+          <span />
         </button>
       </div>
 
       {/* Mobile slide-down */}
-      <div className={`nav-mobile-menu${menuOpen ? ' open' : ''}`}>
-        {menuColumns.flatMap((c) => c.links).map((link) => (
-          <a key={link.label} href={link.href} onClick={() => setMenuOpen(false)}>
-            {link.label}
-          </a>
-        ))}
-        <a href="#" className="nav-mobile-virtual" onClick={() => setMenuOpen(false)}>
-          Virtual School
-        </a>
+      <div className={`nav-mobile-menu${menuOpen ? " open" : ""}`}>
+        {menuColumns
+          .flatMap((c) => c.links)
+          .map((link) => (
+            <a
+              key={link.label}
+              href={link.href}
+              onClick={() => setMenuOpen(false)}
+            >
+              {link.label}
+            </a>
+          ))}
       </div>
     </nav>
-  )
+  );
 }
