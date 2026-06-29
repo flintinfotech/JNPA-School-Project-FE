@@ -1,26 +1,29 @@
-import { useState } from "react";
-import SchoolLogo from "../assets/SchoolLogo.avif";
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import SchoolLogo from '../assets/SchoolLogo.avif'
 
 const menuColumns = [
   {
     links: [
-      { label: "About Us", href: "#" },
-      { label: "Alumni", href: "#" },
-      { label: "Academics", href: "#" },
-      { label: "Admissions", href: "#" },
-      { label: "Awards", href: "#" },
+      { label: 'About Us', href: '/about-us' },
+      { label: 'Alumni', href: '/alumni' },
+      { label: 'Academics', href: '/academics' },
+      { label: 'Admissions', href: '/admissions' },
+      { label: 'Awards', href: '/awards' },
     ],
   },
   {
     links: [
-      { label: "Campus", href: "#" },
-      { label: "Careers", href: "#" },
-      { label: "Events", href: "#" },
-      { label: "Student Life", href: "#" },
+      { label: 'Campus', href: '/campus' },
+      { label: 'Careers', href: '/careers' },
+      { label: 'Events', href: '/events' },
+      { label: 'Student Life', href: '/student-life' },
     ],
   },
   {
-    links: [{ label: "Results & University Placements", href: "#" }],
+    links: [
+      { label: 'Results & University Placements', href: '/results-and-placements' },
+    ],
     showVirtual: true,
   },
 ];
@@ -225,6 +228,12 @@ export default function Navbar() {
           text-transform: uppercase;
           transition: color 0.15s, padding-left 0.15s;
           white-space: nowrap;
+          cursor: pointer;
+          background: none;
+          border: none;
+          text-align: left;
+          width: 100%;
+          font-family: inherit;
         }
 
         .nav-exp-col a:hover {
@@ -246,12 +255,12 @@ export default function Navbar() {
           border-radius: 3px;
           transition: background 0.18s !important;
           white-space: nowrap;
+          text-decoration: none;
         }
 
         .nav-virtual-btn:hover {
           background: #f5a800 !important;
           color: #1a3a6b !important;
-          padding-left: 20px !important;
         }
 
         .nav-exp-bottom {
@@ -323,6 +332,18 @@ export default function Navbar() {
           border-radius: 3px;
           border-bottom: none !important;
           width: fit-content;
+          text-decoration: none;
+        }
+
+        .nav-menu-float {
+          position: absolute;
+          right: 64px;
+          bottom: -37px;
+          z-index: 250;
+        }
+
+        @media (max-width: 860px) {
+          .nav-menu-float { display: none !important; }
         }
 
         .nav-menu-float {

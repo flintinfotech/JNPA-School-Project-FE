@@ -9,12 +9,27 @@ import TermsAndConditions from "./pages/TermsAndConditions";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 
+import AboutUs from "./pages/AboutUs";
+import Alumni from "./pages/Alumni";
+import Academics from "./pages/Academics";
+import Admissions from "./pages/Admissions";
+import Awards from "./pages/Awards";
+import Campus from "./pages/Campus";
+import Careers from "./pages/Careers";
+import Events from "./pages/Events";
+import StudentLife from "./pages/StudentLife";
+import ResultsAndPlacements from "./pages/ResultsAndPlacements";
+
 export default function App() {
   const { isAuthenticated, login, logout } = useAuth();
   const location = useLocation();
 
   const isLoginPage = location.pathname === "/login";
   const isUsersPage = location.pathname === "/users";
+  const isHomePage = location.pathname === "/";
+
+  // Pages where footer should not appear
+  const hideFooter = isLoginPage || isUsersPage || isHomePage;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -44,10 +59,21 @@ export default function App() {
 
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+
+          <Route path="/about-us" element={<AboutUs />} />
+          <Route path="/alumni" element={<Alumni />} />
+          <Route path="/academics" element={<Academics />} />
+          <Route path="/admissions" element={<Admissions />} />
+          <Route path="/awards" element={<Awards />} />
+          <Route path="/campus" element={<Campus />} />
+          <Route path="/careers" element={<Careers />} />
+          <Route path="/events" element={<Events />} />
+          <Route path="/student-life" element={<StudentLife />} />
+          <Route path="/results-and-placements" element={<ResultsAndPlacements />} />
         </Routes>
       </div>
 
-      {!isLoginPage && !isUsersPage && <Footer />}
+      {!hideFooter && <Footer />}
     </div>
   );
 }
