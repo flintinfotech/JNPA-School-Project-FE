@@ -326,27 +326,27 @@ export default function Navbar() {
         }
 
         .nav-menu-float {
-  position: absolute;
-  right: 64px;
-  bottom: -37px;
-  z-index: 250;
-}
+          position: absolute;
+          right: 64px;
+          bottom: -37px;
+          z-index: 250;
+        }
 
-@media (max-width: 860px) {
-  .nav-menu-float { display: none !important; }
-}
+        @media (max-width: 860px) {
+          .nav-menu-float { display: none !important; }
+        }
 
         /* ── Responsive ── */
         @media (max-width: 860px) {
           .nav-collapsed { display: none !important; }
           .nav-expanded { display: none !important; }
           .nav-mobile-toggle {
-    display: flex !important;
-    position: absolute;   /* added */
-    right: 20px;           /* added */
-    bottom: -36px;         /* added — same float-down amount as desktop's nav-menu-float */
-    z-index: 250;          /* added */
-  }
+          display: flex !important;
+          position: absolute;   /* added */
+          right: 20px;           /* added */
+          bottom: -36px;         /* added — same float-down amount as desktop's nav-menu-float */
+          z-index: 250;          /* added */
+        }
           .nav-mobile-bar {
             display: flex;
             align-items: center;
