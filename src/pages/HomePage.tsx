@@ -59,7 +59,7 @@ const sidebarSections = [
 //   { label: "Campus", href: "/campus" },
 //   { label: "Events", href: "/events" },
 //   { label: "Student Life", href: "/student-life" },
-//   { label: "Results & University Placements", href: "/results-and-placements" },
+//   { label: "Results & University", href: "/results-and-university" },
 // ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -711,7 +711,7 @@ export default function HomePage() {
                 eyebrow: "Results",
                 title: "Outstanding Achievements",
                 desc: "Year after year, our students excel at board exams and secure placements at top universities worldwide.",
-                href: "/results-and-placements",
+                href: "/results-and-university",
                 label: "View Results",
               },
             ].map((card) => (
