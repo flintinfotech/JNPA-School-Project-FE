@@ -22,7 +22,7 @@ const menuColumns = [
   },
   {
     links: [
-      { label: 'Results & University Placements', href: '/results-and-placements' },
+      { label: 'Results & University', href: '/results-and-university' },
     ],
     showVirtual: true,
   },

@@ -18,7 +18,7 @@ import Campus from "./pages/Campus";
 import Careers from "./pages/Careers";
 import Events from "./pages/Events";
 import StudentLife from "./pages/StudentLife";
-import ResultsAndPlacements from "./pages/ResultsAndPlacements";
+import ResultsAndUniversity from "./pages/ResultsAndUniversity";
 
 export default function App() {
   const { isAuthenticated, login, logout } = useAuth();
@@ -69,7 +69,7 @@ export default function App() {
           <Route path="/careers" element={<Careers />} />
           <Route path="/events" element={<Events />} />
           <Route path="/student-life" element={<StudentLife />} />
-          <Route path="/results-and-placements" element={<ResultsAndPlacements />} />
+          <Route path="/results-and-university" element={<ResultsAndUniversity />} />
         </Routes>
       </div>
 
