@@ -7,8 +7,8 @@ const sidebarItems = [
   'Our Inspiration',
   'Message from Founder & Chairperson and Vice-Chairperson',
   'Vision, Mission, Motto, Values & Objectives',
-  'DAIS Philosophy',
-  'DAIS Strategic Plan',
+  'JNPV Philosophy',
+  'JNPV Strategic Plan',
   'Unique Features',
 ];
 
@@ -343,7 +343,7 @@ export default function AboutUs() {
           <div className="text-columns">
             <div>
               <p>
-                Dhirubhai Ambani International School is a K-12
+                Jawaharlal Nehru Port Vidyalaya is
                 co-educational International Day School established in 2003,
                 with a view to offering world-class educational opportunities
                 in the city of Mumbai.
@@ -366,7 +366,7 @@ export default function AboutUs() {
 
             <div>
               <p>
-                DAIS is recognised as a Microsoft Showcase School, thus
+                JNPV is recognised as a Microsoft Showcase School, thus
                 joining a select league of schools globally for their vision
                 and innovation in teaching, learning, and preparing students
                 for the future.
@@ -385,13 +385,6 @@ export default function AboutUs() {
           </div>
         </main>
       </div>
-
-      <button className="parent-login">
-        <svg viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.4c-3.5 0-9.8 1.8-9.8 5.4v2.4h19.6v-2.4c0-3.6-6.3-5.4-9.8-5.4z" />
-        </svg>
-        Parent's Log in
-      </button>
     </div>
   );
 }
