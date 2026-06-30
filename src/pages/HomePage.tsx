@@ -1,6 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import SchoolLogo from "../assets/SchoolLogo.avif";
+import Img1 from "../assets/Img1.webp";
+import Img2 from "../assets/Img2.webp";
+import Img3 from "../assets/Img3.webp";
+import Img4 from "../assets/Img4.webp";
 
 // ── Sidebar data ─────────────────────────────────────────────────────────────
 
@@ -48,24 +52,56 @@ const sidebarSections = [
   },
 ];
 
-const quickNavLinks = [
-  { label: "About Us", href: "/about-us" },
-  { label: "Academics", href: "/academics" },
-  { label: "Admissions", href: "/admissions" },
-  { label: "Campus", href: "/campus" },
-  { label: "Events", href: "/events" },
-  { label: "Student Life", href: "/student-life" },
-  { label: "Results & University Placements", href: "/results-and-placements" },
-];
+// const quickNavLinks = [
+//   { label: "About Us", href: "/about-us" },
+//   { label: "Academics", href: "/academics" },
+//   { label: "Admissions", href: "/admissions" },
+//   { label: "Campus", href: "/campus" },
+//   { label: "Events", href: "/events" },
+//   { label: "Student Life", href: "/student-life" },
+//   { label: "Results & University Placements", href: "/results-and-placements" },
+// ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
   const [activeSection, setActiveSection] = useState<string | null>(null);
+  const images = [Img1, Img2, Img3, Img4];
+
+  const [currentImage, setCurrentImage] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImage((prev) => (prev + 1) % images.length);
+    }, 4000); // Change image every 4 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div style={{ display: "flex", minHeight: "calc(100vh - 68px)", background: "#f4f6fa" }}>
       <style>{`
+      /* For HOme Page Images*/
+     .hp-main {
+        flex: 1;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .hp-slider {
+        width: 100%;
+        height: 100vh;
+        overflow: hidden;
+        background: #000;
+      }
+
+      .hp-slider-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        transition: opacity 0.8s ease-in-out;
+      }
         /* ── Layout ── */
         .hp-root {
           display: flex;
@@ -82,8 +118,9 @@ export default function HomePage() {
           flex-direction: column;
           overflow-y: auto;
           position: sticky;
-          top: 68px;
-          height: calc(100vh - 68px);
+          top: 0;
+          left: 0;
+          height: 100vh;
           box-shadow: 3px 0 20px rgba(0,0,0,0.18);
           flex-shrink: 0;
           scrollbar-width: none;
@@ -104,16 +141,24 @@ export default function HomePage() {
 
         .hp-sb-logo:hover { background: rgba(255,255,255,0.04); }
 
-        .hp-sb-logo-img {
-          width: 90px;
-          height: 90px;
+       .hp-sb-logo-circle {
+          width: 100px;
+          height: 100px;
           border-radius: 50%;
-          object-fit: contain;
-          background: white;
-          padding: 4px;
-          box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+          background: #fff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 2px 12px rgba(0,0,0,.25);
         }
 
+        .hp-sb-logo-img {
+          max-width: 80%;
+          max-height: 80%;
+          width: auto;
+          height: auto;
+          object-fit: contain;
+        }
         .hp-sb-logo-name {
           font-size: 20px;
           font-weight: 900;
@@ -508,8 +553,25 @@ export default function HomePage() {
         /* ── Responsive ── */
         @media (max-width: 860px) {
           .hp-sidebar {
-            display: none;
-          }
+              display: flex;
+              width: 100%;
+              min-width: 100%;
+              height: auto;
+              position: relative;
+            }
+
+            .hp-main {
+              display: none;
+            }
+
+            .hp-root {
+              flex-direction: column;
+            }
+
+            .hp-parent-login {
+              bottom: 16px;
+              right: 16px;
+            }
 
           .hp-hero { height: 320px; }
           .hp-hero-title { font-size: 26px; }
@@ -523,8 +585,10 @@ export default function HomePage() {
         {/* ── SIDEBAR ── */}
         <aside className="hp-sidebar">
           {/* Logo block */}
-          <Link to="/about-us" className="hp-sb-logo">
-            <img src={SchoolLogo} alt="JNPV Logo" className="hp-sb-logo-img" />
+          <Link to="/" className="hp-sb-logo">
+            <div className="hp-sb-logo-circle">
+              <img src={SchoolLogo} alt="JNPV Logo" className="hp-sb-logo-img" />
+            </div>
             <div className="hp-sb-logo-name">JNPV</div>
             <div className="hp-sb-logo-sub">Education</div>
           </Link>
@@ -544,8 +608,8 @@ export default function HomePage() {
                   {sec.accentHighlights
                     ? sec.highlights.join("  •  ")
                     : sec.highlights.map((h, i) => (
-                        <div key={i}>· {h}</div>
-                      ))}
+                      <div key={i}>· {h}</div>
+                    ))}
                 </div>
               )}
 
@@ -581,11 +645,16 @@ export default function HomePage() {
 
         {/* ── MAIN CONTENT ── */}
         <main className="hp-main">
+          <div className="hp-slider">
+            <img
+              src={images[currentImage]}
+              alt={`Slide ${currentImage + 1}`}
+              className="hp-slider-image"
+            />
+          </div>
           {/* Hero */}
-          <div className="hp-hero">
+          {/* <div className="hp-hero">
             <div className="hp-hero-bg" />
-
-            {/* Decorative rings */}
             <div className="hp-hero-circle" style={{ width: 500, height: 500, top: -150, right: -100 }} />
             <div className="hp-hero-circle" style={{ width: 320, height: 320, top: -60, right: 40, animationDelay: "2s" }} />
             <div className="hp-hero-circle" style={{ width: 160, height: 160, top: 30, right: 180, animationDelay: "4s" }} />
@@ -603,19 +672,19 @@ export default function HomePage() {
                 <span className="hp-hero-cta-arrow">→</span>
               </Link>
             </div>
-          </div>
+          </div> */}
 
           {/* Quick nav strip */}
-          <nav className="hp-quicknav">
+          {/* <nav className="hp-quicknav">
             {quickNavLinks.map((link) => (
               <Link key={link.label} to={link.href} className="hp-quicknav-link">
                 {link.label}
               </Link>
             ))}
-          </nav>
+          </nav> */}
 
           {/* Cards grid */}
-          <div className="hp-cards">
+          {/* <div className="hp-cards">
             {[
               {
                 eyebrow: "Academics",
@@ -659,7 +728,7 @@ export default function HomePage() {
                 </div>
               </Link>
             ))}
-          </div>
+          </div> */}
         </main>
       </div>
 

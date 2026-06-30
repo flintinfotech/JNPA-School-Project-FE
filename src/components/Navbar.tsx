@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import SchoolLogo from '../assets/SchoolLogo.avif'
 
 const menuColumns = [
@@ -30,16 +30,26 @@ const menuColumns = [
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = useNavigate()
+  const location = useLocation()
+  const isHome = location.pathname === '/'
 
+  const handleNav = (href: string) => {
+    setMenuOpen(false)
+    navigate(href)
+  }
   return (
-    <nav className='nav-root'>
+    <nav className='nav-root'
+      onMouseEnter={() => !isHome && setMenuOpen(true)}
+      onMouseLeave={() => !isHome && setMenuOpen(false)}
+    >
       <style>{`
         .nav-root {
           position: sticky;
           top: 0;
           z-index: 200;
           font-family: 'Segoe UI', system-ui, sans-serif;
-          border-bottom: 4px solid #f5a800;
+          border-bottom: 8px solid #f5a800;
           box-shadow: 0 2px 12px rgba(0,0,0,0.12);
           background:transparent;
         }
@@ -90,26 +100,26 @@ export default function Navbar() {
         .nav-collapsed-name span { color: #f5a800; }
 
         @media (max-width: 860px) {
-  .nav-root { background: transparent; }   /* added */
-  .nav-collapsed { display: none !important; }
-  .nav-expanded { display: none !important; }
-  .nav-mobile-toggle {
-    display: flex !important;
-    position: absolute;
-    right: 20px;
-    bottom: -36px;
-    z-index: 250;
-  }
-  .nav-mobile-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: #1a3a6b;
-    padding: 0 20px;
-    height: 0;
-  }
-  .nav-mobile-menu { display: flex; }
-}
+          .nav-root { background: transparent; }   /* added */
+          .nav-collapsed { display: none !important; }
+          .nav-expanded { display: none !important; }
+          .nav-mobile-toggle {
+            display: flex !important;
+            position: absolute;
+            right: 20px;
+            bottom: -36px;
+            z-index: 250;
+          }
+          .nav-mobile-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #1a3a6b;
+            padding: 0 20px;
+            height: 0;
+          }
+          .nav-mobile-menu { display: flex; }
+        }
   
 
         /* ── MENU button ── */
@@ -152,7 +162,9 @@ export default function Navbar() {
           max-height: 0;
           overflow: hidden;
           opacity: 0;
-          transition: max-height 0.42s cubic-bezier(0.4,0,0.2,1), opacity 0.32s ease;
+          box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+          z-index: 150;
+          transition: max-height 0.6s cubic-bezier(0.4,0,0.2,1), opacity 0.80s ease;
         }
 
         .nav-expanded.open {
@@ -270,17 +282,17 @@ export default function Navbar() {
         }
 
         /* ── Mobile ── */
-    .nav-mobile-toggle {
-  display: none;
-  flex-direction: column;
-  justify-content: center;
-  gap: 5px;
-  cursor: pointer;
-  background: #f5a800;   /* changed: none → #f5a800, same as desktop MENU button */
-  border: none;
-  border-radius: 4px;     /* added: small rounding so it reads as a button like desktop */
-  padding: 10px 12px;     /* changed: 6px → 10px 12px, proper tap-target size to match button look */
-}
+            .nav-mobile-toggle {
+          display: none;
+          flex-direction: column;
+          justify-content: center;
+          gap: 5px;
+          cursor: pointer;
+          background: #f5a800;   /* changed: none → #f5a800, same as desktop MENU button */
+          border: none;
+          border-radius: 4px;     /* added: small rounding so it reads as a button like desktop */
+          padding: 10px 12px;     /* changed: 6px → 10px 12px, proper tap-target size to match button look */
+        }
 
         .nav-mobile-toggle span {
           display: block;
@@ -346,17 +358,6 @@ export default function Navbar() {
           .nav-menu-float { display: none !important; }
         }
 
-        .nav-menu-float {
-          position: absolute;
-          right: 64px;
-          bottom: -37px;
-          z-index: 250;
-        }
-
-        @media (max-width: 860px) {
-          .nav-menu-float { display: none !important; }
-        }
-
         /* ── Responsive ── */
         @media (max-width: 860px) {
           .nav-collapsed { display: none !important; }
@@ -386,42 +387,45 @@ export default function Navbar() {
       `}</style>
 
       {/* Expanded mega menu */}
-      <div className={`nav-expanded${menuOpen ? " open" : ""}`}>
-        {/* Logo left */}
-        <div className='nav-exp-logo'>
-          <img src={SchoolLogo} alt='JNPV Logo' className='nav-exp-logo-icon' />
-          <div className='nav-exp-logo-text'>
-            <span className='nav-exp-logo-name'>JNPV</span>
-            <span className='nav-exp-logo-sub'>Education</span>
+      {/* Expanded mega menu */}
+      <div>
+        <div className={`nav-expanded${menuOpen ? " open" : ""}`}>
+          {/* Logo left */}
+          <div className='nav-exp-logo'>
+            <img src={SchoolLogo} alt='JNPV Logo' className='nav-exp-logo-icon' />
+            <div className='nav-exp-logo-text'>
+              <span className='nav-exp-logo-name'>JNPV</span>
+              <span className='nav-exp-logo-sub'>Education</span>
+            </div>
+          </div>
+
+          {/* Columns + close right */}
+          <div className='nav-exp-right'>
+            <div className='nav-exp-cols'>
+              {menuColumns.map((col, i) => (
+                <div className='nav-exp-col' key={i}>
+                  {col.links.map((link) => (
+                    <a key={link.label} onClick={() => handleNav(link.href)}>
+                      {"> "}
+                      {link.label}
+                    </a>
+                  ))}
+                  {/* {col.showVirtual && (
+                    <a href="#" className="nav-virtual-btn">Virtual School</a>
+                  )} */}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Columns + close right */}
-        <div className='nav-exp-right'>
-          <div className='nav-exp-cols'>
-            {menuColumns.map((col, i) => (
-              <div className='nav-exp-col' key={i}>
-                {col.links.map((link) => (
-                  <a key={link.label} href={link.href}>
-                    {"> "}
-                    {link.label}
-                  </a>
-                ))}
-                {/* {col.showVirtual && (
-                  <a href="#" className="nav-virtual-btn">Virtual School</a>
-                )} */}
-              </div>
-            ))}
-          </div>
-        </div>
+        <button
+          className='nav-menu-btn nav-menu-float'
+          onClick={() => isHome && setMenuOpen((o) => !o)}
+        >
+          MENU <span className={`nav-arrow${menuOpen ? " up" : ""}`} />
+        </button>
       </div>
-
-      <button
-        className='nav-menu-btn nav-menu-float'
-        onClick={() => setMenuOpen((o) => !o)}
-      >
-        MENU <span className={`nav-arrow${menuOpen ? " up" : ""}`} />
-      </button>
 
       {/* Mobile bar */}
       <div className='nav-mobile-bar'>
