@@ -14,7 +14,7 @@ import Alumni from "./pages/Alumni";
 import Academics from "./pages/Academics";
 import AcademicsPrimary from "./pages/AcademicsPrimary";
 import AcademicsSecondary from './pages/AcademicsSecondary'
-import Admissions from "./pages/Admissions";
+import Admissions from "./pages/Admissions";  
 import AdmissionPrePrimary from "./pages/AdmissionPrePrimary";
 import AdmissionPrimary from "./pages/AdmissionPrimary";
 import AdmissionSecondary from "./pages/AdmissionSecondary";
@@ -22,7 +22,12 @@ import Awards from "./pages/Awards";
 import Campus from "./pages/Campus";
 import Careers from "./pages/Careers";
 import Events from "./pages/Events";
+import AnnualDay from "./pages/AnnualDay";
 import StudentLife from "./pages/StudentLife";
+import SportingActivities from "./pages/SportingActivities";
+import CoCurricularActivities from "./pages/CoCurricularActivities";
+import EnvironmentalInitiatives from "./pages/EnvironmentalInitiatives";
+import StudentCouncil from "./pages/StudentCouncil";
 import ExamandResult from "./pages/ExamandResult";
 
 export default function App() {
@@ -33,7 +38,6 @@ export default function App() {
   const isUsersPage = location.pathname === "/users";
   const isHomePage = location.pathname === "/";
 
-  // Pages where footer should not appear
   const hideFooter = isLoginPage || isUsersPage || isHomePage;
 
   return (
@@ -67,10 +71,7 @@ export default function App() {
           />
 
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          <Route
-            path="/terms-and-conditions"
-            element={<TermsAndConditions />}
-          />
+          <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
 
           <Route path="/about-us" element={<AboutUs />} />
           <Route path="/alumni" element={<Alumni />} />
@@ -86,7 +87,12 @@ export default function App() {
           <Route path="/campus" element={<Campus />} />
           <Route path="/careers" element={<Careers />} />
           <Route path="/events" element={<Events />} />
+          <Route path="/events/annual-day" element={<AnnualDay />} />
           <Route path="/student-life" element={<StudentLife />} />
+          <Route path="/student-life/sporting" element={<SportingActivities />} /> 
+          <Route path="/student-life/co-curricular" element={<CoCurricularActivities />} />
+          <Route path="/student-life/environmental" element={<EnvironmentalInitiatives />} />
+          <Route path="/student-life/student-council" element={<StudentCouncil />} />
           <Route path="/Exam-and-result" element={<ExamandResult />} />
         </Routes>
       </div>

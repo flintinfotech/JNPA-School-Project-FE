@@ -12,7 +12,7 @@ import LeadershipSeries from '../assets/EventsImages/Leadership.png';
 
 export default function Events() {
   const events = [
-    { title: 'Annual Day', icon: '🎭', image: AnnaulDay, href: '#' },
+    { title: 'Annual Day', icon: '🎭', image: AnnaulDay, href: '/events/annual-day' },
     { title: 'Fairs & Exhibitions', icon: '🎪', image: GraduationDay, href: '#' },
     { title: 'Events and Celebrations', icon: '🎉', image: EventsandCelebrations, href: '#' },
     { title: 'Visits and Outings', icon: '🚶', image: VisitsandOutings, href: '#' },

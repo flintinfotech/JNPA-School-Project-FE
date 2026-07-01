@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import schoolLogo from '../assets/SchoolLogo.avif';
 import schoolBuilding from '../assets/Eventss.jpg';
 import SportingActivities from '../assets/StudentLifeImages/Sporting.png';
@@ -13,17 +14,17 @@ import StudentConcil from '../assets/StudentLifeImages/StudentsC.png';
 
 export default function StudentLife() {
   const events = [
-    { title: 'Sporting Activities', icon: '🏅', image: SportingActivities, href: '#' },
-    { title: 'Co-Curricular Activities', icon: '🎨', image: CoCurricularAct, href: '#' },
-    { title: 'Environmental Initiatives', icon: '🌱', image: EnvironmentalIni, href: '#' },
+    { title: 'Sporting Activities', icon: '🏅', image: SportingActivities, to: '/student-life/sporting' },
+    { title: 'Co-Curricular Activities', icon: '🎨', image: CoCurricularAct, to: '/student-life/co-curricular' },
+    { title: 'Environmental Initiatives', icon: '🌱', image: EnvironmentalIni, to: '/student-life/environmental' },
+    { title: 'Student Council', icon: '🧑‍💼', image: StudentConcil, to: '/student-life/student-council' },
     // { title: 'Service Learnings', icon: '🤝', image: ServiceLernings, href: '#' },
-    { title: 'Student Council', icon: '🧑‍💼', image: StudentConcil, href: '#' },
     // { title: 'Project Day', icon: '📊', image: ProjectD, href: '#' },
     // { title: 'Seeds of Peace', icon: '☮️', image: SeedsOfP, href: '#' },
     // { title: 'Students Achievements', icon: '🏆', image: StudentsAchivements, href: '#' },
-    // { title: 'Round Square', icon: '🌐', image: RoundSq, href: '#' },
+    // { title: 'Round Square', icon: '🌐', image: RoundSq, href: '#' },      
     // { title: 'House System', icon: '🏠', image: HouseSys, href: '#' },
-  ];
+];
 
   return (
     <div className="dais-about">
@@ -322,7 +323,7 @@ export default function StudentLife() {
 
           <div className="event-grid">
             {events.map((event) => (
-              <a className="event-card" href={event.href} key={event.title}>
+              <Link className="event-card" to={event.to} key={event.title}>
                 <div className="event-image">
                   <img src={event.image} alt={event.title} />
                 </div>
@@ -330,7 +331,7 @@ export default function StudentLife() {
                   <div className="event-icon">{event.icon}</div>
                   <p className="event-name">{event.title}</p>
                 </div>
-              </a>
+              </Link>
             ))}
           </div>
         </main>
