@@ -22,6 +22,11 @@ import Careers from "./pages/Careers";
 import Events from "./pages/Events";
 import StudentLife from "./pages/StudentLife";
 import ExamandResult from "./pages/ExamandResult";
+import EventsAndCelebrations from "./pages/EventsAndCelebrations";
+import VisitsAndOutings from "./pages/VisitsAndOutings";
+import LanguageDayAndCelebrations from "./pages/LanguageDayAndCele";
+import LeadershipSeries from "./pages/LeadershipSeries";
+import Visitors from "./pages/Visitors";
 
 export default function App() {
   const { isAuthenticated, login, logout } = useAuth();
@@ -92,6 +97,11 @@ export default function App() {
             path="/Exam-and-result"
             element={<ExamandResult />}
           />
+          <Route path="/events-and-celebrations" element={<EventsAndCelebrations />} />
+          <Route path="/visits-and-outings" element={<VisitsAndOutings />} />
+          <Route path="/language-day-celebrations" element={<LanguageDayAndCelebrations />} />
+          <Route path="/leadership-series" element={<LeadershipSeries />} />
+          <Route path="/visitors" element={<Visitors />} />
         </Routes>
       </div>
 

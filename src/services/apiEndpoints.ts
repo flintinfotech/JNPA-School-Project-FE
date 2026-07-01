@@ -1,9 +1,9 @@
 export const apiEndpoints = {
-  login: () => `/sample/auth/login`,
-  saveUser: () => `/sample/user/saveUser`,
-  updateUser: () => `/sample/user/updateUser`,
-  getUserById: (userId: number | string) => `/sample/user/getUserById/${userId}`,
-  deleteUser: (userId: number | string) => `/sample/user/deleteUser/${userId}`,
+  login: () => `/jnpa-school-project/auth/login`,
+  saveUser: () => `/jnpa-school-project/user/saveUser`,
+  updateUser: () => `/jnpa-school-project/user/updateUser`,
+  getUserById: (userId: number | string) => `/jnpa-school-project/user/getUserById/${userId}`,
+  deleteUser: (userId: number | string) => `/jnpa-school-project/user/deleteUser/${userId}`,
   getAllUsers: (page: number, size: number) =>
-    `/sample/user/getAllUsersByFilter?page=${page}&size=${size}&paginate=true`,
+    `/jnpa-school-project/user/getAllUsersByFilter?page=${page}&size=${size}&paginate=true`,
 };

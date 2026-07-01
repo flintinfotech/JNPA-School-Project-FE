@@ -14,12 +14,12 @@ export default function Events() {
   const events = [
     { title: 'Annual Day', icon: '🎭', image: AnnaulDay, href: '#' },
     { title: 'Fairs & Exhibitions', icon: '🎪', image: GraduationDay, href: '#' },
-    { title: 'Events and Celebrations', icon: '🎉', image: EventsandCelebrations, href: '#' },
-    { title: 'Visits and Outings', icon: '🚶', image: VisitsandOutings, href: '#' },
-    { title: 'Visitors', icon: '🧑‍💼', image: Visitors, href: '#' },
-    { title: 'Language Day Celebrations', icon: '🅰️', image: LanguageDayCelebrations, href: '#' },
+    { title: 'Events and Celebrations', icon: '🎉', image: EventsandCelebrations, href: '/events-and-celebrations' },
+    { title: 'Visits and Outings', icon: '🚶', image: VisitsandOutings, href: '/visits-and-outings' },
+    { title: 'Visitors', icon: '🧑‍💼', image: Visitors, href: '/visitors' },
+    { title: 'Language Day Celebrations', icon: '🅰️', image: LanguageDayCelebrations, href: '/language-day-celebrations' },
     { title: 'Inter - House Events', icon: '🏠', image: InterHouseEvents, href: '#' },
-    { title: 'Leadership Series', icon: '🌐', image: LeadershipSeries, href: '#' },
+    { title: 'Leadership Series', icon: '🌐', image: LeadershipSeries, href: '/leadership-series' },
   ];
 
   return (
