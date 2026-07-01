@@ -16,22 +16,13 @@ const boardResults = [
   { grade: "Grade XII - Humanities (2026)", detail: "97% pass rate, with several students pursuing law and design programs" },
 ];
 
-const universities = [
-  "St. Xavier's College, Mumbai",
-  "Narsee Monjee Institute of Management Studies",
-  "Indian Institute of Technology, Bombay",
-  "Symbiosis International University, Pune",
-  "Delhi University",
-  "BITS Pilani",
-];
-
 const toppers = [
   { name: "Riya Deshmukh", score: "98.4%", stream: "Science", placement: "IIT Bombay - Computer Science" },
   { name: "Aarav Mehta", score: "97.8%", stream: "Commerce", placement: "St. Xavier's College, Mumbai" },
   { name: "Sanaya Kapoor", score: "96.2%", stream: "Humanities", placement: "Symbiosis Law School" },
 ];
 
-export default function ResultsAndUniversity() {
+export default function ExamandResult() {
   return (
     <div className="results-page" style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", overflowX: "hidden" }}>
       <style>{`
@@ -68,10 +59,6 @@ export default function ResultsAndUniversity() {
           .results-page .results-row > div:first-child {
             width: auto !important;
           }
-          .results-page .results-uni-grid {
-            grid-template-columns: 1fr !important;
-            gap: 12px !important;
-          }
           .results-page .results-topper-row {
             flex-direction: column !important;
             align-items: flex-start !important;
@@ -103,7 +90,7 @@ export default function ResultsAndUniversity() {
           <img src={SchoolLogo} alt="JNPV Logo" style={{ height: "78px", width: "auto", display: "block" }} />
         </div>
         <div className="results-title-wrap" style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 40px 26px" }}>
-          <h1 style={{ color: "#fff", fontSize: "34px", fontWeight: 500, margin: 0 }}>Results & University Placements</h1>
+          <h1 style={{ color: "#fff", fontSize: "34px", fontWeight: 500, margin: 0 }}>Exam and Result</h1>
         </div>
       </div>
 
@@ -160,38 +147,6 @@ export default function ResultsAndUniversity() {
             >
               <div style={{ width: "220px", flexShrink: 0, color: "#1a3a6b", fontWeight: 700 }}>{row.grade}</div>
               <div style={{ color: "#555" }}>{row.detail}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* University placements grid */}
-      <div className="results-section" style={{ padding: "60px 80px" }}>
-        <h2 style={{ color: "#1a3a6b", fontSize: "26px", fontWeight: 800, marginBottom: "10px", textAlign: "center" }}>
-          University Placements
-        </h2>
-        <p style={{ color: "#777", fontSize: "14px", textAlign: "center", marginBottom: "36px" }}>
-          Our alumni have gone on to study at some of the most respected institutions in India and abroad
-        </p>
-        <div
-          className="results-uni-grid"
-          style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", maxWidth: "1000px", margin: "0 auto" }}
-        >
-          {universities.map((uni) => (
-            <div
-              key={uni}
-              style={{
-                background: "#1a3a6b",
-                color: "#fff",
-                borderRadius: "6px",
-                padding: "18px 20px",
-                fontSize: "14px",
-                fontWeight: 600,
-                textAlign: "center",
-                borderLeft: "4px solid #f5a800",
-              }}
-            >
-              {uni}
             </div>
           ))}
         </div>

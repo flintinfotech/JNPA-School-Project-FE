@@ -13,12 +13,15 @@ import AboutUs from "./pages/AboutUs";
 import Alumni from "./pages/Alumni";
 import Academics from "./pages/Academics";
 import Admissions from "./pages/Admissions";
+import AdmissionPrePrimary from "./pages/AdmissionPrePrimary";
+import AdmissionPrimary from "./pages/AdmissionPrimary";
+import AdmissionSecondary from "./pages/AdmissionSecondary";
 import Awards from "./pages/Awards";
 import Campus from "./pages/Campus";
 import Careers from "./pages/Careers";
 import Events from "./pages/Events";
 import StudentLife from "./pages/StudentLife";
-import ResultsAndUniversity from "./pages/ResultsAndUniversity";
+import ExamandResult from "./pages/ExamandResult";
 
 export default function App() {
   const { isAuthenticated, login, logout } = useAuth();
@@ -42,34 +45,53 @@ export default function App() {
           <Route
             path="/login"
             element={
-              isAuthenticated
-                ? <Navigate to="/users" replace />
-                : <LoginPage onLogin={login} />
+              isAuthenticated ? (
+                <Navigate to="/users" replace />
+              ) : (
+                <LoginPage onLogin={login} />
+              )
             }
           />
 
           <Route
             path="/users"
             element={
-              isAuthenticated
-                ? <UserManagement onLogout={logout} />
-                : <Navigate to="/login" replace />
+              isAuthenticated ? (
+                <UserManagement onLogout={logout} />
+              ) : (
+                <Navigate to="/login" replace />
+              )
             }
           />
 
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+          <Route
+            path="/terms-and-conditions"
+            element={<TermsAndConditions />}
+          />
 
           <Route path="/about-us" element={<AboutUs />} />
           <Route path="/alumni" element={<Alumni />} />
           <Route path="/academics" element={<Academics />} />
           <Route path="/admissions" element={<Admissions />} />
+          <Route
+            path="/admissions/pre-primary"
+            element={<AdmissionPrePrimary />}
+          />
+          <Route path="/admissions/primary" element={<AdmissionPrimary />} />
+          <Route
+            path="/admissions/secondary"
+            element={<AdmissionSecondary />}
+          />
           <Route path="/awards" element={<Awards />} />
           <Route path="/campus" element={<Campus />} />
           <Route path="/careers" element={<Careers />} />
           <Route path="/events" element={<Events />} />
           <Route path="/student-life" element={<StudentLife />} />
-          <Route path="/results-and-university" element={<ResultsAndUniversity />} />
+          <Route
+            path="/Exam-and-result"
+            element={<ExamandResult />}
+          />
         </Routes>
       </div>
 
