@@ -2,7 +2,7 @@
 import schoolLogo from '../assets/SchoolLogo.avif';
 import schoolBuilding from '../assets/Eventss.jpg';
 import AnnaulDay from '../assets/EventsImages/AnnualD.png';
-import GraduationDay from '../assets/EventsImages/GraduationD.png';
+import GraduationDay from '../assets/EventsImages/FairsExhibitions.png';
 import EventsandCelebrations from '../assets/EventsImages/Events.png';
 import VisitsandOutings from '../assets/EventsImages/Visits&Outings.png';
 import Visitors from '../assets/EventsImages/Visitor.png';
@@ -13,7 +13,7 @@ import LeadershipSeries from '../assets/EventsImages/Leadership.png';
 export default function Events() {
   const events = [
     { title: 'Annual Day', icon: '🎭', image: AnnaulDay, href: '#' },
-    { title: 'Graduation Day', icon: '🎓', image: GraduationDay, href: '#' },
+    { title: 'Fairs & Exhibitions', icon: '🎪', image: GraduationDay, href: '#' },
     { title: 'Events and Celebrations', icon: '🎉', image: EventsandCelebrations, href: '#' },
     { title: 'Visits and Outings', icon: '🚶', image: VisitsandOutings, href: '#' },
     { title: 'Visitors', icon: '🧑‍💼', image: Visitors, href: '#' },
