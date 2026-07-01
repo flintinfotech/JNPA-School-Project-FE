@@ -1,143 +1,47 @@
 import Admission1 from "../assets/Admission1.jpg";
-import Admission2 from "../assets/Admission2.webp";
 import SchoolLogo from "../assets/SchoolLogo.avif";
+import { useNavigate } from "react-router-dom";
 
-const processSteps = [
+const sections = [
   {
-    step: "01",
-    title: "Enquiry",
-    desc: "Submit an enquiry online or visit the school office to learn about available seats and grade-wise requirements.",
+    label: "Pre Primary",
+    grades: ["Nursery", "Junior KG", "Senior KG"],
+    color: "#c0392b",
+    route: "/admissions/pre-primary",
   },
   {
-    step: "02",
-    title: "Application Form",
-    desc: "Fill out and submit the admission form along with the required documents within the announced window.",
+    label: "Primary",
+    grades: ["Grade 1", "Grade 2", "Grade 3", "Grade 4"],
+    color: "#1569ad",
+    route: "/admissions/primary",
   },
   {
-    step: "03",
-    title: "Document Verification",
-    desc: "Original documents are verified at the school office before the admission is confirmed.",
+    label: "Secondary",
+    grades: ["Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10"],
+    color: "#1f4d3d",
+    route: "/admissions/secondary",
   },
-  {
-    step: "04",
-    title: "Fee Payment",
-    desc: "Complete the admission fee payment to secure your child's seat for the academic year.",
-  },
-  {
-    step: "05",
-    title: "Confirmation",
-    desc: "Receive your confirmation letter and welcome kit, and join us for the orientation session.",
-  },
-];
-
-const eligibility = [
-  { grade: "Nursery", criteria: "Child must complete 3 years by 1st June of the academic year" },
-  { grade: "LKG", criteria: "Child must complete 4 years by 1st June of the academic year" },
-  { grade: "UKG", criteria: "Child must complete 5 years by 1st June of the academic year" },
-  { grade: "Grade I", criteria: "Child must complete 6 years by 1st June of the academic year" },
-  { grade: "Grade II - VIII", criteria: "Based on previous school's transfer certificate and report card" },
-  { grade: "Grade IX - XI", criteria: "Subject to seat availability and an academic assessment" },
-];
-
-const importantDates = [
-  { label: "Registration Opens", date: "1st November 2026" },
-  { label: "Registration Closes", date: "15th December 2026" },
-  { label: "Entrance Interaction", date: "5th - 10th January 2027" },
-  { label: "Result Announcement", date: "20th January 2027" },
-  { label: "Fee Payment Deadline", date: "31st January 2027" },
-];
-
-const documents = [
-  "Birth Certificate (original + photocopy)",
-  "Aadhar Card of the child and parents",
-  "Address Proof (utility bill / rental agreement)",
-  "Passport size photographs of the child",
-  "Transfer Certificate (for Grade II and above)",
-  "Previous academic year's report card (if applicable)",
 ];
 
 export default function Admissions() {
-  return (
-    <div className="admissions-page" style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
-      <style>{`
-        /* ===== Mobile responsiveness ===== */
-        @media (max-width: 768px) {
-          .admissions-page .admissions-header-inner {
-            padding: 14px 20px 0 !important;
-          }
-          .admissions-page .admissions-header-inner img {
-            height: 56px !important;
-          }
-          .admissions-page .admissions-title-wrap {
-            padding: 0 20px 18px !important;
-          }
-          .admissions-page .admissions-title-wrap h1 {
-            font-size: 26px !important;
-          }
-          .admissions-page .admissions-hero-img-wrap {
-            width: 92% !important;
-            margin: -16px auto 14px !important;
-          }
-          .admissions-page .admissions-hero-img-wrap img {
-            max-height: 220px !important;
-          }
-          .admissions-page .admissions-intro {
-            padding: 36px 20px 24px !important;
-          }
-          .admissions-page .admissions-intro h2 {
-            font-size: 21px !important;
-          }
-          .admissions-page .admissions-intro p {
-            font-size: 14px !important;
-          }
-          .admissions-page .admissions-intro button {
-            width: 100% !important;
-            padding: 13px 20px !important;
-          }
-          .admissions-page .admissions-section {
-            padding: 36px 20px !important;
-          }
-          .admissions-page .admissions-section-title {
-            font-size: 21px !important;
-            margin-bottom: 24px !important;
-          }
-          .admissions-page .admissions-process-grid {
-            grid-template-columns: 1fr !important;
-            gap: 16px !important;
-          }
-          .admissions-page .admissions-split-grid {
-            grid-template-columns: 1fr !important;
-            gap: 32px !important;
-          }
-          .admissions-page .admissions-eligibility-row {
-            flex-direction: column !important;
-            gap: 4px !important;
-          }
-          .admissions-page .admissions-eligibility-row > div:first-child {
-            width: auto !important;
-          }
-          .admissions-page .admissions-docs-grid {
-            grid-template-columns: 1fr !important;
-            gap: 24px !important;
-          }
-          .admissions-page .admissions-docs-grid > div:first-child {
-            order: 2;
-          }
-          .admissions-page .admissions-docs-grid > div:last-child {
-            order: 1;
-          }
-          .admissions-page .admissions-bottom-cta {
-            padding: 40px 20px !important;
-          }
-          .admissions-page .admissions-bottom-cta h2 {
-            font-size: 20px !important;
-          }
-        }
+  const navigate = useNavigate();
 
-        @media (max-width: 460px) {
-          .admissions-page .admissions-title-wrap h1 {
-            font-size: 22px !important;
-          }
+  return (
+    <div
+      className="admissions-page"
+      style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}
+    >
+      <style>{`
+        @media (max-width: 768px) {
+          .admissions-page .admissions-header-inner { padding: 14px 20px 0 !important; }
+          .admissions-page .admissions-header-inner img { height: 56px !important; }
+          .admissions-page .admissions-title-wrap { padding: 0 20px 18px !important; }
+          .admissions-page .admissions-title-wrap h1 { font-size: 26px !important; }
+          .admissions-page .admissions-hero-img-wrap { width: 92% !important; margin: -16px auto 14px !important; }
+          .admissions-page .admissions-hero-img-wrap img { max-height: 220px !important; }
+          .admissions-page .admissions-cards-grid { grid-template-columns: 1fr !important; gap: 20px !important; }
+          .admissions-page .admissions-body { padding: 36px 20px !important; }
+          .admissions-page .admissions-contact-box { padding: 24px 20px !important; flex-direction: column !important; gap: 14px !important; }
         }
       `}</style>
 
@@ -145,223 +49,248 @@ export default function Admissions() {
       <div style={{ background: "#1569ad", position: "relative" }}>
         <div
           className="admissions-header-inner"
-          style={{ maxWidth: "1200px", margin: "0 auto", padding: "18px 40px 0" }}
+          style={{
+            maxWidth: "1200px",
+            margin: "0 auto",
+            padding: "18px 40px 0",
+          }}
         >
-          <img src={SchoolLogo} alt="JNPV Logo" style={{ height: "78px", width: "auto", display: "block" }} />
+          <img
+            src={SchoolLogo}
+            alt="JNPV Logo"
+            style={{ height: "78px", width: "auto", display: "block" }}
+          />
         </div>
         <div
           className="admissions-title-wrap"
-          style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 40px 26px" }}
+          style={{
+            maxWidth: "1200px",
+            margin: "0 auto",
+            padding: "0 40px 26px",
+          }}
         >
-          <h1 style={{ color: "#fff", fontSize: "34px", fontWeight: 500, margin: 0 }}>Admissions</h1>
+          <h1
+            style={{
+              color: "#fff",
+              fontSize: "34px",
+              fontWeight: 500,
+              margin: 0,
+            }}
+          >
+            Admissions
+          </h1>
         </div>
       </div>
 
       {/* Hero image */}
       <div
         className="admissions-hero-img-wrap"
-        style={{ width: "79%", margin: "-25px auto 20px", overflow: "hidden", position: "relative", zIndex: 10 }}
+        style={{
+          width: "79%",
+          margin: "-25px auto 20px",
+          overflow: "hidden",
+          position: "relative",
+          zIndex: 10,
+        }}
       >
         <img
           src={Admission1}
           alt="JNPV Campus"
-          style={{ width: "100%", display: "block", maxHeight: "460px", objectFit: "cover" }}
+          style={{
+            width: "100%",
+            display: "block",
+            maxHeight: "460px",
+            objectFit: "cover",
+          }}
         />
       </div>
 
-      {/* Intro + CTAs */}
-      <div className="admissions-intro" style={{ padding: "50px 80px 30px", textAlign: "center" }}>
-        <h2 style={{ color: "#1a3a6b", fontSize: "26px", fontWeight: 800, marginBottom: "14px" }}>
-          Join the JNPV Family
-        </h2>
-        <p style={{ color: "#555", fontSize: "15px", lineHeight: 1.7, maxWidth: "680px", margin: "0 auto 28px" }}>
-          We welcome young learners who are curious, kind, and ready to grow. Our admissions process is
-          designed to be simple and transparent, helping families understand each step clearly before
-          their child joins us.
-        </p>
-        <div style={{ display: "flex", justifyContent: "center", gap: "16px", flexWrap: "wrap" }}>
-          <button
-            style={{
-              background: "#f5a800",
-              color: "#1a3a6b",
-              border: "none",
-              padding: "13px 28px",
-              fontSize: "14px",
-              fontWeight: 800,
-              letterSpacing: "0.5px",
-              textTransform: "uppercase",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
-            Download Brochure
-          </button>
-          <button
-            style={{
-              background: "#1a3a6b",
-              color: "#fff",
-              border: "none",
-              padding: "13px 28px",
-              fontSize: "14px",
-              fontWeight: 800,
-              letterSpacing: "0.5px",
-              textTransform: "uppercase",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
-            Contact Admissions Office
-          </button>
-        </div>
-      </div>
-
-      {/* Process steps */}
-      <div className="admissions-section" style={{ padding: "50px 80px", background: "#fffbee" }}>
+      {/* Body */}
+      <div className="admissions-body" style={{ padding: "50px 80px" }}>
         <h2
-          className="admissions-section-title"
-          style={{ color: "#1a3a6b", fontSize: "26px", fontWeight: 800, marginBottom: "36px", textAlign: "center" }}
+          style={{
+            color: "#1a3a6b",
+            fontSize: "13px",
+            fontWeight: 700,
+            letterSpacing: "2px",
+            textTransform: "uppercase",
+            marginBottom: "8px",
+          }}
         >
-          Admission Process
+          ADMISSIONS
         </h2>
-        <div
-          className="admissions-process-grid"
-          style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "24px" }}
+        <p
+          style={{
+            color: "#333",
+            fontSize: "20px",
+            fontWeight: 500,
+            marginBottom: "36px",
+          }}
         >
-          {processSteps.map((s) => (
+          Admissions for Academic Year 2026 – 27
+        </p>
+
+        {/* 3 cards */}
+        <div
+          className="admissions-cards-grid"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "28px",
+            marginBottom: "48px",
+          }}
+        >
+          {sections.map((s) => (
             <div
-              key={s.step}
+              key={s.label}
               style={{
-                background: "#fff",
-                borderRadius: "6px",
-                padding: "26px",
-                boxShadow: "0 4px 14px rgba(0,0,0,0.06)",
-                borderLeft: "4px solid #f5a800",
+                background: s.color,
+                borderRadius: "8px",
+                padding: "40px 28px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center",
+                minHeight: "340px",
+                justifyContent: "space-between",
               }}
             >
-              <div style={{ color: "#f5a800", fontSize: "22px", fontWeight: 800, marginBottom: "8px" }}>{s.step}</div>
-              <h3 style={{ color: "#1a3a6b", fontSize: "16px", fontWeight: 700, marginBottom: "8px" }}>{s.title}</h3>
-              <p style={{ color: "#555", fontSize: "13px", lineHeight: 1.6, margin: 0 }}>{s.desc}</p>
+              <div>
+                <img
+                  src={SchoolLogo}
+                  alt="JNPV Logo"
+                  style={{
+                    width: "90px",
+                    height: "90px",
+                    objectFit: "contain",
+                    display: "block",
+                    margin: "0 auto 18px",
+                  }}
+                />
+                <h3
+                  style={{
+                    color: "#fff",
+                    fontSize: "20px",
+                    fontWeight: 800,
+                    marginBottom: "16px",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  {s.label}
+                </h3>
+                <div style={{ marginBottom: "20px" }}>
+                  {s.grades.map((g) => (
+                    <p
+                      key={g}
+                      style={{
+                        color: "rgba(255,255,255,0.9)",
+                        fontSize: "15px",
+                        margin: "4px 0",
+                        fontWeight: 500,
+                      }}
+                    >
+                      {g}
+                    </p>
+                  ))}
+                </div>
+              </div>
+              <button
+                onClick={() => navigate(s.route)}
+                style={{
+                  background: "transparent",
+                  border: "2px solid #fff",
+                  color: "#fff",
+                  padding: "11px 28px",
+                  borderRadius: "30px",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  letterSpacing: "1px",
+                  textTransform: "uppercase",
+                  cursor: "pointer",
+                  transition: "background 0.2s, color 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#fff";
+                  e.currentTarget.style.color = s.color;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = "#fff";
+                }}
+              >
+                Click Here to Proceed
+              </button>
             </div>
           ))}
         </div>
-      </div>
 
-      {/* Eligibility + Important Dates */}
-      <div className="admissions-section" style={{ padding: "60px 80px" }}>
-        <div className="admissions-split-grid" style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: "48px" }}>
-          {/* Eligibility table */}
-          <div>
-            <h2 style={{ color: "#1a3a6b", fontSize: "22px", fontWeight: 800, marginBottom: "20px" }}>
-              Eligibility Criteria
-            </h2>
-            <div style={{ border: "1px solid rgba(26,58,107,0.12)", borderRadius: "6px", overflow: "hidden" }}>
-              {eligibility.map((row, i) => (
-                <div
-                  key={row.grade}
-                  className="admissions-eligibility-row"
-                  style={{
-                    display: "flex",
-                    padding: "14px 18px",
-                    background: i % 2 === 0 ? "#fff" : "#fffbee",
-                    fontSize: "13px",
-                  }}
-                >
-                  <div style={{ width: "120px", flexShrink: 0, color: "#1a3a6b", fontWeight: 700 }}>{row.grade}</div>
-                  <div style={{ color: "#555" }}>{row.criteria}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Important dates */}
-          <div>
-            <h2 style={{ color: "#1a3a6b", fontSize: "22px", fontWeight: 800, marginBottom: "20px" }}>
-              Important Dates
-            </h2>
-            <div style={{ background: "#1a3a6b", borderRadius: "6px", padding: "8px 0" }}>
-              {importantDates.map((d) => (
-                <div
-                  key={d.label}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    padding: "14px 22px",
-                    borderBottom: "1px solid rgba(255,255,255,0.1)",
-                    fontSize: "13px",
-                  }}
-                >
-                  <span style={{ color: "#cbd5e1" }}>{d.label}</span>
-                  <span style={{ color: "#f5a800", fontWeight: 700 }}>{d.date}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Documents required */}
-      <div className="admissions-section" style={{ padding: "60px 80px", background: "#fffbee" }}>
+        {/* Contact box */}
         <div
-          className="admissions-docs-grid"
-          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "48px", alignItems: "center" }}
-        >
-          <div style={{ borderRadius: "8px", overflow: "hidden", boxShadow: "0 8px 24px rgba(0,0,0,0.12)" }}>
-            <img
-              src={Admission2}
-              alt="JNPV students"
-              style={{ width: "100%", display: "block", objectFit: "cover" }}
-            />
-          </div>
-          <div>
-            <h2 style={{ color: "#1a3a6b", fontSize: "22px", fontWeight: 800, marginBottom: "18px" }}>
-              Documents Required
-            </h2>
-            <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
-              {documents.map((doc) => (
-                <li
-                  key={doc}
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: "10px",
-                    marginBottom: "12px",
-                    fontSize: "14px",
-                    color: "#333",
-                  }}
-                >
-                  <span style={{ color: "#f5a800", fontWeight: 800, fontSize: "16px", lineHeight: 1 }}>✓</span>
-                  {doc}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom CTA */}
-      <div className="admissions-bottom-cta" style={{ padding: "50px 80px", background: "#1a3a6b", textAlign: "center" }}>
-        <h2 style={{ color: "#fff", fontSize: "24px", fontWeight: 800, marginBottom: "12px" }}>
-          Have Questions About Admissions?
-        </h2>
-        <p style={{ color: "#cbd5e1", fontSize: "14px", marginBottom: "24px" }}>
-          Our admissions team is happy to guide you through the process.
-        </p>
-        <button
+          className="admissions-contact-box"
           style={{
-            background: "#f5a800",
-            color: "#1a3a6b",
-            border: "none",
-            padding: "13px 32px",
-            fontSize: "14px",
-            fontWeight: 800,
-            letterSpacing: "0.5px",
-            textTransform: "uppercase",
-            borderRadius: "4px",
-            cursor: "pointer",
+            background: "#fef6e4",
+            borderRadius: "8px",
+            padding: "32px 40px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            flexWrap: "wrap",
+            gap: "24px",
           }}
         >
-          Get in Touch
-        </button>
+          <div>
+            <h3
+              style={{
+                color: "#1569ad",
+                fontSize: "18px",
+                fontWeight: 700,
+                marginBottom: "16px",
+              }}
+            >
+              For admission enquiries, please contact:
+            </h3>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: "12px",
+                marginBottom: "12px",
+              }}
+            >
+              <span style={{ color: "#f5a800", fontSize: "18px" }}>📍</span>
+              <p
+                style={{
+                  color: "#444",
+                  fontSize: "14px",
+                  margin: 0,
+                  lineHeight: 1.6,
+                }}
+              >
+                Admissions Office, JNPV Centre,
+                <br />
+                85, Chamarbaug Post Office Lane,
+                <br />
+                Dr. Ambedkar Road, Parel, Mumbai - 400012
+              </p>
+            </div>
+          </div>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <span style={{ color: "#f5a800", fontSize: "18px" }}>📞</span>
+              <p style={{ color: "#444", fontSize: "14px", margin: 0 }}>
+                022 43330000 (9:00 a.m. to 5:00 p.m.)
+              </p>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <span style={{ color: "#f5a800", fontSize: "18px" }}>✉️</span>
+              <p style={{ color: "#444", fontSize: "14px", margin: 0 }}>
+                admissions@jnpv.org
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

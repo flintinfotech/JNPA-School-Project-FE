@@ -11,7 +11,7 @@ import Img4 from "../assets/Img4.webp";
 const sidebarSections = [
   {
     id: "about",
-    title: "Jawahar Navodaya Parishad Vidyalaya",
+    title: "Jawaharlal Nehru Port Vidyalaya",
     subtitle:
       "A premier institution dedicated to excellence in education, nurturing young minds with values, knowledge, and leadership.",
     highlights: [
@@ -59,7 +59,7 @@ const sidebarSections = [
 //   { label: "Campus", href: "/campus" },
 //   { label: "Events", href: "/events" },
 //   { label: "Student Life", href: "/student-life" },
-//   { label: "Results & University", href: "/results-and-university" },
+//   { label: "Exam and Result", href: "/exam-and-result" },
 // ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
