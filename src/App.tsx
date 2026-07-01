@@ -12,6 +12,8 @@ import Footer from "./components/Footer";
 import AboutUs from "./pages/AboutUs";
 import Alumni from "./pages/Alumni";
 import Academics from "./pages/Academics";
+import AcademicsPrimary from "./pages/AcademicsPrimary";
+import AcademicsSecondary from './pages/AcademicsSecondary'
 import Admissions from "./pages/Admissions";
 import AdmissionPrePrimary from "./pages/AdmissionPrePrimary";
 import AdmissionPrimary from "./pages/AdmissionPrimary";
@@ -73,25 +75,19 @@ export default function App() {
           <Route path="/about-us" element={<AboutUs />} />
           <Route path="/alumni" element={<Alumni />} />
           <Route path="/academics" element={<Academics />} />
+          <Route path="/academics/primary" element={<AcademicsPrimary />} />
+          <Route path="/academics/secondary" element={<AcademicsSecondary />} />
+
           <Route path="/admissions" element={<Admissions />} />
-          <Route
-            path="/admissions/pre-primary"
-            element={<AdmissionPrePrimary />}
-          />
+          <Route path="/admissions/pre-primary" element={<AdmissionPrePrimary />} />
           <Route path="/admissions/primary" element={<AdmissionPrimary />} />
-          <Route
-            path="/admissions/secondary"
-            element={<AdmissionSecondary />}
-          />
+          <Route path="/admissions/secondary" element={<AdmissionSecondary />} />
           <Route path="/awards" element={<Awards />} />
           <Route path="/campus" element={<Campus />} />
           <Route path="/careers" element={<Careers />} />
           <Route path="/events" element={<Events />} />
           <Route path="/student-life" element={<StudentLife />} />
-          <Route
-            path="/Exam-and-result"
-            element={<ExamandResult />}
-          />
+          <Route path="/Exam-and-result" element={<ExamandResult />} />
         </Routes>
       </div>
 
