@@ -113,7 +113,7 @@ export default function HomePage() {
         .hp-sidebar {
           width: 300px;
           min-width: 300px;
-          background: #1a3a6b;
+          background: #983929;
           display: flex;
           flex-direction: column;
           overflow-y: auto;
@@ -310,7 +310,7 @@ export default function HomePage() {
           position: relative;
           width: 100%;
           height: 480px;
-          background: linear-gradient(135deg, #0f1c3f 0%, #1a3a6b 60%, #1a3a6b 100%);
+          background: linear-gradient(135deg, #0f1c3f 0%, #983929 60%, #983929 100%);
           overflow: hidden;
           display: flex;
           align-items: flex-end;
@@ -388,7 +388,7 @@ export default function HomePage() {
           gap: 10px;
           padding: 13px 28px;
           background: #f5a800;
-          color: #1a3a6b;
+          color: #983929;
           font-size: 12px;
           font-weight: 800;
           letter-spacing: 1.5px;
@@ -429,7 +429,7 @@ export default function HomePage() {
           padding: 16px 20px;
           font-size: 11px;
           font-weight: 700;
-          color: #1a3a6b;
+          color: #983929;
           text-decoration: none;
           letter-spacing: 0.8px;
           text-transform: uppercase;
@@ -488,7 +488,7 @@ export default function HomePage() {
         .hp-card-title {
           font-size: 17px;
           font-weight: 800;
-          color: #1a3a6b;
+          color: #983929;
           margin-bottom: 10px;
           line-height: 1.25;
         }
@@ -511,7 +511,7 @@ export default function HomePage() {
         .hp-card-link {
           font-size: 11px;
           font-weight: 700;
-          color: #1a3a6b;
+          color:#983929;
           letter-spacing: 0.5px;
           text-transform: uppercase;
           text-decoration: none;
@@ -535,7 +535,7 @@ export default function HomePage() {
           align-items: center;
           gap: 8px;
           padding: 12px 20px;
-          background: #1a3a6b;
+          background: #983929;
           color: #ffffff;
           font-size: 12px;
           font-weight: 700;
@@ -546,7 +546,7 @@ export default function HomePage() {
           transition: background 0.18s;
         }
 
-        .hp-parent-login:hover { background: #f5a800; color: #1a3a6b; }
+        .hp-parent-login:hover { background: #f5a800; color: #983929; }
 
         .hp-parent-login-icon { font-size: 14px; }
 

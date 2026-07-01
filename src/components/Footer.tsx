@@ -9,7 +9,7 @@ import { Link } from "react-router-dom";
 
 const Footer = () => {
   return (
-    <footer style={{ background: 'linear-gradient(135deg, #0f1c3f 0%, #1a2f6b 100%)', borderTop: '3px solid #f5c518', marginTop: '40px' }}>
+    <footer style={{ background: '#9C4131', borderTop: '3px solid #f5c518', marginTop: '40px' }}>
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid md:grid-cols-2 gap-10">
           {/* Contact */}

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import SchoolLogo from '../assets/SchoolLogo.avif'
 
 const menuColumns = [
@@ -49,7 +49,7 @@ export default function Navbar() {
           top: 0;
           z-index: 200;
           font-family: 'Segoe UI', system-ui, sans-serif;
-          border-bottom: 8px solid #f5a800;
+          border-bottom: 8px solid #ffcc00;
           box-shadow: 0 2px 12px rgba(0,0,0,0.12);
           background:transparent;
         }
@@ -97,7 +97,7 @@ export default function Navbar() {
           letter-spacing: 0.5px;
         }
 
-        .nav-collapsed-name span { color: #f5a800; }
+        .nav-collapsed-name span { color: #ffcc00; }
 
         @media (max-width: 860px) {
           .nav-root { background: transparent; }   /* added */
@@ -128,7 +128,7 @@ export default function Navbar() {
           align-items: center;
           gap: 8px;
           padding: 9px 22px;
-          background: #f5a800;
+          background: #ffcc00;
           color: #1a3a6b;
           font-size: 13px;
           font-weight: 800;
@@ -140,7 +140,7 @@ export default function Navbar() {
           transition: background 0.18s;
         }
 
-        .nav-menu-btn:hover { background: #e09500; }
+        .nav-menu-btn:hover { background: #ffba00; }
 
         .nav-arrow {
           display: inline-block;
@@ -158,7 +158,7 @@ export default function Navbar() {
         .nav-expanded {
           display: flex;
           align-items: stretch;
-          background: #fffbee;
+          background: #FFFFFF;
           max-height: 0;
           overflow: hidden;
           opacity: 0;
@@ -204,7 +204,7 @@ export default function Navbar() {
         .nav-exp-logo-sub {
           font-size: 10px;
           font-weight: 600;
-          color: #f5a800;
+          color: #ffcc00;
           letter-spacing: 2px;
           text-transform: uppercase;
           display: block;
@@ -249,7 +249,7 @@ export default function Navbar() {
         }
 
         .nav-exp-col a:hover {
-          color: #f5a800;
+          color: #ffcc00;
           padding-left: 5px;
         }
 
@@ -271,7 +271,7 @@ export default function Navbar() {
         }
 
         .nav-virtual-btn:hover {
-          background: #f5a800 !important;
+          background: #ffcc00 !important;
           color: #1a3a6b !important;
         }
 
@@ -288,7 +288,7 @@ export default function Navbar() {
           justify-content: center;
           gap: 5px;
           cursor: pointer;
-          background: #f5a800;   /* changed: none → #f5a800, same as desktop MENU button */
+          background: #ffcc00;   /* changed: none → #ffcc00, same as desktop MENU button */
           border: none;
           border-radius: 4px;     /* added: small rounding so it reads as a button like desktop */
           padding: 10px 12px;     /* changed: 6px → 10px 12px, proper tap-target size to match button look */
@@ -306,7 +306,7 @@ export default function Navbar() {
         .nav-mobile-menu {
           display: none;
           flex-direction: column;
-          background: #fffbee;
+          background: #FFFFFF;
           max-height: 0;
           overflow: hidden;
           opacity: 0;
@@ -324,11 +324,6 @@ export default function Navbar() {
           text-decoration: none;
           border-bottom: 1px solid rgba(26,58,107,0.08);
           transition: background 0.15s, color 0.15s;
-        }
-
-        .nav-mobile-menu a:hover {
-          background: rgba(245,168,0,0.10);
-          color: #f5a800;
         }
 
         .nav-mobile-virtual {
