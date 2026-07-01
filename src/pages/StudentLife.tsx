@@ -3,26 +3,26 @@ import schoolBuilding from '../assets/Eventss.jpg';
 import SportingActivities from '../assets/StudentLifeImages/Sporting.png';
 import CoCurricularAct from '../assets/StudentLifeImages/C0Curricular.png';
 import EnvironmentalIni from '../assets/StudentLifeImages/Environment.png';
-import ServiceLernings from '../assets/StudentLifeImages/SewrviceL.png';
+// import ServiceLernings from '../assets/StudentLifeImages/SewrviceL.png';
 import StudentConcil from '../assets/StudentLifeImages/StudentsC.png';
-import ProjectD from '../assets/StudentLifeImages/ProjectD.png';
-import SeedsOfP from '../assets/StudentLifeImages/SeedsOfPiece.png';
-import StudentsAchivements from '../assets/StudentLifeImages/StudentsACh.png';
-import RoundSq from '../assets/StudentLifeImages/RoundSq.png';
-import HouseSys from '../assets/StudentLifeImages/HouseSys.png';
+// import ProjectD from '../assets/StudentLifeImages/ProjectD.png';
+// import SeedsOfP from '../assets/StudentLifeImages/SeedsOfPiece.png';
+// import StudentsAchivements from '../assets/StudentLifeImages/StudentsACh.png';
+// import RoundSq from '../assets/StudentLifeImages/RoundSq.png';
+// import HouseSys from '../assets/StudentLifeImages/HouseSys.png';
 
 export default function StudentLife() {
   const events = [
     { title: 'Sporting Activities', icon: '🏅', image: SportingActivities, href: '#' },
     { title: 'Co-Curricular Activities', icon: '🎨', image: CoCurricularAct, href: '#' },
     { title: 'Environmental Initiatives', icon: '🌱', image: EnvironmentalIni, href: '#' },
-    { title: 'Service Learnings', icon: '🤝', image: ServiceLernings, href: '#' },
+    // { title: 'Service Learnings', icon: '🤝', image: ServiceLernings, href: '#' },
     { title: 'Student Council', icon: '🧑‍💼', image: StudentConcil, href: '#' },
-    { title: 'Project Day', icon: '📊', image: ProjectD, href: '#' },
-    { title: 'Seeds of Peace', icon: '☮️', image: SeedsOfP, href: '#' },
-    { title: 'Students Achievements', icon: '🏆', image: StudentsAchivements, href: '#' },
-    { title: 'Round Square', icon: '🌐', image: RoundSq, href: '#' },
-    { title: 'House System', icon: '🏠', image: HouseSys, href: '#' },
+    // { title: 'Project Day', icon: '📊', image: ProjectD, href: '#' },
+    // { title: 'Seeds of Peace', icon: '☮️', image: SeedsOfP, href: '#' },
+    // { title: 'Students Achievements', icon: '🏆', image: StudentsAchivements, href: '#' },
+    // { title: 'Round Square', icon: '🌐', image: RoundSq, href: '#' },
+    // { title: 'House System', icon: '🏠', image: HouseSys, href: '#' },
   ];
 
   return (
@@ -170,7 +170,7 @@ export default function StudentLife() {
         /* ---------- event cards ---------- */
         .dais-about .event-grid {
           display: grid;
-          grid-template-columns: repeat(5, 1fr);
+          grid-template-columns: repeat(4, 1fr);
           gap: 24px;
         }
 
