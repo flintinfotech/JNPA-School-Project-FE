@@ -16,6 +16,7 @@ export default function CommonTable<T extends object>({
   return (
     <div className="table-wrapper">
       <Table<T>
+        size="middle"
         dataSource={data}
         columns={columns}
         loading={loading}

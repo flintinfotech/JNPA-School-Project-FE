@@ -1,15 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button, Drawer, Form, message } from "antd";
-import { PlusOutlined, LogoutOutlined } from "@ant-design/icons";
-import { deleteUser, getAllUsers, saveUser, updateUser, type UserDTO } from "../services/userService";
-import UserTable from "./userModule/userTable";
-import UserForm from "./userModule/userForm";
+import { PlusOutlined } from "@ant-design/icons";
+import { deleteUser, getAllUsers, saveUser, updateUser, type UserDTO } from "../../services/userService";
+import UserTable from "./userTable";
+import UserForm from "./userForm";
 
-interface UserManagementProps {
-  onLogout: () => void;
-}
-
-export default function UserManagement({ onLogout }: UserManagementProps) {
+export default function UserManagement() {
   const [users, setUsers] = useState<UserDTO[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -104,20 +100,7 @@ export default function UserManagement({ onLogout }: UserManagementProps) {
   };
 
   return (
-    <div className="p-6">
-
-      {/* Header */}
-      <div className="flex justify-between items-center mb-4 border-b pb-3">
-        <h2 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>Users</h2>
-        <Button
-          icon={<LogoutOutlined />}
-          danger
-          onClick={onLogout}
-        >
-          Logout
-        </Button>
-      </div>
-
+    <div>
       {/* Add User Button */}
       <div className="flex justify-end mb-4">
         <Button type="primary" icon={<PlusOutlined />} onClick={openAddDrawer}>

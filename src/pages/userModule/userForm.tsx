@@ -57,8 +57,12 @@ export default function UserForm({ form, onFinish, isEditing, loading }: UserFor
       type: "select" as const,
       required: true,
       options: [
+        { label: "Teacher", value: "TEACHER" },
+        { label: "Accountant", value: "ACCOUNTANT" },
+        { label: "Student", value: "STUDENT" },
+        { label: "Principal", value: "PRINCIPAL" },
         { label: "Admin", value: "ADMIN" },
-        { label: "User", value: "USER" },
+        { label: "Parent", value: "PARENT" },
       ],
     },
   ];

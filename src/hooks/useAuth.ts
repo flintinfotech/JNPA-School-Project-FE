@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { loginUser } from "../services/authService";
 
 interface AuthUser {
@@ -11,19 +11,15 @@ interface AuthState {
 }
 
 export function useAuth() {
-  const [auth, setAuth] = useState<AuthState>({
-    isAuthenticated: false,
-    user: null,
-  });
-
-  // Restore session on page refresh
-  useEffect(() => {
+  const [auth, setAuth] = useState<AuthState>(() => {
     const token = localStorage.getItem("token");
     const username = localStorage.getItem("username");
-    if (token && username) {
-      setAuth({ isAuthenticated: true, user: { username } });
-    }
-  }, []);
+
+    return {
+      isAuthenticated: !!token,
+      user: token && username ? { username } : null,
+    };
+  });
 
   // Returns null on success, or an error message on failure
   const login = async (

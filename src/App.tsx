@@ -3,11 +3,11 @@ import { useAuth } from "./hooks/useAuth";
 
 import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/HomePage";
-import UserManagement from "./pages/userManagement";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsAndConditions from "./pages/TermsAndConditions";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
+import AdminLayout from "./components/layout/AdminLayout";
 
 import AboutUs from "./pages/AboutUs";
 import Alumni from "./pages/Alumni";
@@ -34,6 +34,8 @@ import VisitsAndOutings from "./pages/VisitsAndOutings";
 import LanguageDayAndCelebrations from "./pages/LanguageDayAndCele";
 import LeadershipSeries from "./pages/LeadershipSeries";
 import Visitors from "./pages/Visitors";
+import StudentManagement from "./pages/studentModule.tsx/StudentManagement";
+import UserManagement from "./pages/userModule/userManagement";
 
 export default function App() {
   const { isAuthenticated, login, logout } = useAuth();
@@ -41,13 +43,12 @@ export default function App() {
 
   const isLoginPage = location.pathname === "/login";
   const isUsersPage = location.pathname === "/users";
-  const isHomePage = location.pathname === "/";
-
-  const hideFooter = isLoginPage || isUsersPage || isHomePage;
+  const isStudentPage = location.pathname === "/students";
+  const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage;
 
   return (
     <div className="min-h-screen flex flex-col">
-      {!isLoginPage && !isUsersPage && <Navbar />}
+      {!hideNavbarFooter && <Navbar />}
 
       <div className="flex-1">
         <Routes>
@@ -64,16 +65,16 @@ export default function App() {
             }
           />
 
+          {/* Admin section: Sidebar + Header, no Navbar/Footer.
+              Add new admin screens as children here + entry in adminNav.ts */}
           <Route
-            path="/users"
             element={
-              isAuthenticated ? (
-                <UserManagement onLogout={logout} />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              <AdminLayout isAuthenticated={isAuthenticated} onLogout={logout} />
             }
-          />
+          >
+            <Route path="/users" element={<UserManagement />} />
+            <Route path="/students" element={<StudentManagement />} />
+          </Route>
 
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
@@ -107,7 +108,7 @@ export default function App() {
         </Routes>
       </div>
 
-      {!hideFooter && <Footer />}
+      {!hideNavbarFooter && <Footer />}
     </div>
   );
 }

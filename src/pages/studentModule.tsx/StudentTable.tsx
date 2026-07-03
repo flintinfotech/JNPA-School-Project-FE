@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { Button, Popconfirm } from "antd";
+import { Button, Popconfirm, Tag } from "antd";
 import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import CommonTable from "../../components/commonTable";
-import type { UserDTO } from "../../services/userService";
+import type { StudentDTO } from "../../services/studentService";
 
-interface UserTableProps {
-  data: UserDTO[];
+interface StudentTableProps {
+  data: StudentDTO[];
   loading: boolean;
   pagination: {
     current: number;
@@ -13,39 +13,32 @@ interface UserTableProps {
     total: number;
     onChange: (page: number, pageSize: number) => void;
   };
-  onEdit: (record: UserDTO) => void;
-  onDelete: (userId: number) => void;
+  onEdit: (record: StudentDTO) => void;
+  onDelete: (studentId: number) => void;
 }
 
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" ? window.innerWidth < breakpoint : false
   );
-
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < breakpoint);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [breakpoint]);
-
   return isMobile;
 }
 
-export default function UserTable({
+export default function StudentTable({
   data,
   loading,
   pagination,
   onEdit,
   onDelete,
-}: UserTableProps) {
+}: StudentTableProps) {
   const isMobile = useIsMobile();
 
   const columns = [
-    {
-      title: "Username",
-      dataIndex: "userName",
-      key: "userName",
-    },
     {
       title: "First Name",
       dataIndex: "firstName",
@@ -57,25 +50,43 @@ export default function UserTable({
       key: "lastName",
     },
     {
-      title: "Email",
-      dataIndex: "email",
-      key: "email",
+      title: "Gender",
+      dataIndex: "gender",
+      key: "gender",
     },
     {
-      title: "Mobile No",
-      dataIndex: "mobileNo",
-      key: "mobileNo",
+      title: "DOB",
+      dataIndex: "dob",
+      key: "dob",
     },
     {
-      title: "Role",
-      dataIndex: "role",
-      key: "role",
+      title: "Address",
+      dataIndex: "address",
+      key: "address",
+    },
+    {
+      title: "Blood Group",
+      dataIndex: "bloodGroup",
+      key: "bloodGroup",
+    },
+    {
+      title: "Category",
+      dataIndex: "category",
+      key: "category",
+    },
+    {
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      render: (status: string) => (
+        <Tag color={status === "ACTIVE" ? "green" : "red"}>{status}</Tag>
+      ),
     },
     {
       title: "Action",
       key: "action",
       align: "center" as const,
-      render: (_: any, record: UserDTO) => (
+      render: (_: any, record: StudentDTO) => (
         <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
           <Button
             type="primary"
@@ -84,8 +95,8 @@ export default function UserTable({
             onClick={() => onEdit(record)}
           />
           <Popconfirm
-            title="Are you sure you want to delete this user?"
-            onConfirm={() => onDelete(record.userId)}
+            title="Are you sure you want to delete this student?"
+            onConfirm={() => onDelete(record.studentId as number)}
             okText="Yes"
             cancelText="No"
           >
@@ -96,41 +107,41 @@ export default function UserTable({
     },
   ];
 
-  // Mobile: stacked cards instead of a wide table
   if (isMobile) {
     return (
       <div className="space-y-3">
         {loading && (
           <div className="text-center text-sm text-gray-400 py-6">Loading...</div>
         )}
-
         {!loading && data.length === 0 && (
-          <div className="text-center text-sm text-gray-400 py-6">No users found</div>
+          <div className="text-center text-sm text-gray-400 py-6">No students found</div>
         )}
-
         {!loading &&
           data.map((record) => (
             <div
-              key={record.userId}
+              key={record.studentId}
               className="bg-white rounded-xl shadow-sm border border-gray-100 p-4"
             >
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <p className="text-sm font-semibold text-gray-800">
-                    {record.userName}
-                  </p>
-                  <p className="text-xs text-gray-500">
                     {record.firstName} {record.lastName}
                   </p>
+                  <p className="text-xs text-gray-500">
+                    {record.gender} | DOB: {record.dob}
+                  </p>
                 </div>
-                <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-full font-medium">
-                  {record.role}
-                </span>
+                <Tag color={record.status === "ACTIVE" ? "green" : "red"}>
+                  {record.status}
+                </Tag>
               </div>
 
               <div className="text-xs text-gray-500 space-y-1 mb-3">
-                <p>{record.email}</p>
-                <p>{record.mobileNo}</p>
+                <p>{record.address}</p>
+                <p>
+                  Blood Group: {record.bloodGroup ?? "-"} | Category:{" "}
+                  {record.category ?? "-"}
+                </p>
               </div>
 
               <div className="flex gap-2 justify-end pt-2 border-t border-gray-50">
@@ -141,8 +152,8 @@ export default function UserTable({
                   onClick={() => onEdit(record)}
                 />
                 <Popconfirm
-                  title="Are you sure you want to delete this user?"
-                  onConfirm={() => onDelete(record.userId)}
+                  title="Are you sure you want to delete this student?"
+                  onConfirm={() => onDelete(record.studentId as number)}
                   okText="Yes"
                   cancelText="No"
                 >
@@ -152,11 +163,8 @@ export default function UserTable({
             </div>
           ))}
 
-        {/* Simple pagination controls for mobile */}
         <div className="flex items-center justify-between pt-2">
-          <span className="text-xs text-gray-500">
-            Total: {pagination.total}
-          </span>
+          <span className="text-xs text-gray-500">Total: {pagination.total}</span>
           <div className="flex gap-2">
             <Button
               size="small"
@@ -178,7 +186,6 @@ export default function UserTable({
     );
   }
 
-  // Desktop: existing table, wrapped for horizontal scroll safety on smaller laptop widths
   return (
     <div className="overflow-x-auto">
       <CommonTable
