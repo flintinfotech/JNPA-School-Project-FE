@@ -28,12 +28,12 @@ export default function Header({ onLogout, onMenuClick }: Props) {
   }, []);
 
   return (
-    <header className="h-12 flex items-center justify-between px-4 md:px-6 bg-white shadow-sm relative z-20">
+    <header className="h-12 flex items-center justify-between px-4 md:px-6 bg-[#cb4e38] shadow-sm relative z-20">
       <div className="flex items-center gap-3">
         <button onClick={onMenuClick} className="md:hidden text-gray-600">
           <Menu size={22} />
         </button>
-        <h1 className="text-lg font-semibold text-gray-800">
+        <h1 className="text-lg font-semibold text-white">
           {current?.label ?? "Dashboard"}
         </h1>
       </div>
@@ -41,9 +41,9 @@ export default function Header({ onLogout, onMenuClick }: Props) {
       <div className="relative" ref={profileRef}>
         <button
           onClick={() => setProfileOpen((prev) => !prev)}
-          className="flex items-center justify-center rounded-full hover:bg-gray-100 p-0.5 transition-colors"
+          className="flex items-center justify-center rounded-full hover:bg-gray-400 p-0.5 transition-colors"
         >
-          <UserCircle size={30} className="text-gray-400" />
+          <UserCircle size={30} className="text-white" />
         </button>
 
         {profileOpen && (

@@ -1,14 +1,16 @@
 import CommonForm from "../../components/commonForm";
 import type { FormInstance } from "antd/es/form";
+import type { StaticDataResponse } from "../../services/staticDataService";
 
 interface UserFormProps {
   form: FormInstance;
   onFinish: (values: any) => void;
   isEditing: boolean;
   loading: boolean;
+  staticData: StaticDataResponse | null;
 }
 
-export default function UserForm({ form, onFinish, isEditing, loading }: UserFormProps) {
+export default function UserForm({ form, onFinish, isEditing, loading, staticData }: UserFormProps) {
   const fields = [
     {
       name: "userName",
@@ -56,14 +58,11 @@ export default function UserForm({ form, onFinish, isEditing, loading }: UserFor
       label: "Role",
       type: "select" as const,
       required: true,
-      options: [
-        { label: "Teacher", value: "TEACHER" },
-        { label: "Accountant", value: "ACCOUNTANT" },
-        { label: "Student", value: "STUDENT" },
-        { label: "Principal", value: "PRINCIPAL" },
-        { label: "Admin", value: "ADMIN" },
-        { label: "Parent", value: "PARENT" },
-      ],
+      options:
+        staticData?.role.map((role) => ({
+          label: role.charAt(0).toUpperCase() + role.slice(1).toLowerCase(),
+          value: role,
+        })) ?? [],
     },
   ];
 

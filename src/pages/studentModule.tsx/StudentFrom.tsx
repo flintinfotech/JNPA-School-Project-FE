@@ -9,11 +9,13 @@ import {
   Button,
   Upload,
   message,
+  ConfigProvider,
 } from "antd";
 import { PlusOutlined, DeleteOutlined, UploadOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import type { FormInstance } from "antd/es/form";
 import type { UploadFile } from "antd/es/upload/interface";
+import { getAllStaticData, type StaticDataResponse } from "../../services/staticDataService";
 
 const { Option } = Select;
 
@@ -22,6 +24,8 @@ interface StudentFormProps {
   onFinish: (values: any) => void;
   isEditing: boolean;
   loading: boolean;
+  viewOnly?: boolean;
+  staticData: StaticDataResponse | null;
 }
 
 const tabKeys = ["details", "parents", "documents", "academic"];
@@ -58,6 +62,8 @@ export default function StudentForm({
   onFinish,
   isEditing,
   loading,
+  viewOnly = false,
+  staticData
 }: StudentFormProps) {
   const [activeTab, setActiveTab] = useState("details");
 
@@ -132,7 +138,7 @@ export default function StudentForm({
   };
 
   return (
-    <Form form={form} layout="vertical">
+    <Form form={form} layout="vertical" disabled={viewOnly}>
       <Tabs activeKey={activeTab} onChange={setActiveTab}>
         {/* Student Details */}
         <Tabs.TabPane tab="Student Details" key="details" forceRender>
@@ -159,7 +165,6 @@ export default function StudentForm({
               <Select placeholder="Select gender">
                 <Option value="Male">Male</Option>
                 <Option value="Female">Female</Option>
-                <Option value="Other">Other</Option>
               </Select>
             </Form.Item>
             <Form.Item
@@ -179,7 +184,7 @@ export default function StudentForm({
             </Form.Item>
             <Form.Item label="Blood Group" name="bloodGroup">
               <Select placeholder="Select blood group" allowClear>
-                {["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"].map((bg) => (
+                {staticData?.["blood group"]?.map((bg) => (
                   <Option key={bg} value={bg}>
                     {bg}
                   </Option>
@@ -202,11 +207,13 @@ export default function StudentForm({
               label="Status"
               name="status"
               rules={[{ required: true, message: "Status is required" }]}
-              initialValue="ACTIVE"
             >
-              <Select placeholder="Select status">
-                <Option value="ACTIVE">Active</Option>
-                <Option value="INACTIVE">Inactive</Option>
+              <Select placeholder="Select status" allowClear>
+                {staticData?.status.map((status) => (
+                  <Option key={status} value={status}>
+                    {status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()}
+                  </Option>
+                ))}
               </Select>
             </Form.Item>
           </div>
@@ -222,16 +229,15 @@ export default function StudentForm({
                     key={key}
                     className="border border-gray-200 rounded-lg p-4 mb-4 relative"
                   >
-                    {fields.length > 1 && (
+                    <div className="flex justify-end">
                       <Button
                         danger
                         type="text"
                         htmlType="button"
-                        icon={<DeleteOutlined />}
-                        className="absolute top-2 right-2"
+                        icon={<DeleteOutlined style={{ fontSize: 18 }} />}
                         onClick={() => remove(name)}
                       />
-                    )}
+                    </div>
 
                     <Form.Item {...restField} name={[name, "parentId"]} hidden>
                       <Input />
@@ -343,14 +349,15 @@ export default function StudentForm({
                       key={key}
                       className="border border-gray-200 rounded-lg p-4 mb-4 relative"
                     >
-                      <Button
-                        danger
-                        type="text"
-                        htmlType="button"
-                        icon={<DeleteOutlined />}
-                        className="absolute top-2 right-2"
-                        onClick={() => remove(name)}
-                      />
+                      <div className="flex justify-end">
+                        <Button
+                          danger
+                          type="text"
+                          htmlType="button"
+                          icon={<DeleteOutlined style={{ fontSize: 18 }} />}
+                          onClick={() => remove(name)}
+                        />
+                      </div>
 
                       <Form.Item {...restField} name={[name, "studentDocumentId"]} hidden>
                         <Input />
@@ -578,23 +585,34 @@ export default function StudentForm({
           </Form.List>
         </Tabs.TabPane>
       </Tabs>
-
-      <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-gray-100">
-        {activeTab !== "academic" ? (
-          <Button htmlType="button" type="primary" onClick={goNext}>
-            Next
-          </Button>
-        ) : (
+      <ConfigProvider componentDisabled={false}>
+        <div className="flex justify-between gap-2 mt-4 pt-4 border-t border-gray-100">
           <Button
-            type="primary"
             htmlType="button"
-            loading={loading}
-            onClick={handleFinish}
+            onClick={goBack}
+            disabled={activeTab === tabKeys[0]}
           >
-            {isEditing ? "Update" : "Save"}
+            Back
           </Button>
-        )}
-      </div>
+
+          {activeTab !== "academic" ? (
+            <Button htmlType="button" type="primary" onClick={goNext}>
+              Next
+            </Button>
+          ) : (
+            !viewOnly && (
+              <Button
+                type="primary"
+                htmlType="button"
+                loading={loading}
+                onClick={handleFinish}
+              >
+                {isEditing ? "Update" : "Save"}
+              </Button>
+            )
+          )}
+        </div>
+      </ConfigProvider>
     </Form>
   );
 }

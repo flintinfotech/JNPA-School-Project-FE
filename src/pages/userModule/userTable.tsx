@@ -70,6 +70,7 @@ export default function UserTable({
       title: "Role",
       dataIndex: "role",
       key: "role",
+      render: (role: string) => role.charAt(0).toUpperCase() + role.slice(1).toLowerCase()
     },
     {
       title: "Action",

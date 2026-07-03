@@ -12,4 +12,5 @@ export const apiEndpoints = {
   deleteStudent: (studentId: number | string) => `/jnpa-school-project/student/deleteStudent/${studentId}`,
   getAllStudents: (page: number, size: number) =>
     `/jnpa-school-project/student/getAllStudentsByFilter?page=${page}&size=${size}&paginate=true`,
+  getAllStaticData: () => `/jnpa-school-project/staticData/getAllStaticData`
 };

@@ -4,6 +4,7 @@ import { PlusOutlined } from "@ant-design/icons";
 import { deleteUser, getAllUsers, saveUser, updateUser, type UserDTO } from "../../services/userService";
 import UserTable from "./userTable";
 import UserForm from "./userForm";
+import { getAllStaticData, type StaticDataResponse } from "../../services/staticDataService";
 
 export default function UserManagement() {
   const [users, setUsers] = useState<UserDTO[]>([]);
@@ -16,7 +17,23 @@ export default function UserManagement() {
   const [editingUser, setEditingUser] = useState<UserDTO | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
+  const [staticData, setStaticData] = useState<StaticDataResponse | null>(null);
 
+  useEffect(() => {
+    const loadStaticData = async () => {
+      try {
+        const response = await getAllStaticData();
+
+        if (response.success) {
+          setStaticData(response.data);
+        }
+      } catch (err) {
+        message.error("Failed to load static data");
+      }
+    };
+
+    loadStaticData();
+  }, []);
   const fetchUsers = useCallback(async (pageNum: number, size: number) => {
     setTableLoading(true);
     try {
@@ -136,6 +153,7 @@ export default function UserManagement() {
           onFinish={handleFormSubmit}
           isEditing={!!editingUser}
           loading={submitting}
+          staticData={staticData}
         />
       </Drawer>
     </div>

@@ -5,6 +5,7 @@ import dayjs from "dayjs";
 import { deleteStudent, getAllStudents, getStudentById, saveStudent, updateStudent, type StudentDTO } from "../../services/studentService";
 import StudentTable from "./StudentTable";
 import StudentForm from "./StudentFrom";
+import { getAllStaticData, type StaticDataResponse } from "../../services/staticDataService";
 
 export default function StudentManagement() {
   const [students, setStudents] = useState<StudentDTO[]>([]);
@@ -17,6 +18,23 @@ export default function StudentManagement() {
   const [editingStudent, setEditingStudent] = useState<StudentDTO | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
+  const [staticData, setStaticData] = useState<StaticDataResponse | null>(null);
+
+  useEffect(() => {
+    const loadStaticData = async () => {
+      try {
+        const response = await getAllStaticData();
+
+        if (response.success) {
+          setStaticData(response.data);
+        }
+      } catch (err) {
+        message.error("Failed to load static data");
+      }
+    };
+
+    loadStaticData();
+  }, []);
 
   const fetchStudents = useCallback(async (pageNum: number, size: number) => {
     setTableLoading(true);
@@ -43,10 +61,10 @@ export default function StudentManagement() {
     setEditingStudent(null);
     form.resetFields();
     form.setFieldsValue({
-      parentEntities: [{ relation: "Father" }, { relation: "Mother" }],
-      studentDocuments: [],
+      parentEntities: [{ relation: "Father" }],
+      studentDocuments: [{ documentName: "" }],
       academicInformation: [{}],
-      status: "ACTIVE",
+      // status: "",
     });
     setDrawerOpen(true);
   };
@@ -166,6 +184,7 @@ export default function StudentManagement() {
           onFinish={handleFormSubmit}
           isEditing={!!editingStudent}
           loading={submitting}
+          staticData={staticData}
         />
       </Drawer>
     </div>

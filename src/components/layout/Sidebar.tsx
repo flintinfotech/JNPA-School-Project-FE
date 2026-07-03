@@ -24,14 +24,14 @@ export default function Sidebar({ isOpen, onClose }: Props) {
       <aside
         onMouseEnter={() => setExpanded(true)}
         onMouseLeave={() => setExpanded(false)}
-        className={`fixed md:static z-40 top-0 left-0 h-full bg-white shadow-lg
+        className={`fixed md:static z-40 top-0 left-0 h-full bg-[#FFF7ED] shadow-lg
           flex flex-col
           w-64 ${expanded ? "md:w-64" : "md:w-20"}
           transition-transform md:transition-all duration-200 ease-in-out
           ${isOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}
       >
-        <div className="h-12 flex items-center gap-2 border-b border-gray-100 px-4 shrink-0 justify-start md:justify-center">
-          <Building2 size={22} className="shrink-0" />
+        <div className="h-12 flex items-center gap-2 border-b border-gray-300 px-4 shrink-0 justify-start md:justify-center">
+          <Building2 size={22} className="shrink-0 text-red-500" />
           <span
             className={`font-semibold whitespace-nowrap overflow-hidden
               opacity-100 max-w-[160px]
