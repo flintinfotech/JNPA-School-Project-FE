@@ -172,7 +172,7 @@ export default function StudentForm({
               name="dob"
               rules={[{ required: true, message: "DOB is required" }]}
             >
-              <DatePicker className="w-full" format="YYYY-MM-DD" />
+              <DatePicker className="w-full" format="DD-MM-YYYY" />
             </Form.Item>
             <Form.Item
               label="Address"
@@ -280,8 +280,8 @@ export default function StudentForm({
                         name={[name, "phone"]}
                         rules={[
                           { required: true, message: "Phone is required" },
-                          { len: 10, message: "Phone number must be exactly 10 digits" },
-                          { pattern: /^[0-9]{10}$/, message: "Phone number must contain only digits" },
+                          { len: 10, message: "" },
+                          { pattern: /^[0-9]{10}$/, message: "Phone number must contain only 10 digits" },
                         ]}
                       >
                         <Input placeholder="Phone number" />
@@ -294,7 +294,7 @@ export default function StudentForm({
                         label="Annual Income"
                         name={[name, "annualIncome"]}
                       >
-                        <InputNumber className="w-full" placeholder="Annual income" />
+                        <InputNumber style={{ width: "100%" }} placeholder="Annual income" />
                       </Form.Item>
                       <Form.Item
                         {...restField}
@@ -377,7 +377,7 @@ export default function StudentForm({
                           {...restField}
                           label="Document Name"
                           name={[name, "documentName"]}
-                          rules={[{ required: true, message: "Document name required" }]}
+                        // rules={[{ required: true, message: "Document name required" }]}
                         >
                           <Input placeholder="e.g. Birth Certificate" />
                         </Form.Item>
@@ -387,7 +387,7 @@ export default function StudentForm({
                           name={[name, "uploadDate"]}
                           rules={[{ required: true, message: "Upload date required" }]}
                         >
-                          <DatePicker className="w-full" format="YYYY-MM-DD" />
+                          <DatePicker className="w-full" format="DD-MM-YYYY" />
                         </Form.Item>
                         <Form.Item
                           {...restField}
@@ -524,7 +524,7 @@ export default function StudentForm({
                         name={[name, "admissionNo"]}
                         rules={[{ required: true, message: "Admission no required" }]}
                       >
-                        <InputNumber className="w-full" placeholder="Admission number" />
+                        <InputNumber style={{ width: "100%" }} placeholder="Admission number" />
                       </Form.Item>
                       <Form.Item
                         {...restField}
@@ -532,7 +532,7 @@ export default function StudentForm({
                         name={[name, "admissionDate"]}
                         rules={[{ required: true, message: "Admission date required" }]}
                       >
-                        <DatePicker className="w-full" format="YYYY-MM-DD" />
+                        <DatePicker className="w-full" format="DD-MM-YYYY" />
                       </Form.Item>
                       <Form.Item
                         {...restField}
