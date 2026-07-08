@@ -4,7 +4,7 @@ import { apiEndpoints } from "./apiEndpoints";
 export interface StaticDataResponse {
   role: string[];
   "blood group": string[];
-  status: string[];
+  "student status": string[];
 }
 
 export const getAllStaticData = async () => {

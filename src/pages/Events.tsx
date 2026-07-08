@@ -1,6 +1,5 @@
 
 import schoolLogo from '../assets/SchoolLogo.avif';
-import schoolBuilding from '../assets/Eventss.jpg';
 import AnnaulDay from '../assets/EventsImages/AnnualD.png';
 import GraduationDay from '../assets/EventsImages/FairsExhibitions.png';
 import EventsandCelebrations from '../assets/EventsImages/Events.png';
@@ -20,6 +19,39 @@ export default function Events() {
     { title: 'Language Day Celebrations', icon: '🅰️', image: LanguageDayCelebrations, href: '/language-day-celebrations' },
     { title: 'Inter - House Events', icon: '🏠', image: InterHouseEvents, href: '#' },
     { title: 'Leadership Series', icon: '🌐', image: LeadershipSeries, href: '/leadership-series' },
+  ];
+
+  const eventTableData = [
+    {
+      id: 1,
+      eventName: "Annual Day Celebration 2026",
+      eventLink: "#",
+    },
+    {
+      id: 2,
+      eventName: "Science & Art Exhibition",
+      eventLink: "#",
+    },
+    {
+      id: 3,
+      eventName: "Sports Day",
+      eventLink: "#",
+    },
+    {
+      id: 4,
+      eventName: "Independence Day Celebration",
+      eventLink: "#",
+    },
+    {
+      id: 5,
+      eventName: "Children's Day Celebration",
+      eventLink: "#",
+    },
+    {
+      id: 6,
+      eventName: "Educational Visit to Science Centre",
+      eventLink: "#",
+    },
   ];
 
   return (
@@ -288,6 +320,79 @@ export default function Events() {
             grid-template-columns: 1fr;
           }
         }
+
+        /* ---------- Mobile Event Table ---------- */
+@media (max-width: 768px) {
+
+  .dais-about .event-table-wrap {
+    width: 100%;
+    border: none !important;
+    background: transparent !important;
+    overflow: visible !important;
+  }
+
+  .dais-about .event-table-header {
+    display: none !important;
+  }
+
+  .dais-about .event-table-row {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 18px !important;
+    background: #fff !important;
+    border: 1px solid #e9e9e9;
+    border-left: 5px solid #1569ad;
+    border-radius: 10px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.08);
+  }
+
+  .dais-about .event-table-row > div {
+    width: 100% !important;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    font-size: 14px;
+  }
+
+  .dais-about .event-table-row > div:nth-child(1)::before {
+    content: "Sr. No.";
+    font-weight: 700;
+    color: #1569ad;
+  }
+
+  .dais-about .event-table-row > div:nth-child(2)::before {
+    content: "Event";
+    font-weight: 700;
+    color: #1569ad;
+    flex-shrink: 0;
+  }
+
+  .dais-about .event-table-row > div:nth-child(3)::before {
+    content: "Link";
+    font-weight: 700;
+    color: #1569ad;
+  }
+
+  .dais-about .event-table-row a {
+    display: inline-block;
+    background: #1569ad;
+    color: #fff !important;
+    text-decoration: none;
+    padding: 7px 14px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .dais-about .event-table-row a:hover {
+    background: #0f5b97;
+  }
+}
+          
       `}</style>
 
       <header className="dais-header">
@@ -302,15 +407,106 @@ export default function Events() {
         </div>
 
         <div className="breadcrumb-wrap">
-          <h1 className="page-title">Events</h1>
+          <h1 className="page-title">Events & News</h1>
         </div>
       </header>
 
-      <div className="hero-image">
-        <img
-          src={schoolBuilding}
-          alt="Jawaharlal Nehru Port Vidyalaya building"
-        />
+      <div
+        style={{
+          padding: "50px 0 40px",
+          background: "#fff",
+        }}
+      >
+        <div
+          style={{
+            width: "79%",
+            margin: "0 auto",
+          }}
+        >
+          <h2
+            style={{
+              color: "#1a3a6b",
+              fontSize: "28px",
+              fontWeight: 600,
+              marginBottom: "28px",
+            }}
+          >
+            {/* Events */}
+          </h2>
+
+          <div
+            className="event-table-wrap"
+            style={{
+              border: "1px solid rgba(26,58,107,0.12)",
+              borderRadius: "6px",
+              overflow: "hidden",
+              background: "#fff",
+            }}
+          >
+            {/* Header */}
+            <div
+              className="event-table-header"
+              style={{
+                display: "flex",
+                background: "#1a3a6b",
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: "14px",
+                padding: "14px 20px",
+              }}
+            >
+              <div style={{ width: "80px" }}>Sr. No.</div>
+              <div style={{ flex: 1 }}>News</div>
+              <div style={{ width: "180px" }}>News Link</div>
+            </div>
+
+            {eventTableData.map((event, index) => (
+              <div
+                key={event.id}
+                className="event-table-row"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  padding: "16px 20px",
+                  background: index % 2 === 0 ? "#fff" : "#fffbee",
+                  borderBottom:
+                    index !== eventTableData.length - 1
+                      ? "1px solid #ececec"
+                      : "none",
+                }}
+              >
+                <div style={{ width: "80px", fontWeight: 600 }}>
+                  {index + 1}
+                </div>
+
+                <div
+                  style={{
+                    flex: 1,
+                    color: "#333",
+                    fontWeight: 600,
+                  }}
+                >
+                  {event.eventName}
+                </div>
+
+                <div style={{ width: "180px" }}>
+                  <a
+                    href={event.eventLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      color: "#1569ad",
+                      fontWeight: 700,
+                      textDecoration: "none",
+                    }}
+                  >
+                    View News
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="content-wrap">

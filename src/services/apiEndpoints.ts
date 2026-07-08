@@ -12,5 +12,22 @@ export const apiEndpoints = {
   deleteStudent: (studentId: number | string) => `/jnpa-school-project/student/deleteStudent/${studentId}`,
   getAllStudents: (page: number, size: number) =>
     `/jnpa-school-project/student/getAllStudentsByFilter?page=${page}&size=${size}&paginate=true`,
+
+
+  saveClassRoom: () => `/jnpa-school-project/classRoom/saveClassRoom`,
+  updateClassRoom: () => `/jnpa-school-project/classRoom/updateClassRoom`,
+  getClassRoomById: (classRoomId: number | string) =>
+    `/jnpa-school-project/classRoom/getClassRoomById/${classRoomId}`,
+  deleteClassRoom: (classRoomId: number | string) =>
+    `/jnpa-school-project/classRoom/deleteClassRoom/${classRoomId}`,
+  getAllClassRooms: (page: number, size: number) =>
+    `/jnpa-school-project/classRoom/getAllClassRoomsByFilter?page=${page}&size=${size}&paginate=true`,
+
+  saveAcademicYear: () => `/jnpa-school-project/academicYear/saveAcademicYear`,
+  updateAcademicYear: () => `/jnpa-school-project/academicYear/updateAcademicYear`,
+  getAcademicYearById: (academicYearId: number | string) =>
+    `/jnpa-school-project/academicYear/getAcademicYearById/${academicYearId}`,
+  getAllAcademicYears: (page: number, size: number) =>
+    `/jnpa-school-project/academicYear/getAllAcademicYearsByFilter?page=${page}&size=${size}&paginate=true`,
   getAllStaticData: () => `/jnpa-school-project/staticData/getAllStaticData`
 };

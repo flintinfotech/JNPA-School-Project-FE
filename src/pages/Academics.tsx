@@ -4,6 +4,12 @@ import { useNavigate } from "react-router-dom";
 
 const sections = [
   {
+    label: "Pre-Primary School",
+    grades: ["Playgroup", "Nursery", "Junior KG (LKG)", "Senior KG (UKG)"],
+    color: "#9C4131",
+    route: "/academics/pre-primary",
+  },
+  {
     label: "Primary School",
     grades: ["Grade I", "Grade II", "Grade III", "Grade IV"],
     color: "#1569ad",
@@ -83,7 +89,7 @@ export default function Academics() {
         {/* 3 cards */}
         <div
           className="academics-cards-grid"
-          style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "28px" }}
+          style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "28px" }}
         >
           {sections.map((s) => (
             <div
@@ -117,32 +123,81 @@ export default function Academics() {
                   ))}
                 </div>
               </div>
-              <button
-                onClick={() => navigate(s.route)}
-                style={{
-                  background: "transparent",
-                  border: "2px solid #fff",
-                  color: "#fff",
-                  padding: "11px 28px",
-                  borderRadius: "30px",
-                  fontSize: "13px",
-                  fontWeight: 700,
-                  letterSpacing: "1px",
-                  textTransform: "uppercase",
-                  cursor: "pointer",
-                  transition: "background 0.2s, color 0.2s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#fff";
-                  e.currentTarget.style.color = s.color;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "transparent";
-                  e.currentTarget.style.color = "#fff";
-                }}
-              >
-                Click Here to Proceed
-              </button>
+              {s.label === "Pre-Primary School" ? (
+                <button
+                  onClick={() => navigate("/academics/pre-primary")}
+                  style={{
+                    background: "transparent",
+                    border: "2px solid #fff",
+                    color: "#fff",
+                    padding: "11px 28px",
+                    borderRadius: "30px",
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    letterSpacing: "1px",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                  }}
+                >
+                  Click Here to Proceed
+                </button>
+              ) : (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "12px",
+                    width: "100%",
+                    alignItems: "center",
+                  }}
+                >
+                  <button
+                    onClick={() =>
+                      navigate(
+                        s.label === "Primary School"
+                          ? "/academics/primary/english"
+                          : "/academics/secondary/english"
+                      )
+                    }
+                    style={{
+                      background: "#fff",
+                      color: s.color,
+                      border: "2px solid #fff",
+                      padding: "10px 24px",
+                      borderRadius: "30px",
+                      fontSize: "13px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      width: "220px",
+                    }}
+                  >
+                    English Medium
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      navigate(
+                        s.label === "Primary School"
+                          ? "/academics/primary/marathi"
+                          : "/academics/secondary/marathi"
+                      )
+                    }
+                    style={{
+                      background: "transparent",
+                      color: "#fff",
+                      border: "2px solid #fff",
+                      padding: "10px 24px",
+                      borderRadius: "30px",
+                      fontSize: "13px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      width: "220px",
+                    }}
+                  >
+                    मराठी माध्यम
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

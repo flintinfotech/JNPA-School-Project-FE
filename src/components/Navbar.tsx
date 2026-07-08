@@ -9,15 +9,15 @@ const menuColumns = [
       { label: 'Alumni', href: '/alumni' },
       { label: 'Academics', href: '/academics' },
       { label: 'Admissions', href: '/admissions' },
-      { label: 'Awards', href: '/awards' },
     ],
   },
   {
     links: [
       { label: 'Campus', href: '/campus' },
-      { label: 'Careers', href: '/careers' },
+      // { label: 'Careers', href: '/careers' },
       { label: 'Events', href: '/events' },
       { label: 'Student Life', href: '/student-life' },
+      { label: 'Awards', href: '/awards' },
     ],
   },
   {

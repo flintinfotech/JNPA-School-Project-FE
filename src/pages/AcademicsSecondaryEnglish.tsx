@@ -30,7 +30,7 @@ const highlights = [
   "100% board exam results over the last 5 consecutive years",
 ];
 
-export default function AcademicsSenior() {
+export default function AcademicsSecondaryEnglish() {
   const navigate = useNavigate();
 
   return (

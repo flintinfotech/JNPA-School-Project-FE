@@ -139,7 +139,13 @@ export default function StudentManagement() {
       const response = await deleteStudent(studentId);
       if (response.success) {
         message.success(response.message || "Student deleted successfully");
-        fetchStudents(page, pageSize);
+        // If deleting last item on current page
+        if (students.length === 1 && page > 0) {
+          setPage(page - 1);
+        } else {
+          fetchStudents(page, pageSize);
+        }
+
       } else {
         message.error(response.message || "Failed to delete student");
       }

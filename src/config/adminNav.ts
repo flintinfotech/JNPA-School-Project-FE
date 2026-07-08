@@ -1,6 +1,6 @@
 
 import { LuUsers } from "react-icons/lu";
-import { PiStudent } from "react-icons/pi";
+import { PiBookOpenText, PiCalendarBlank, PiClipboardText, PiGraduationCap, PiStudent } from "react-icons/pi";
 
 export interface AdminNavItem {
   label: string;      // shown in sidebar AND as header title
@@ -11,4 +11,8 @@ export interface AdminNavItem {
 export const adminNavItems: AdminNavItem[] = [
   { label: "Users", path: "/users", icon: LuUsers },
   { label: "Students", path: "/students", icon: PiStudent },
+  { label: "Academics", path: "/academics-admin", icon: PiBookOpenText },
+  { label: "Events & News", path: "/events-and-news", icon: PiCalendarBlank },
+  { label: "Exam & Results", path: "/exam-and-results", icon: PiClipboardText },
+  { label: "Admission", path: "/admissions-admin", icon: PiGraduationCap },
 ];

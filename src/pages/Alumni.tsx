@@ -273,7 +273,7 @@ export default function Alumni() {
             textAlign: "center",
           }}
         >
-          Alumni Impact Program
+          Exam and result
         </h2>
         <div
           className="alumni-impact-grid"

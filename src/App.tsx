@@ -12,8 +12,8 @@ import AdminLayout from "./components/layout/AdminLayout";
 import AboutUs from "./pages/AboutUs";
 import Alumni from "./pages/Alumni";
 import Academics from "./pages/Academics";
-import AcademicsPrimary from "./pages/AcademicsPrimary";
-import AcademicsSecondary from './pages/AcademicsSecondary'
+import AcademicsPrimary from "./pages/AcademicsPrimaryEnglish";
+import AcademicsSecondary from './pages/AcademicsSecondaryEnglish'
 import Admissions from "./pages/Admissions";
 import AdmissionPrePrimary from "./pages/AdmissionPrePrimary";
 import AdmissionPrimary from "./pages/AdmissionPrimary";
@@ -36,6 +36,15 @@ import LeadershipSeries from "./pages/LeadershipSeries";
 import Visitors from "./pages/Visitors";
 import StudentManagement from "./pages/studentModule.tsx/StudentManagement";
 import UserManagement from "./pages/userModule/userManagement";
+import AcademicsPrePrimary from "./pages/AcademicsPrePrimary";
+import AcademicsPrimaryEnglish from "./pages/AcademicsPrimaryEnglish";
+import AcademicsPrimaryMarathi from "./pages/AcademicsPrimaryMarathi";
+import AcademicsSecondaryMarathi from "./pages/AcademicsSecondaryMarathi";
+import AcademicsSecondaryEnglish from "./pages/AcademicsSecondaryEnglish";
+import AcademicsAdmin from "./pages/AcademicsAdmin";
+import EventsAndNewsAdmin from "./pages/Events&NewsAdmin";
+import ExamAndResultsAdmin from "./pages/Exam&NewsAdmin";
+import AdmissionAdmin from "./pages/AdmissionAdmin";
 
 export default function App() {
   const { isAuthenticated, login, logout } = useAuth();
@@ -44,7 +53,13 @@ export default function App() {
   const isLoginPage = location.pathname === "/login";
   const isUsersPage = location.pathname === "/users";
   const isStudentPage = location.pathname === "/students";
-  const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage;
+  const isAcademicAdminPage = location.pathname === "/academics-admin";
+  const isEventsAndNewsAdminPage = location.pathname === "/events-and-news";
+  const isExamAndResultsAdminPage = location.pathname === "/exam-and-results";
+  const isAdmissionAdminPage = location.pathname === "/admissions-admin";
+  const isHomePage = location.pathname === "/";
+  const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage;
+  const hideFooter = isHomePage || isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -74,6 +89,10 @@ export default function App() {
           >
             <Route path="/users" element={<UserManagement />} />
             <Route path="/students" element={<StudentManagement />} />
+            <Route path="/academics-admin" element={<AcademicsAdmin />} />
+            <Route path="/events-and-news" element={<EventsAndNewsAdmin />} />
+            <Route path="/exam-and-results" element={<ExamAndResultsAdmin />} />
+            <Route path="/admissions-admin" element={<AdmissionAdmin />} />
           </Route>
 
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
@@ -82,8 +101,11 @@ export default function App() {
           <Route path="/about-us" element={<AboutUs />} />
           <Route path="/alumni" element={<Alumni />} />
           <Route path="/academics" element={<Academics />} />
-          <Route path="/academics/primary" element={<AcademicsPrimary />} />
-          <Route path="/academics/secondary" element={<AcademicsSecondary />} />
+          <Route path="/academics/pre-primary" element={<AcademicsPrePrimary />} />
+          <Route path="/academics/primary/english" element={<AcademicsPrimaryEnglish />} />
+          <Route path="/academics/primary/marathi" element={<AcademicsPrimaryMarathi />} />
+          <Route path="/academics/secondary/english" element={<AcademicsSecondaryEnglish />} />
+          <Route path="/academics/secondary/marathi" element={<AcademicsSecondaryMarathi />} />
 
           <Route path="/admissions" element={<Admissions />} />
           <Route path="/admissions/pre-primary" element={<AdmissionPrePrimary />} />
@@ -108,7 +130,7 @@ export default function App() {
         </Routes>
       </div>
 
-      {!hideNavbarFooter && <Footer />}
+      {!hideFooter && <Footer />}
     </div>
   );
 }

@@ -24,11 +24,11 @@ const sidebarSections = [
   },
   {
     id: "alumni",
-    title: "Alumni Impact Program",
+    title: "Exam and result",
     subtitle:
       "An initiative to help our students, present and past, to —",
     highlights: ["NETWORK", "LEARN", "GROW"],
-    link: "/alumni",
+    link: "/exam-and-result",
     linkLabel: "Click Here",
     accentHighlights: true,
   },

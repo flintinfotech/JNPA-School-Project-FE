@@ -108,6 +108,7 @@ export default function StudentForm({
       const values = await form.validateFields();
       const payload = {
         ...values,
+        status: values.status,
         dob: values.dob ? dayjs(values.dob).format("YYYY-MM-DD") : null,
         parentEntities: (values.parentEntities || []).map((p: any) => ({
           ...p,
@@ -209,7 +210,7 @@ export default function StudentForm({
               rules={[{ required: true, message: "Status is required" }]}
             >
               <Select placeholder="Select status" allowClear>
-                {staticData?.status.map((status) => (
+                {staticData?.["student status"]?.map((status) => (
                   <Option key={status} value={status}>
                     {status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()}
                   </Option>
