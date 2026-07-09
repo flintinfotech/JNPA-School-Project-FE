@@ -1,6 +1,7 @@
 import CommonForm from "../../components/commonForm";
 import type { FormInstance } from "antd/es/form";
 import type { StaticDataResponse } from "../../services/staticDataService";
+import { Form } from "antd";
 
 interface UserFormProps {
   form: FormInstance;
@@ -11,6 +12,7 @@ interface UserFormProps {
 }
 
 export default function UserForm({ form, onFinish, isEditing, loading, staticData }: UserFormProps) {
+  const selectedRole = Form.useWatch("role", form);
   const fields = [
     {
       name: "userName",
@@ -34,7 +36,7 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
       name: "email",
       label: "Email",
       type: "email" as const,
-      required: false,
+      required: true,
     },
     {
       name: "mobileNo",
@@ -64,6 +66,37 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
           value: role,
         })) ?? [],
     },
+    ...(selectedRole === "TEACHER"
+      ? [
+        {
+          name: "section",
+          label: "Section",
+          type: "select" as const,
+          required: true,
+          options:
+            staticData?.["class name"]?.map((item) => ({
+              label: item,
+              value: item,
+            })) ?? [],
+        },
+        {
+          name: "medium",
+          label: "Medium",
+          type: "select" as const,
+          required: true,
+          options: [
+            {
+              label: "English",
+              value: "English",
+            },
+            {
+              label: "Marathi",
+              value: "Marathi",
+            },
+          ],
+        },
+      ]
+      : []),
   ];
 
   return (

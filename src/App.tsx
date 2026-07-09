@@ -12,8 +12,6 @@ import AdminLayout from "./components/layout/AdminLayout";
 import AboutUs from "./pages/AboutUs";
 import Alumni from "./pages/Alumni";
 import Academics from "./pages/Academics";
-import AcademicsPrimary from "./pages/AcademicsPrimaryEnglish";
-import AcademicsSecondary from './pages/AcademicsSecondaryEnglish'
 import Admissions from "./pages/Admissions";
 import AdmissionPrePrimary from "./pages/AdmissionPrePrimary";
 import AdmissionPrimary from "./pages/AdmissionPrimary";

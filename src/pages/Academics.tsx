@@ -23,13 +23,6 @@ const sections = [
   },
 ];
 
-const stats = [
-  { label: "CBSE Affiliated", value: "100%" },
-  { label: "Avg. Pass Percentage", value: "98%" },
-  { label: "Subjects Offered", value: "20+" },
-  { label: "Student-Teacher Ratio", value: "15:1" },
-];
-
 export default function Academics() {
   const navigate = useNavigate();
 
@@ -43,7 +36,6 @@ export default function Academics() {
           .academics-page .academics-title-wrap h1 { font-size: 26px !important; }
           .academics-page .academics-hero-img-wrap { width: 92% !important; margin: -16px auto 14px !important; }
           .academics-page .academics-hero-img-wrap img { max-height: 220px !important; }
-          .academics-page .academics-stats-strip { padding: 24px 20px !important; grid-template-columns: repeat(2, 1fr) !important; }
           .academics-page .academics-body { padding: 36px 20px !important; }
           .academics-page .academics-cards-grid { grid-template-columns: 1fr !important; gap: 20px !important; }
         }
@@ -62,19 +54,6 @@ export default function Academics() {
       {/* Hero image */}
       <div className="academics-hero-img-wrap" style={{ width: "79%", margin: "-25px auto 20px", overflow: "hidden", position: "relative", zIndex: 10 }}>
         <img src={Academics1} alt="JNPV Campus" style={{ width: "100%", display: "block", maxHeight: "460px", objectFit: "cover" }} />
-      </div>
-
-      {/* Stats strip */}
-      <div
-        className="academics-stats-strip"
-        style={{ background: "#f5a800", padding: "32px 80px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "20px", textAlign: "center" }}
-      >
-        {stats.map((stat) => (
-          <div key={stat.label}>
-            <div style={{ fontSize: "30px", fontWeight: 800, color: "#1a3a6b" }}>{stat.value}</div>
-            <div style={{ fontSize: "13px", fontWeight: 600, color: "#1a3a6b", letterSpacing: "0.5px", marginTop: "4px" }}>{stat.label}</div>
-          </div>
-        ))}
       </div>
 
       {/* Body */}

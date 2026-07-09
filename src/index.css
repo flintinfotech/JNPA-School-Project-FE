@@ -8,3 +8,12 @@
 .table-wrapper .ant-pagination-total-text {
   margin-right: auto !important;
 }
+
+
+.ant-card-type-inner > .ant-card-head {
+  background: #CB4E38 !important;
+}
+
+.ant-card-type-inner > .ant-card-head-title {
+  padding: 12px 0;
+}

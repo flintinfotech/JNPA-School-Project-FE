@@ -30,6 +30,13 @@ const highlights = [
   "100% board exam results over the last 5 consecutive years",
 ];
 
+const stats = [
+  { label: "CBSE Affiliated", value: "100%" },
+  { label: "Avg. Pass Percentage", value: "98%" },
+  { label: "Subjects Offered", value: "20+" },
+  { label: "Student-Teacher Ratio", value: "15:1" },
+];
+
 export default function AcademicsSecondaryEnglish() {
   const navigate = useNavigate();
 
@@ -46,6 +53,7 @@ export default function AcademicsSecondaryEnglish() {
           .acad-sec-page .acad-section { padding: 32px 20px !important; }
           .acad-sec-page .acad-streams-grid { grid-template-columns: 1fr !important; }
           .acad-sec-page .acad-split { grid-template-columns: 1fr !important; gap: 28px !important; }
+          .acad-sec-page .academics-stats-strip { padding: 24px 20px !important; grid-template-columns: repeat(2, 1fr) !important; }
           .acad-sec-page .acad-banner { height: 260px !important; }
           .acad-sec-page .acad-banner-overlay { padding: 24px 20px !important; }
         }
@@ -70,6 +78,19 @@ export default function AcademicsSecondaryEnglish() {
       {/* Hero */}
       <div className="acad-hero-wrap" style={{ width: "79%", margin: "-25px auto 20px", overflow: "hidden", position: "relative", zIndex: 10 }}>
         <img src={Academics1} alt="JNPV Secondary School" style={{ width: "100%", display: "block", maxHeight: "400px", objectFit: "cover" }} />
+      </div>
+
+      {/* Stats strip */}
+      <div
+        className="academics-stats-strip"
+        style={{ background: "#f5a800", padding: "32px 80px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "20px", textAlign: "center" }}
+      >
+        {stats.map((stat) => (
+          <div key={stat.label}>
+            <div style={{ fontSize: "30px", fontWeight: 800, color: "#1a3a6b" }}>{stat.value}</div>
+            <div style={{ fontSize: "13px", fontWeight: 600, color: "#1a3a6b", letterSpacing: "0.5px", marginTop: "4px" }}>{stat.label}</div>
+          </div>
+        ))}
       </div>
 
       {/* Streams */}

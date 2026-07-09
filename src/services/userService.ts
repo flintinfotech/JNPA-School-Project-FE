@@ -10,6 +10,8 @@ export interface UserDTO {
   lastName: string;
   mobileNo: string;
   role: string;
+  section?: string;
+  medium?: string;
 }
 
 export interface SaveUserRequestDTO {
@@ -20,6 +22,8 @@ export interface SaveUserRequestDTO {
   mobileNo: string;
   role: string;
   userName: string;
+  section?: string;
+  medium?: string;
 }
 
 export interface UpdateUserRequestDTO {
@@ -30,6 +34,8 @@ export interface UpdateUserRequestDTO {
   mobileNo: string;
   role: string;
   userName: string;
+  section?: string;
+  medium?: string;
 }
 
 export interface ApiResponse<T> {
