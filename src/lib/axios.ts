@@ -15,7 +15,7 @@ axiosInstance.interceptors.request.use((req) => {
   return req;
 });
 
-// Auto-logout on 401
+// Auto-logout on 401 & 403 response status codes
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {

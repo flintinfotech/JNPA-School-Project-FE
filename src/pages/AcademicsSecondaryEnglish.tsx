@@ -1,7 +1,13 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Academics1 from "../assets/Academics1.webp";
 import Academics2 from "../assets/Academics2.webp";
 import SchoolLogo from "../assets/SchoolLogo.avif";
-import { useNavigate } from "react-router-dom";
+import {
+  getAllClassRooms,
+  type ClassRoomDTO,
+  type AcademicYearDTO,
+} from "../services/ClassroomService"; // adjust path to match your project
 
 const streams = [
   {
@@ -30,15 +36,105 @@ const highlights = [
   "100% board exam results over the last 5 consecutive years",
 ];
 
-const stats = [
-  { label: "CBSE Affiliated", value: "100%" },
-  { label: "Avg. Pass Percentage", value: "98%" },
-  { label: "Subjects Offered", value: "20+" },
-  { label: "Student-Teacher Ratio", value: "15:1" },
-];
+function base64ToBlobUrl(base64: string | null | undefined, mimeHint?: string): string | null {
+  if (!base64) return null;
+  try {
+    const byteCharacters = atob(base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+
+    let mime = mimeHint;
+    if (!mime) {
+      if (base64.startsWith("JVBERi0")) mime = "application/pdf";
+      else if (base64.startsWith("/9j/")) mime = "image/jpeg";
+      else if (base64.startsWith("iVBOR")) mime = "image/png";
+      else mime = "application/octet-stream";
+    }
+    return URL.createObjectURL(new Blob([byteArray], { type: mime }));
+  } catch (err) {
+    console.error("Failed to decode base64 file:", err);
+    return null;
+  }
+}
 
 export default function AcademicsSecondaryEnglish() {
   const navigate = useNavigate();
+
+  const [classRoom, setClassRoom] = useState<ClassRoomDTO | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [expandedYearId, setExpandedYearId] = useState<number | null>(null);
+  const [selectedTable, setSelectedTable] = useState<{
+    yearId: number;
+    subScreenId: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function fetchClassRoom() {
+      try {
+        setLoading(true);
+        const res = await getAllClassRooms(
+          0,
+          10,
+          {
+            classRoomName: "Secondary",
+            medium: "English",
+          },
+          controller.signal
+        );
+        const payload = res?.data?.data;
+        const rooms: ClassRoomDTO[] = payload?.Data || payload?.content || [];
+        const room = rooms[0] || null;
+
+        setClassRoom(room);
+      } catch (err: any) {
+        if (err.name !== "CanceledError" && err.code !== "ERR_CANCELED") {
+          console.error("Failed to fetch Secondary (English) classroom data:", err);
+          setError("Failed to load academic data.");
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchClassRoom();
+    return () => controller.abort();
+  }, []);
+
+  const currentYear: AcademicYearDTO | undefined =
+    classRoom?.academicYearDTOS?.find((y) => y.isCurrent) || classRoom?.academicYearDTOS?.[0];
+
+  const stats = [
+    { label: "CBSE Affiliated", value: currentYear?.cbseAffiliated ?? "-" },
+    {
+      label: "Avg. Pass Percentage",
+      value: currentYear?.avgPassingPercentage ? `${currentYear.avgPassingPercentage}%` : "-",
+    },
+    { label: "Subjects Offered", value: currentYear?.subjectOffered ?? "-" },
+    { label: "Student-Teacher Ratio", value: currentYear?.studentTeacherRatio ?? "-" },
+  ];
+
+  const handleOpenFile = (base64Data: string) => {
+    const url = base64ToBlobUrl(base64Data);
+    if (url) {
+      window.open(url, "_blank", "noopener,noreferrer");
+    } else {
+      alert("Unable to open this file.");
+    }
+  };
+
+  const handleOpenBrochure = () => {
+    if (!classRoom?.brochure) {
+      alert("Brochure not available.");
+      return;
+    }
+    handleOpenFile(classRoom.brochure);
+  };
 
   return (
     <div className="acad-sec-page" style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
@@ -56,6 +152,7 @@ export default function AcademicsSecondaryEnglish() {
           .acad-sec-page .academics-stats-strip { padding: 24px 20px !important; grid-template-columns: repeat(2, 1fr) !important; }
           .acad-sec-page .acad-banner { height: 260px !important; }
           .acad-sec-page .acad-banner-overlay { padding: 24px 20px !important; }
+          .acad-sec-page .acad-year-block { grid-template-columns: 1fr !important; gap: 20px !important; }
         }
       `}</style>
 
@@ -68,9 +165,11 @@ export default function AcademicsSecondaryEnglish() {
           <button onClick={() => navigate("/academics")} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.7)", fontSize: "13px", cursor: "pointer", padding: 0, marginBottom: "8px" }}>
             ← Back to Academics
           </button>
-          <h1 style={{ color: "#fff", fontSize: "34px", fontWeight: 500, margin: 0 }}>Secondary School</h1>
+          <h1 style={{ color: "#fff", fontSize: "34px", fontWeight: 500, margin: 0 }}>
+            {`${classRoom?.classRoomName || "Secondary"} - English`}
+          </h1>
           <p style={{ color: "rgba(255,255,255,0.85)", fontSize: "14px", marginTop: "6px" }}>
-            Grade V · Grade VI · Grade VII · Grade VIII · Grade IX · Grade X
+            {classRoom?.description || "Grade V · Grade VI · Grade VII · Grade VIII · Grade IX · Grade X"}
           </p>
         </div>
       </div>
@@ -80,6 +179,10 @@ export default function AcademicsSecondaryEnglish() {
         <img src={Academics1} alt="JNPV Secondary School" style={{ width: "100%", display: "block", maxHeight: "400px", objectFit: "cover" }} />
       </div>
 
+      {error && (
+        <p style={{ textAlign: "center", color: "#b91c1c", fontSize: "13px", margin: "0 0 10px" }}>{error}</p>
+      )}
+
       {/* Stats strip */}
       <div
         className="academics-stats-strip"
@@ -87,26 +190,180 @@ export default function AcademicsSecondaryEnglish() {
       >
         {stats.map((stat) => (
           <div key={stat.label}>
-            <div style={{ fontSize: "30px", fontWeight: 800, color: "#1a3a6b" }}>{stat.value}</div>
-            <div style={{ fontSize: "13px", fontWeight: 600, color: "#1a3a6b", letterSpacing: "0.5px", marginTop: "4px" }}>{stat.label}</div>
+            <div style={{ fontSize: "30px", fontWeight: 800, color: "#1a3a6b" }}>
+              {loading ? "…" : stat.value}
+            </div>
+            <div style={{ fontSize: "13px", fontWeight: 600, color: "#1a3a6b", letterSpacing: "0.5px", marginTop: "4px" }}>
+              {stat.label}
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Streams */}
+      {/* Academic Year Records */}
+      {classRoom?.academicYearDTOS && classRoom.academicYearDTOS.length > 0 && (
+        <div className="acad-section" style={{ padding: "50px 80px" }}>
+          <h2 style={{ color: "#1a3a6b", fontSize: "24px", fontWeight: 800, marginBottom: "24px", textAlign: "center" }}>
+            Academic Year Records
+          </h2>
+
+          <div
+            className="acad-year-block"
+            style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: "32px", alignItems: "start" }}
+          >
+            {/* LEFT: year accordion */}
+            <div style={{ border: "1px solid #e2e8f0", borderRadius: "6px", overflow: "hidden" }}>
+              {classRoom.academicYearDTOS.map((year) => {
+                const isExpanded = expandedYearId === year.academicYearId;
+
+                return (
+                  <div key={year.academicYearId} style={{ borderTop: "1px solid #e2e8f0" }}>
+                    <button
+                      onClick={() => setExpandedYearId(isExpanded ? null : year.academicYearId)}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "10px 20px",
+                        background: "#9C4131",
+                        color: "#ffff",
+                        border: "none",
+                        fontSize: "16px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        textAlign: "left",
+                      }}
+                    >
+                      <span>FY-{year.academicYearName}</span>
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          transform: isExpanded ? "rotate(180deg)" : "none",
+                          transition: "transform 0.2s",
+                        }}
+                      >
+                        ▼
+                      </span>
+                    </button>
+
+                    {isExpanded && (
+                      <div style={{ background: "#fafbfc" }}>
+                        {year.subScreenDTOS && year.subScreenDTOS.length > 0 ? (
+                          year.subScreenDTOS.map((s) => {
+                            const isActive =
+                              selectedTable?.yearId === year.academicYearId &&
+                              selectedTable?.subScreenId === s.subScreenId;
+                            return (
+                              <button
+                                key={s.subScreenId}
+                                onClick={() =>
+                                  setSelectedTable({ yearId: year.academicYearId, subScreenId: s.subScreenId })
+                                }
+                                style={{
+                                  width: "100%",
+                                  display: "block",
+                                  textAlign: "left",
+                                  padding: "10px 16px 10px 30px",
+                                  background: isActive ? "#E0E0E0" : "transparent",
+                                  color: isActive ? "black" : "#333",
+                                  border: "none",
+                                  borderTop: "1px solid #eef1f4",
+                                  fontSize: "12.5px",
+                                  fontWeight: isActive ? 700 : 500,
+                                  cursor: "pointer",
+                                }}
+                              >
+                                {s.subScreenName}
+                              </button>
+                            );
+                          })
+                        ) : (
+                          <p style={{ padding: "10px 16px 10px 30px", fontSize: "12px", color: "#888", margin: 0 }}>
+                            No records available.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* RIGHT: table */}
+            <div style={{ overflowX: "auto" }}>
+              {(() => {
+                const activeYear = classRoom.academicYearDTOS?.find((y) => y.academicYearId === selectedTable?.yearId);
+                const activeSubScreen = activeYear?.subScreenDTOS?.find(
+                  (s) => s.subScreenId === selectedTable?.subScreenId
+                );
+
+                if (!activeSubScreen) {
+                  return <p style={{ fontSize: "13px", color: "#777" }} />;
+                }
+
+                if (!activeSubScreen.subScreenDataEntities || activeSubScreen.subScreenDataEntities.length === 0) {
+                  return <p style={{ fontSize: "13px", color: "#777" }}>No records available for this selection.</p>;
+                }
+
+                return (
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                    <thead>
+                      <tr style={{ background: "#1569ad" }}>
+                        <th style={{ color: "#fff", padding: "10px 12px", textAlign: "left", fontWeight: 700 }}>Sr. No.</th>
+                        <th style={{ color: "#fff", padding: "10px 12px", textAlign: "left", fontWeight: 700 }}>Subject Name</th>
+                        <th style={{ color: "#fff", padding: "10px 12px", textAlign: "left", fontWeight: 700 }}>View File</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeSubScreen.subScreenDataEntities.map((row, idx) => (
+                        <tr
+                          key={row.subScreenDataId}
+                          style={{ borderBottom: "1px solid #e5e7eb", background: idx % 2 === 0 ? "#fff" : "#fffbee" }}
+                        >
+                          <td style={{ padding: "10px 12px" }}>{idx + 1}</td>
+                          <td style={{ padding: "10px 12px" }}>
+                            <button
+                              style={{ background: "none", border: "none", color: "#1569ad", fontWeight: 600, cursor: "pointer", padding: 0, textDecoration: "none" }}
+                            >
+                              {row.subjectName}
+                            </button>
+                          </td>
+                          <td style={{ padding: "10px 12px" }}>
+                            <button
+                              onClick={() => handleOpenFile(row.subjectData)}
+                              style={{ background: "#1569ad", color: "#fff", border: "none", padding: "6px 14px", borderRadius: "4px", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}
+                            >
+                              view
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Subjects Offered — dynamic from subjectDTOList */}
       <div className="acad-section" style={{ padding: "50px 80px", background: "#fffbee" }}>
-        <h2 style={{ color: "#1a3a6b", fontSize: "24px", fontWeight: 800, marginBottom: "10px", textAlign: "center" }}>Streams Available</h2>
+        <h2 style={{ color: "#1a3a6b", fontSize: "24px", fontWeight: 800, marginBottom: "10px", textAlign: "center" }}>
+          Subjects Offered
+        </h2>
         <p style={{ color: "#777", fontSize: "14px", textAlign: "center", marginBottom: "36px" }}>
-          Choose a stream that aligns with your goals and strengths
+          A well-rounded curriculum designed to build strong foundations
         </p>
-        <div className="acad-streams-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "24px" }}>
-          {streams.map((s) => (
-            <div key={s.name} style={{ background: "#fff", borderTop: "4px solid #1f4d3d", borderRadius: "6px", padding: "28px", boxShadow: "0 4px 14px rgba(0,0,0,0.06)" }}>
-              <h3 style={{ color: "#1f4d3d", fontSize: "18px", fontWeight: 800, marginBottom: "12px" }}>{s.name}</h3>
-              <ul style={{ margin: "0 0 14px", padding: "0 0 0 16px", color: "#555", fontSize: "13px", lineHeight: 1.8 }}>
-                {s.subjects.map((sub) => <li key={sub}>{sub}</li>)}
-              </ul>
-              <p style={{ color: "#777", fontSize: "13px", lineHeight: 1.6, margin: 0 }}>{s.desc}</p>
+        <div className="acad-subjects-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "20px" }}>
+          {classRoom?.subjectDTOList?.map((subj, i) => (
+            <div
+              key={subj.subjectId ?? i}
+              style={{ background: "#fff", borderTop: "4px solid #1f4d3d", borderRadius: "6px", padding: "24px", boxShadow: "0 4px 14px rgba(0,0,0,0.06)" }}
+            >
+              <h3 style={{ color: "#1f4d3d", fontSize: "16px", fontWeight: 700, marginBottom: "8px" }}>{subj.subjectName}</h3>
+              <p style={{ color: "#555", fontSize: "13px", lineHeight: 1.6, margin: 0 }}>{subj.subjectDescription}</p>
             </div>
           ))}
         </div>
@@ -155,7 +412,23 @@ export default function AcademicsSecondaryEnglish() {
           Reach out to our academic team for more details about Secondary School streams and preparation.
         </p>
         <div style={{ display: "flex", justifyContent: "center", gap: "14px", flexWrap: "wrap" }}>
-          <button style={{ background: "#fff", color: "#1f4d3d", border: "none", padding: "12px 28px", fontSize: "13px", fontWeight: 800, letterSpacing: "0.5px", textTransform: "uppercase", borderRadius: "4px", cursor: "pointer" }}>
+          <button
+            onClick={handleOpenBrochure}
+            disabled={!classRoom?.brochure}
+            style={{
+              background: "#fff",
+              color: "#1f4d3d",
+              border: "none",
+              padding: "12px 28px",
+              fontSize: "13px",
+              fontWeight: 800,
+              letterSpacing: "0.5px",
+              textTransform: "uppercase",
+              borderRadius: "4px",
+              cursor: classRoom?.brochure ? "pointer" : "not-allowed",
+              opacity: classRoom?.brochure ? 1 : 0.6,
+            }}
+          >
             Download Brochure
           </button>
           <button onClick={() => navigate("/academics")} style={{ background: "transparent", color: "#fff", border: "2px solid #fff", padding: "12px 28px", fontSize: "13px", fontWeight: 800, letterSpacing: "0.5px", textTransform: "uppercase", borderRadius: "4px", cursor: "pointer" }}>

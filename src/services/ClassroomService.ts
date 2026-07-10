@@ -188,10 +188,12 @@ export const deleteClassRoom = (classRoomId: number | string) => {
 export const getAllClassRooms = (
   page: number,
   size: number,
-  filter: ClassRoomFilter = {}
+  filter: ClassRoomFilter = {},
+  signal?: AbortSignal
 ) => {
   return axiosInstance.post<ApiResponse<PaginatedClassRooms>>(
     apiEndpoints.getAllClassRooms(page, size),
-    filter
+    filter,
+    { signal }
   );
 };

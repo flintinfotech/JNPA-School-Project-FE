@@ -47,10 +47,6 @@ export default function AcademicsPrePrimary() {
   const [classRoom, setClassRoom] = useState<ClassRoomDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [brochureModal, setBrochureModal] = useState<{ open: boolean; url: string | null }>({
-    open: false,
-    url: null,
-  });
   const [expandedYearId, setExpandedYearId] = useState<number | null>(null);
   const [selectedTable, setSelectedTable] = useState<{
     yearId: number;
@@ -58,42 +54,29 @@ export default function AcademicsPrePrimary() {
   } | null>(null);
 
   useEffect(() => {
-    let isMounted = true;
-
+    const controller = new AbortController();
     async function fetchClassRoom() {
       try {
         setLoading(true);
-        const res = await getAllClassRooms(0, 10, { classRoomName: "Pre-Primary" });
+        const res = await getAllClassRooms(0, 10, { classRoomName: "Pre-Primary" }, controller.signal);
         const payload = res?.data?.data;
         const rooms: ClassRoomDTO[] = payload?.Data || payload?.content || [];
         const room = rooms[0] || null;
-
-        if (!isMounted) return;
-
         setClassRoom(room);
-
-        // if (room?.academicYearDTOS?.length) {
-        //   const defaults: Record<number, number> = {};
-        //   room.academicYearDTOS.forEach((year) => {
-        //     if (year.subScreenDTOS?.length) {
-        //       defaults[year.academicYearId] = year.subScreenDTOS[0].subScreenId;
-        //     }
-        //   });
-        //   setSelectedSubScreenByYear(defaults);
-        // }
-      } catch (err) {
-        console.error("Failed to fetch Pre-Primary classroom data:", err);
-        if (isMounted) setError("Failed to load academic data.");
+      } catch (err: any) {
+        if (err.name !== "CanceledError" && err.code !== "ERR_CANCELED") {
+          console.error("Failed to fetch Secondary (English) classroom data:", err);
+          setError("Failed to load academic data.");
+        }
       } finally {
-        if (isMounted) setLoading(false);
+        setLoading(false);
       }
     }
 
     fetchClassRoom();
-    return () => {
-      isMounted = false;
-    };
+    return () => controller.abort();
   }, []);
+
 
   const currentYear: AcademicYearDTO | undefined =
     classRoom?.academicYearDTOS?.find((y) => y.isCurrent) || classRoom?.academicYearDTOS?.[0];
@@ -227,7 +210,7 @@ export default function AcademicsPrePrimary() {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
-                        padding: "18px 20px",
+                        padding: "10px 20px",
                         background: isExpanded ? "#9C4131" : "#9C4131",
                         color: isExpanded ? "#fff" : "#ffff",
                         border: "none",
@@ -341,7 +324,7 @@ export default function AcademicsPrePrimary() {
                               onClick={() => handleOpenFile(row.subjectData)}
                               style={{ background: "#1569ad", color: "#fff", border: "none", padding: "6px 14px", borderRadius: "4px", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}
                             >
-                              Open
+                              view
                             </button>
                           </td>
                         </tr>

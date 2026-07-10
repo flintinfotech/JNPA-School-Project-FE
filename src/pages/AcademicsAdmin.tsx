@@ -464,16 +464,23 @@ function ClassRoomSection({
       academicYearDTOS,
     };
     try {
+      let res;
       if (classRoomId) {
-        const res = await updateClassRoom({ ...payload, classRoomId });
-        setClassRoomId(res.data.data.classRoomId);
+        res = await updateClassRoom({ ...payload, classRoomId });
       } else {
-        const res = await saveClassRoom(payload);
-        setClassRoomId(res.data.data.classRoomId);
+        res = await saveClassRoom(payload);
       }
+
+      if (res.data?.success === false) {
+        message.error(res.data?.message || `Failed to save ${title} details`);
+        return;
+      }
+
+      setClassRoomId(res.data.data.classRoomId);
       message.success(`${title} details saved`);
-    } catch {
-      message.error(`Failed to save ${title} details`);
+    } catch (err: any) {
+      const backendMessage = err?.response?.data?.message;
+      message.error(backendMessage || `Failed to save ${title} details`);
     } finally {
       setSaving(false);
     }
