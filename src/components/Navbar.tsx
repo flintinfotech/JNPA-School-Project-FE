@@ -15,7 +15,7 @@ const menuColumns = [
     links: [
       { label: 'Campus', href: '/campus' },
       // { label: 'Careers', href: '/careers' },
-      { label: 'Events', href: '/events' },
+      { label: 'Events & News', href: '/events' },
       { label: 'Student Life', href: '/student-life' },
       { label: 'Awards', href: '/awards' },
     ],

@@ -1,74 +1,154 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { message, Spin, Empty } from "antd";
 import Alumni from "../assets/alumni.jpg";
 import SchoolLogo from "../assets/SchoolLogo.avif";
 
-const stats = [
-  { label: "Grade X Pass %", value: "100%" },
-  { label: "Grade XII Pass %", value: "98%" },
-  { label: "Students Scoring 90%+", value: "64" },
-  { label: "University Placements", value: "210+" },
-];
+import {
+  getAllExamsByFilter,
+  type ExamDTO,
+  type ExamResultDTO,
+  type ExamNoticeDTO,
+  type TopperDTO,
+} from "../services/ExamResultService"; // adjust path to match your project structure
 
-// TODO: Replace with API data -> columns: Notice Name, Notice Link
-const noticesData = [
-  { name: "Grade X Preliminary Exam Notice", link: "#" },
-  { name: "Grade XII Practical Exam Schedule", link: "#" },
-  { name: "Mid-Term Assessment Notification", link: "#" },
-  { name: "Annual Exam Hall Ticket Release", link: "#" },
-  { name: "Re-Exam / Improvement Exam Notice", link: "#" },
-];
-
-// TODO: Replace with API data -> columns: Exam Name, Result Link
-const examResults = [
-  { examName: "1st Quarter", resultLink: "#" },
-  { examName: "1st Semester", resultLink: "#" },
-  { examName: "2nd Quarter", resultLink: "#" },
-  { examName: "Annual Exam", resultLink: "#" },
-];
-
-// TODO: Replace with API data.
-// Each topper is tagged with level ("pre-primary" | "primary" | "secondary") and medium ("marathi" | "english").
-// Admin uploads EITHER a photo OR a PDF marksheet per topper - only one of `photo` / `pdf` will be set.
+// ---------------------------------------------------------------------------
+// Filter config - button keys are lowercase for styling, mapped to the exact
+// classRoomName / medium casing the backend expects.
+// ---------------------------------------------------------------------------
 const LEVELS = [
-  { key: "pre-primary", label: "Pre-Primary" },
-  { key: "primary", label: "Primary" },
-  { key: "secondary", label: "Secondary" },
+  { key: "pre-primary", label: "Pre-Primary", classRoomName: "Pre-Primary" },
+  { key: "primary", label: "Primary", classRoomName: "Primary" },
+  { key: "secondary", label: "Secondary", classRoomName: "Secondary" },
 ];
 const MEDIUMS = [
-  { key: "english", label: "English Medium" },
-  { key: "marathi", label: "Marathi Medium" },
+  { key: "english", label: "English Medium", medium: "English" },
+  { key: "marathi", label: "Marathi Medium", medium: "Marathi" },
 ];
 
-const toppersData = [
-  { id: 1, level: "primary", medium: "english", standard: "Std 4", name: "Aditi Sharma", score: "96%", photo: "https://i.pravatar.cc/150?img=47", pdf: null, note: "Topper - English Medium Primary" },
-  { id: 2, level: "primary", medium: "english", standard: "Std 4", name: "Karan Joshi", score: "94%", photo: "https://i.pravatar.cc/150?img=12", pdf: null, note: "2nd Rank" },
-  { id: 3, level: "primary", medium: "marathi", standard: "इयत्ता ४ थी", name: "ओम पाटील", score: "95%", photo: null, pdf: "#", note: "Topper - Marathi Medium Primary" },
-  { id: 4, level: "primary", medium: "marathi", standard: "इयत्ता ४ थी", name: "साक्षी शिंदे", score: "93%", photo: null, pdf: "#", note: "2nd Rank" },
-  { id: 5, level: "secondary", medium: "english", standard: "Std 10", name: "Riya Deshmukh", score: "98.4%", photo: "https://i.pravatar.cc/150?img=32", pdf: null, note: "IIT Bombay - Computer Science" },
-  { id: 6, level: "secondary", medium: "english", standard: "Std 10", name: "Aarav Mehta", score: "97.8%", photo: null, pdf: "#", note: "St. Xavier's College, Mumbai" },
-  { id: 7, level: "secondary", medium: "marathi", standard: "इयत्ता १० वी", name: "सान्वी कुलकर्णी", score: "96.5%", photo: "https://i.pravatar.cc/150?img=45", pdf: null, note: "Symbiosis Law School" },
-  { id: 8, level: "secondary", medium: "marathi", standard: "इयत्ता १० वी", name: "रोहन गायकवाड", score: "95.9%", photo: null, pdf: "#", note: "3rd Rank" },
-  { id: 9, level: "pre-primary", medium: "english", standard: "Sr. KG", name: "Ishaan Verma", score: "A+ Grade", photo: "https://i.pravatar.cc/150?img=15", pdf: null, note: "Best All-Rounder" },
-  { id: 10, level: "pre-primary", medium: "english", standard: "Sr. KG", name: "Myra Kapoor", score: "A+ Grade", photo: "https://i.pravatar.cc/150?img=25", pdf: null, note: "Excellence in Activities" },
-  { id: 11, level: "pre-primary", medium: "marathi", standard: "ज्युनियर केजी", name: "अर्णव जाधव", score: "A+ श्रेणी", photo: null, pdf: "#", note: "सर्वोत्कृष्ट विद्यार्थी" },
-  { id: 12, level: "pre-primary", medium: "marathi", standard: "ज्युनियर केजी", name: "अनया मोरे", score: "A+ श्रेणी", photo: null, pdf: "#", note: "उपक्रमांमध्ये उत्कृष्टता" },
-];
+// ---------------------------------------------------------------------------
+// The list/filter endpoint returns noticeData / resultData as null (file
+// bytes aren't sent for list responses). Build a link only when data is
+// actually present; otherwise render a disabled indicator instead of a dead
+// link. Files here are always PDFs (admin form restricts uploads to .pdf).
+// ---------------------------------------------------------------------------
+const base64ToPdfUrl = (base64: string): string => {
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const blob = new Blob([new Uint8Array(byteNumbers)], { type: "application/pdf" });
+  return URL.createObjectURL(blob);
+};
 
-export default function ExamandResult() {
-  const [activeLevel, setActiveLevel] = useState("primary");
-  const [activeMedium, setActiveMedium] = useState("english");
-  const [expandedStandards, setExpandedStandards] = useState<Record<string, boolean>>({});
-  const VISIBLE_COUNT = 4; // cards shown before "View All"
-
-  const filteredToppers = toppersData.filter(
-    (t) => t.level === activeLevel && t.medium === activeMedium
+// Cards per carousel page: 1 on mobile (<=768px), 3 on desktop. Driving the
+// pagination math off this (instead of just hiding cards with CSS) means
+// each arrow tap on mobile actually advances one topper at a time instead
+// of skipping two hidden ones.
+function useCardsPerPage() {
+  const [cardsPerPage, setCardsPerPage] = useState(() =>
+    typeof window !== "undefined" && window.innerWidth <= 768 ? 1 : 3
   );
 
-  const groupedByStandard = filteredToppers.reduce<Record<string, typeof toppersData>>((acc, t) => {
-    if (!acc[t.standard]) acc[t.standard] = [];
-    acc[t.standard].push(t);
-    return acc;
-  }, {});
+  useEffect(() => {
+    const handleResize = () => {
+      setCardsPerPage(window.innerWidth <= 768 ? 1 : 3);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  return cardsPerPage;
+}
+
+export default function ExamandResult() {
+  const [activeLevel, setActiveLevel] = useState<string | null>(null);
+  const [activeMedium, setActiveMedium] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [examData, setExamData] = useState<ExamDTO | null>(null);
+  const [searched, setSearched] = useState(false); // true once a fetch has been attempted
+
+  // Single flat carousel over all toppers (no per-standard grouping).
+  const [topperPage, setTopperPage] = useState(0);
+  const cardsPerPage = useCardsPerPage();
+  const [isPaused, setIsPaused] = useState(false);
+
+  // Keep the current page in range whenever the page size changes (resize/rotate).
+  useEffect(() => {
+    setTopperPage(0);
+  }, [cardsPerPage]);
+
+  // Auto-scroll the toppers carousel every 4s, looping back to the start.
+  // Pauses while the user hovers the carousel, and does nothing if there's
+  // only one page (nothing to advance to).
+  useEffect(() => {
+    if (isPaused) return;
+
+    const toppers = examData?.toppersDTOS ?? [];
+    const totalPages = Math.ceil(toppers.length / cardsPerPage);
+    if (totalPages <= 1) return;
+
+    const interval = setInterval(() => {
+      setTopperPage((prev) => (prev + 1) % totalPages);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [examData, cardsPerPage, isPaused]);
+
+  const fetchExamData = async (levelKey: string, mediumKey: string) => {
+    const levelConfig = LEVELS.find((l) => l.key === levelKey);
+    const mediumConfig = MEDIUMS.find((m) => m.key === mediumKey);
+    if (!levelConfig || !mediumConfig) return;
+
+    setLoading(true);
+    setSearched(true);
+    setTopperPage(0);
+
+    try {
+      const res = await getAllExamsByFilter(0, 10, {
+        classRoomName: levelConfig.classRoomName,
+        medium: mediumConfig.medium as "English" | "Marathi",
+      });
+
+      const list: ExamDTO[] = res.data?.data?.examDTOS ?? [];
+
+      // Exact, case-insensitive match on classRoomName AND medium - same
+      // reasoning as the admin form: a partial/LIKE backend match could
+      // otherwise return the wrong section.
+      const existing = list.find((e: any) => {
+        const nameMatches =
+          (e.classRoomName ?? "").trim().toLowerCase() === levelConfig.classRoomName.trim().toLowerCase();
+        if (!nameMatches) return false;
+        return (e.medium ?? "").trim().toLowerCase() === mediumConfig.medium.trim().toLowerCase();
+      });
+
+      setExamData(existing ?? null);
+    } catch {
+      message.error("Failed to load exam & result data");
+      setExamData(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLevelClick = (levelKey: string) => {
+    setActiveLevel(levelKey);
+    if (activeMedium) fetchExamData(levelKey, activeMedium);
+  };
+
+  const handleMediumClick = (mediumKey: string) => {
+    setActiveMedium(mediumKey);
+    if (activeLevel) fetchExamData(activeLevel, mediumKey);
+  };
+
+  const stats = examData
+    ? [
+      { label: "Grade X Pass %", value: examData.result10th || "-" },
+      { label: "Grade XII Pass %", value: examData.result12th || "-" },
+      { label: "Students Scoring 90%+", value: examData.studentScoring90 || "-" },
+      { label: "University Rank", value: examData.universityRank || "-" },
+    ]
+    : [];
 
   return (
     <div className="results-page" style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", overflowX: "hidden" }}>
@@ -152,15 +232,12 @@ export default function ExamandResult() {
             padding: 7px 14px !important;
             font-size: 12px !important;
           }
-          .results-page .toppers-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
-            gap: 12px !important;
-          }
           .results-page .topper-card {
-            padding: 14px !important;
+            padding: 18px !important;
+            max-width: 90% !important;
+            flex: 1 1 100% !important;
           }
-          .results-page .topper-card img,
-          .results-page .topper-card a[title="View marksheet PDF"] {
+          .results-page .topper-card .topper-avatar {
             width: 64px !important;
             height: 64px !important;
           }
@@ -176,8 +253,11 @@ export default function ExamandResult() {
           .results-page .results-title-wrap h1 {
             font-size: 22px !important;
           }
-          .results-page .toppers-grid {
-            grid-template-columns: 1fr !important;
+          .results-page .toppers-carousel-wrap {
+            gap: 8px !important;
+          }
+          .results-page .topper-card {
+            max-width: 100% !important;
           }
         }
       `}</style>
@@ -192,165 +272,13 @@ export default function ExamandResult() {
         </div>
       </div>
 
-      {/* Exam Notices / Notifications */}
-      <div className="results-section" style={{ padding: "50px 80px 40px", background: "#fff" }}>
-        <h2 style={{ color: "#1a3a6b", fontSize: "24px", fontWeight: 800, marginBottom: "24px", textAlign: "center" }}>
-          Exam Notices / Notifications
-        </h2>
-        <div className="results-table-wrap" style={{ border: "1px solid rgba(26,58,107,0.12)", borderRadius: "6px", overflow: "hidden", maxWidth: "900px", margin: "0 auto" }}>
-          {/* Table header */}
-          <div
-            className="results-row results-table-header"
-            style={{
-              display: "flex",
-              padding: "12px 20px",
-              background: "#1a3a6b",
-              fontSize: "13px",
-              fontWeight: 700,
-              color: "#fff",
-            }}
-          >
-            <div style={{ width: "70%" }}>Notice Name</div>
-            <div style={{ width: "30%" }}>Notice Link</div>
-          </div>
-
-          {noticesData.length === 0 ? (
-            <div style={{ padding: "20px", textAlign: "center", color: "#777", fontSize: "13px" }}>
-              No notices available right now.
-            </div>
-          ) : (
-            noticesData.map((notice, i) => (
-              <div
-                key={notice.name}
-                className="results-row notice-item-row"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "14px 20px",
-                  background: i % 2 === 0 ? "#fff" : "#fffbee",
-                  fontSize: "13px",
-                }}
-              >
-                <div style={{ width: "70%", color: "#333", fontWeight: 600 }}>{notice.name}</div>
-                <div style={{ width: "30%" }}>
-                  <a
-                    href={notice.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      color: "#1569ad",
-                      fontWeight: 700,
-                      textDecoration: "none",
-                      borderBottom: "1px solid #1569ad",
-                    }}
-                  >
-                    View Notice
-                  </a>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Stats strip */}
-      <div
-        className="results-stats-strip"
-        style={{
-          background: "#f5a800",
-          padding: "32px 80px",
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-          gap: "20px",
-          textAlign: "center",
-        }}
-      >
-        {stats.map((stat) => (
-          <div key={stat.label}>
-            <div style={{ fontSize: "30px", fontWeight: 800, color: "#1a3a6b" }}>{stat.value}</div>
-            <div style={{ fontSize: "13px", fontWeight: 600, color: "#1a3a6b", letterSpacing: "0.5px", marginTop: "4px" }}>
-              {stat.label}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Board results - Exam Name / Result Link */}
-      <div className="results-section" style={{ padding: "60px 80px", background: "#fffbee" }}>
-        <h2 style={{ color: "#1a3a6b", fontSize: "26px", fontWeight: 800, marginBottom: "30px", textAlign: "center" }}>
-          Exam Results
-        </h2>
-        <div className="results-table-wrap" style={{ border: "1px solid rgba(26,58,107,0.12)", borderRadius: "6px", overflow: "hidden", maxWidth: "900px", margin: "0 auto" }}>
-          {/* Table header */}
-          <div
-            className="results-row results-table-header"
-            style={{
-              display: "flex",
-              padding: "12px 20px",
-              background: "#1a3a6b",
-              fontSize: "13px",
-              fontWeight: 700,
-              color: "#fff",
-            }}
-          >
-            <div style={{ width: "220px", flexShrink: 0 }}>Exam Name</div>
-            <div>Result Link</div>
-          </div>
-
-          {examResults.length === 0 ? (
-            <div style={{ padding: "20px", textAlign: "center", color: "#777", fontSize: "13px" }}>
-              Results not published yet.
-            </div>
-          ) : (
-            examResults.map((row, i) => (
-              <div
-                key={row.examName}
-                className="results-row examresult-item-row"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "16px 20px",
-                  background: i % 2 === 0 ? "#fff" : "#fffbee",
-                  fontSize: "13px",
-                }}
-              >
-                <div style={{ width: "220px", flexShrink: 0, color: "#1a3a6b", fontWeight: 700 }}>{row.examName}</div>
-                <div>
-                  <a
-                    href={row.resultLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      color: "#fff",
-                      background: "#f5a800",
-                      fontWeight: 700,
-                      textDecoration: "none",
-                      padding: "6px 14px",
-                      borderRadius: "4px",
-                      fontSize: "12px",
-                    }}
-                  >
-                    View Result
-                  </a>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Toppers */}
-      <div className="results-section" style={{ padding: "60px 80px", background: "#fffbee" }}>
-        <h2 style={{ color: "#1a3a6b", fontSize: "26px", fontWeight: 800, marginBottom: "20px", textAlign: "center" }}>
-          This Year's Toppers
-        </h2>
-
-        {/* Level + Medium filters */}
+      {/* Level + Medium filters - only margin-top/margin-bottom adjusted here */}
+      <div style={{ marginTop: "34px", marginBottom: "46px" }}>
         <div className="toppers-filters" style={{ display: "flex", justifyContent: "center", gap: "10px", flexWrap: "wrap", marginBottom: "10px" }}>
           {LEVELS.map((lvl) => (
             <button
               key={lvl.key}
-              onClick={() => setActiveLevel(lvl.key)}
+              onClick={() => handleLevelClick(lvl.key)}
               style={{
                 padding: "8px 20px",
                 borderRadius: "20px",
@@ -366,11 +294,11 @@ export default function ExamandResult() {
             </button>
           ))}
         </div>
-        <div className="toppers-filters" style={{ display: "flex", justifyContent: "center", gap: "10px", flexWrap: "wrap", marginBottom: "34px" }}>
+        <div className="toppers-filters" style={{ display: "flex", justifyContent: "center", gap: "10px", flexWrap: "wrap" }}>
           {MEDIUMS.map((med) => (
             <button
               key={med.key}
-              onClick={() => setActiveMedium(med.key)}
+              onClick={() => handleMediumClick(med.key)}
               style={{
                 padding: "6px 18px",
                 borderRadius: "20px",
@@ -386,132 +314,309 @@ export default function ExamandResult() {
             </button>
           ))}
         </div>
+      </div>
 
-        {/* Topper cards - grouped by standard */}
-        {Object.keys(groupedByStandard).length === 0 ? (
-          <div style={{ textAlign: "center", color: "#777", fontSize: "13px", padding: "20px" }}>
-            No toppers published yet for this selection.
-          </div>
-        ) : (
-          Object.entries(groupedByStandard).map(([standard, students]) => {
-            const isExpanded = expandedStandards[standard];
-            const visibleStudents = isExpanded ? students : students.slice(0, VISIBLE_COUNT);
-
-            return (
-              <div key={standard} style={{ marginBottom: "36px" }}>
-                <h3 style={{ color: "#1a3a6b", fontSize: "16px", fontWeight: 700, marginBottom: "14px", textAlign: "center" }}>
-                  {standard}
-                </h3>
+      {/* Prompt before any filter is selected */}
+      {!activeLevel || !activeMedium ? (
+        <div style={{ padding: "0 80px 60px", textAlign: "center", color: "#777", fontSize: "14px" }}>
+          Select a section and medium above to view exam notices, results, and toppers.
+        </div>
+      ) : loading ? (
+        <div style={{ padding: "60px", textAlign: "center" }}>
+          <Spin tip="Loading exam & result data..." />
+        </div>
+      ) : searched && !examData ? (
+        <div style={{ padding: "0 80px 60px" }}>
+          <Empty description="No exam & result data published yet for this section and medium." />
+        </div>
+      ) : (
+        examData && (
+          <>
+            {/* Exam Notices / Notifications */}
+            <div className="results-section" style={{ padding: "50px 80px 40px", background: "#fff" }}>
+              <h2 style={{ color: "#1a3a6b", fontSize: "24px", fontWeight: 800, marginBottom: "24px", textAlign: "center" }}>
+                Exam Notices / Notifications
+              </h2>
+              <div className="results-table-wrap" style={{ border: "1px solid rgba(26,58,107,0.12)", borderRadius: "6px", overflow: "hidden", maxWidth: "900px", margin: "0 auto" }}>
                 <div
-                  className="toppers-grid"
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-                    gap: "18px",
-                    maxWidth: "900px",
-                    margin: "0 auto",
-                  }}
+                  className="results-row results-table-header"
+                  style={{ display: "flex", padding: "12px 20px", background: "#1a3a6b", fontSize: "13px", fontWeight: 700, color: "#fff" }}
                 >
-                  {visibleStudents.map((t) => (
-                    <div
-                      key={t.id}
-                      className="topper-card"
-                      style={{
-                        background: "#fff",
-                        borderRadius: "10px",
-                        padding: "20px",
-                        textAlign: "center",
-                        boxShadow: "0 4px 14px rgba(0,0,0,0.06)",
-                        borderTop: "4px solid #f5a800",
-                      }}
-                    >
-                      {t.photo ? (
-                        <img
-                          src={t.photo}
-                          alt={t.name}
+                  <div style={{ width: "70%" }}>Notice Name</div>
+                  <div style={{ width: "30%" }}>Notice Link</div>
+                </div>
+
+                {(examData.examNoticeDTOS ?? []).length === 0 ? (
+                  <div style={{ padding: "20px", textAlign: "center", color: "#777", fontSize: "13px" }}>
+                    No notices available right now.
+                  </div>
+                ) : (
+                  (examData.examNoticeDTOS as ExamNoticeDTO[]).map((notice, i) => {
+                    const url = notice.noticeData ? base64ToPdfUrl(notice.noticeData) : null;
+                    return (
+                      <div
+                        key={notice.examNoticeId ?? notice.noticeName}
+                        className="results-row notice-item-row"
+                        style={{ display: "flex", alignItems: "center", padding: "14px 20px", background: i % 2 === 0 ? "#fff" : "#fffbee", fontSize: "13px" }}
+                      >
+                        <div style={{ width: "70%", color: "#333", fontWeight: 600 }}>{notice.noticeName}</div>
+                        <div style={{ width: "30%" }}>
+                          {url ? (
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ color: "#1569ad", fontWeight: 700, textDecoration: "none", borderBottom: "1px solid #1569ad" }}
+                            >
+                              View Notice
+                            </a>
+                          ) : (
+                            <span style={{ color: "#aaa", fontWeight: 600, cursor: "not-allowed" }} title="Preview not available">
+                              Not Available
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Stats strip */}
+            <div
+              className="results-stats-strip"
+              style={{
+                background: "#f5a800",
+                padding: "32px 80px",
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                gap: "20px",
+                textAlign: "center",
+              }}
+            >
+              {stats.map((stat) => (
+                <div key={stat.label}>
+                  <div style={{ fontSize: "30px", fontWeight: 800, color: "#1a3a6b" }}>{stat.value}</div>
+                  <div style={{ fontSize: "13px", fontWeight: 600, color: "#1a3a6b", letterSpacing: "0.5px", marginTop: "4px" }}>
+                    {stat.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Exam Results */}
+            <div className="results-section" style={{ padding: "60px 80px", background: "#fffbee" }}>
+              <h2 style={{ color: "#1a3a6b", fontSize: "26px", fontWeight: 800, marginBottom: "30px", textAlign: "center" }}>
+                Exam Results
+              </h2>
+              <div className="results-table-wrap" style={{ border: "1px solid rgba(26,58,107,0.12)", borderRadius: "6px", overflow: "hidden", maxWidth: "900px", margin: "0 auto" }}>
+                <div
+                  className="results-row results-table-header"
+                  style={{ display: "flex", padding: "12px 20px", background: "#1a3a6b", fontSize: "13px", fontWeight: 700, color: "#fff" }}
+                >
+                  <div style={{ width: "70%" }}>Exam Name</div>
+                  <div style={{ width: "30%" }}>Result Link</div>
+                </div>
+
+                {(examData.examResultDTOS ?? []).length === 0 ? (
+                  <div style={{ padding: "20px", textAlign: "center", color: "#777", fontSize: "13px" }}>
+                    Results not published yet.
+                  </div>
+                ) : (
+                  (examData.examResultDTOS as ExamResultDTO[]).map((row, i) => {
+                    const url = row.resultData ? base64ToPdfUrl(row.resultData) : null;
+                    return (
+                      <div
+                        key={row.examResultId ?? row.resultName}
+                        className="results-row examresult-item-row"
+                        style={{ display: "flex", alignItems: "center", padding: "14px 20px", background: i % 2 === 0 ? "#fff" : "#fffbee", fontSize: "13px" }}
+                      >
+                        <div style={{ width: "70%", color: "#333", fontWeight: 600 }}>{row.resultName}</div>
+                        <div style={{ width: "30%" }}>
+                          {url ? (
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ color: "#1569ad", fontWeight: 700, textDecoration: "none", borderBottom: "1px solid #1569ad" }}
+                            >
+                              View Result
+                            </a>
+                          ) : (
+                            <span style={{ color: "#aaa", fontWeight: 600, cursor: "not-allowed" }} title="Preview not available">
+                              Not Available
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Toppers - single flat carousel across all toppers, autoplay + responsive page size */}
+            <div className="results-section" style={{ padding: "60px 80px", background: "#fffbee" }}>
+              <h2 style={{ color: "#1a3a6b", fontSize: "26px", fontWeight: 800, marginBottom: "30px", textAlign: "center" }}>
+                This Year's Toppers
+              </h2>
+
+              {(examData.toppersDTOS ?? []).length === 0 ? (
+                <div style={{ textAlign: "center", color: "#777", fontSize: "13px", padding: "20px" }}>
+                  No toppers published yet for this selection.
+                </div>
+              ) : (
+                (() => {
+                  const allToppers = examData.toppersDTOS as TopperDTO[];
+                  const totalPages = Math.ceil(allToppers.length / cardsPerPage);
+                  const start = topperPage * cardsPerPage;
+                  const visibleToppers = allToppers.slice(start, start + cardsPerPage);
+                  const canGoPrev = topperPage > 0;
+                  const canGoNext = topperPage < totalPages - 1;
+
+                  const goPrev = () => {
+                    setIsPaused(true);
+                    setTopperPage((p) => Math.max(0, p - 1));
+                    setTimeout(() => setIsPaused(false), 6000);
+                  };
+                  const goNext = () => {
+                    setIsPaused(true);
+                    setTopperPage((p) => Math.min(totalPages - 1, p + 1));
+                    setTimeout(() => setIsPaused(false), 6000);
+                  };
+
+                  return (
+                    <>
+                      <div
+                        className="toppers-carousel-wrap"
+                        onMouseEnter={() => setIsPaused(true)}
+                        onMouseLeave={() => setIsPaused(false)}
+                        style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "16px", maxWidth: "1100px", margin: "0 auto" }}
+                      >
+                        <button
+                          onClick={goPrev}
+                          disabled={!canGoPrev}
+                          aria-label="Previous toppers"
                           style={{
-                            width: "84px",
-                            height: "84px",
+                            flexShrink: 0,
+                            width: "40px",
+                            height: "40px",
                             borderRadius: "50%",
-                            objectFit: "cover",
-                            margin: "0 auto 12px",
-                            display: "block",
-                            border: "3px solid #fffbee",
-                            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-                          }}
-                        />
-                      ) : (
-                        <a
-                          href={t.pdf}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="View marksheet PDF"
-                          style={{
-                            width: "84px",
-                            height: "84px",
-                            borderRadius: "50%",
-                            margin: "0 auto 12px",
+                            border: "none",
+                            background: "#fff",
+                            color: canGoPrev ? "#1a3a6b" : "#ccc",
+                            fontSize: "18px",
+                            fontWeight: 800,
+                            cursor: canGoPrev ? "pointer" : "not-allowed",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            background: "#1a3a6b",
-                            color: "#fff",
-                            fontSize: "11px",
-                            fontWeight: 800,
-                            textDecoration: "none",
+                            boxShadow: "0 2px 10px rgba(0,0,0,0.12)",
                           }}
                         >
-                          PDF
-                        </a>
-                      )}
-                      <div style={{ color: "#1a3a6b", fontWeight: 700, fontSize: "15px" }}>{t.name}</div>
-                      <div style={{ color: "#777", fontSize: "12px", margin: "4px 0" }}>{t.standard} • {t.score}</div>
-                      <div style={{ color: "#555", fontSize: "12px", marginBottom: t.pdf ? "10px" : 0 }}>{t.note}</div>
-                      {t.pdf && (
-                        <a
-                          href={t.pdf}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                          ‹
+                        </button>
+
+                        <div
+                          className="toppers-grid"
                           style={{
-                            color: "#1569ad",
-                            fontWeight: 700,
-                            fontSize: "12px",
-                            textDecoration: "none",
-                            borderBottom: "1px solid #1569ad",
+                            display: "flex",
+                            justifyContent: "center",
+                            gap: "18px",
+                            flex: 1,
+                            minWidth: 0,
                           }}
                         >
-                          View Marksheet (PDF)
-                        </a>
+                          {visibleToppers.map((t, idx) => {
+                            const initials = (t.userName || "?")
+                              .split(" ")
+                              .map((p) => p[0])
+                              .join("")
+                              .slice(0, 2)
+                              .toUpperCase();
+                            return (
+                              <div
+                                key={t.topperId ?? `${start + idx}`}
+                                className="topper-card"
+                                style={{
+                                  background: "#fff",
+                                  borderRadius: "10px",
+                                  padding: "24px",
+                                  textAlign: "center",
+                                  boxShadow: "0 4px 14px rgba(0,0,0,0.06)",
+                                  borderTop: "4px solid #f5a800",
+                                  flex: "1 1 0",
+                                  maxWidth: "340px",
+                                  minWidth: 0,
+                                }}
+                              >
+                                <div
+                                  className="topper-avatar"
+                                  style={{
+                                    width: "84px",
+                                    height: "84px",
+                                    borderRadius: "50%",
+                                    margin: "0 auto 12px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    background: "#1a3a6b",
+                                    color: "#fff",
+                                    fontSize: "22px",
+                                    fontWeight: 800,
+                                  }}
+                                >
+                                  {initials}
+                                </div>
+                                <div style={{ color: "#1a3a6b", fontWeight: 700, fontSize: "15px" }}>{t.userName}</div>
+                                <div style={{ color: "#777", fontSize: "12px", margin: "4px 0" }}>
+                                  {t.std}{t.section ? ` • ${t.section}` : ""}
+                                </div>
+                                <div style={{ color: "#555", fontSize: "12px" }}>{t.description}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <button
+                          onClick={goNext}
+                          disabled={!canGoNext}
+                          aria-label="Next toppers"
+                          style={{
+                            flexShrink: 0,
+                            width: "40px",
+                            height: "40px",
+                            borderRadius: "50%",
+                            border: "none",
+                            background: "#fff",
+                            color: canGoNext ? "#1a3a6b" : "#ccc",
+                            fontSize: "18px",
+                            fontWeight: 800,
+                            cursor: canGoNext ? "pointer" : "not-allowed",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            boxShadow: "0 2px 10px rgba(0,0,0,0.12)",
+                          }}
+                        >
+                          ›
+                        </button>
+                      </div>
+
+                      {totalPages > 1 && (
+                        <div style={{ textAlign: "center", marginTop: "14px", fontSize: "11px", color: "#999" }}>
+                          {topperPage + 1} / {totalPages}
+                        </div>
                       )}
-                    </div>
-                  ))}
-                </div>
-                {students.length > VISIBLE_COUNT && (
-                  <div style={{ textAlign: "center", marginTop: "14px" }}>
-                    <button
-                      onClick={() =>
-                        setExpandedStandards((prev) => ({ ...prev, [standard]: !isExpanded }))
-                      }
-                      style={{
-                        border: "1px solid #1a3a6b",
-                        background: "#fff",
-                        color: "#1a3a6b",
-                        padding: "6px 16px",
-                        borderRadius: "20px",
-                        fontSize: "12px",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                      }}
-                    >
-                      {isExpanded ? "Show Less" : `View All (${students.length})`}
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })
-        )}
-      </div>
+                    </>
+                  );
+                })()
+              )}
+            </div>
+          </>
+        )
+      )}
 
       {/* Closing banner */}
       <div style={{ position: "relative" }}>

@@ -8,6 +8,8 @@ import Visitors from '../assets/EventsImages/Visitor.png';
 import LanguageDayCelebrations from '../assets/EventsImages/LanguageD.png';
 import InterHouseEvents from '../assets/EventsImages/InterHoseEvents.png';
 import LeadershipSeries from '../assets/EventsImages/Leadership.png';
+import { useEffect, useState } from 'react';
+import { base64ToBlobUrl, newsService, sanitizeNewsData, type NewsDTO } from '../services/NewsService';
 
 export default function Events() {
   const events = [
@@ -21,38 +23,35 @@ export default function Events() {
     { title: 'Leadership Series', icon: '🌐', image: LeadershipSeries, href: '/leadership-series' },
   ];
 
-  const eventTableData = [
-    {
-      id: 1,
-      eventName: "Annual Day Celebration 2026",
-      eventLink: "#",
-    },
-    {
-      id: 2,
-      eventName: "Science & Art Exhibition",
-      eventLink: "#",
-    },
-    {
-      id: 3,
-      eventName: "Sports Day",
-      eventLink: "#",
-    },
-    {
-      id: 4,
-      eventName: "Independence Day Celebration",
-      eventLink: "#",
-    },
-    {
-      id: 5,
-      eventName: "Children's Day Celebration",
-      eventLink: "#",
-    },
-    {
-      id: 6,
-      eventName: "Educational Visit to Science Centre",
-      eventLink: "#",
-    },
-  ];
+  const [newsList, setNewsList] = useState<NewsDTO[]>([]);
+  const [newsLoading, setNewsLoading] = useState(true);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await newsService.getAllNews(0, 50, controller.signal);
+        setNewsList(res?.data?.newsDTOS ?? []);
+      } catch (err: any) {
+        if (err?.name !== 'CanceledError' && err?.code !== 'ERR_CANCELED') {
+          console.error('Failed to load news', err);
+        }
+      } finally {
+        if (!controller.signal.aborted) setNewsLoading(false);
+      }
+    })();
+    return () => controller.abort();
+  }, []);
+
+  const handleNewsLinkClick = (item: NewsDTO) => {
+    const validBase64 = sanitizeNewsData(item.newsData);
+    if (!validBase64) return;
+    const blobUrl = base64ToBlobUrl(validBase64);
+    window.open(blobUrl, '_blank', 'noopener,noreferrer');
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
+  };
+
+  const colDivider = { borderRight: "1px solid #e2e2e2" };
 
   return (
     <div className="dais-about">
@@ -359,23 +358,29 @@ export default function Events() {
   }
 
   .dais-about .event-table-row > div:nth-child(1)::before {
-    content: "Sr. No.";
-    font-weight: 700;
-    color: #1569ad;
-  }
+  content: "Sr. No.";
+  font-weight: 700;
+  color: #1569ad;
+}
 
-  .dais-about .event-table-row > div:nth-child(2)::before {
-    content: "Event";
-    font-weight: 700;
-    color: #1569ad;
-    flex-shrink: 0;
-  }
+.dais-about .event-table-row > div:nth-child(2)::before {
+  content: "News";
+  font-weight: 700;
+  color: #1569ad;
+  flex-shrink: 0;
+}
 
-  .dais-about .event-table-row > div:nth-child(3)::before {
-    content: "Link";
-    font-weight: 700;
-    color: #1569ad;
-  }
+.dais-about .event-table-row > div:nth-child(3)::before {
+  content: "Description";
+  font-weight: 700;
+  color: #1569ad;
+}
+
+.dais-about .event-table-row > div:nth-child(4)::before {
+  content: "Link";
+  font-weight: 700;
+  color: #1569ad;
+}
 
   .dais-about .event-table-row a {
     display: inline-block;
@@ -447,7 +452,9 @@ export default function Events() {
             <div
               className="event-table-header"
               style={{
-                display: "flex",
+                display: "grid",
+                gridTemplateColumns: "80px 1fr 1.4fr 180px",
+                gap: "16px",
                 background: "#1a3a6b",
                 color: "#fff",
                 fontWeight: 700,
@@ -455,56 +462,63 @@ export default function Events() {
                 padding: "14px 20px",
               }}
             >
-              <div style={{ width: "80px" }}>Sr. No.</div>
-              <div style={{ flex: 1 }}>News</div>
-              <div style={{ width: "180px" }}>News Link</div>
+              <div style={{ borderRight: "1px solid rgba(255,255,255,0.25)", paddingRight: "16px" }}>Sr. No.</div>
+              <div style={{ borderRight: "1px solid rgba(255,255,255,0.25)", paddingRight: "16px" }}>News</div>
+              <div style={{ borderRight: "1px solid rgba(255,255,255,0.25)", paddingRight: "16px" }}>Description</div>
+              <div>News Link</div>
             </div>
 
-            {eventTableData.map((event, index) => (
-              <div
-                key={event.id}
-                className="event-table-row"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "16px 20px",
-                  background: index % 2 === 0 ? "#fff" : "#fffbee",
-                  borderBottom:
-                    index !== eventTableData.length - 1
-                      ? "1px solid #ececec"
-                      : "none",
-                }}
-              >
-                <div style={{ width: "80px", fontWeight: 600 }}>
-                  {index + 1}
-                </div>
-
-                <div
-                  style={{
-                    flex: 1,
-                    color: "#333",
-                    fontWeight: 600,
-                  }}
-                >
-                  {event.eventName}
-                </div>
-
-                <div style={{ width: "180px" }}>
-                  <a
-                    href={event.eventLink}
-                    target="_blank"
-                    rel="noreferrer"
+            {newsLoading ? (
+              <div style={{ padding: "20px", textAlign: "center", color: "#667085" }}>Loading news…</div>
+            ) : newsList.length === 0 ? (
+              <div style={{ padding: "20px", textAlign: "center", color: "#667085" }}>No news available.</div>
+            ) : (
+              newsList.map((item, index) => {
+                const hasAttachment = Boolean(sanitizeNewsData(item.newsData));
+                return (
+                  <div
+                    key={item.newsId ?? index}
+                    className="event-table-row"
                     style={{
-                      color: "#1569ad",
-                      fontWeight: 700,
-                      textDecoration: "none",
+                      display: "grid",
+                      gridTemplateColumns: "80px 1fr 1.4fr 180px",
+                      alignItems: "center",
+                      gap: "16px",
+                      padding: "16px 20px",
+                      background: index % 2 === 0 ? "#fff" : "#fffbee",
+                      borderBottom: index !== newsList.length - 1 ? "1px solid #d8d8d8" : "none",
                     }}
                   >
-                    View News
-                  </a>
-                </div>
-              </div>
-            ))}
+                    <div style={{ fontWeight: 600, ...colDivider, paddingRight: "16px" }}>{index + 1}</div>
+
+                    <div style={{ color: "#333", fontWeight: 600, minWidth: 0, overflowWrap: "break-word", ...colDivider, paddingRight: "16px" }}>
+                      {item.news}
+                    </div>
+
+                    <div style={{ color: "#555", minWidth: 0, overflowWrap: "break-word", wordBreak: "break-word", ...colDivider, paddingRight: "16px" }}>
+                      {item.newsDescription || "-"}
+                    </div>
+
+                    <div>
+                      {hasAttachment ? (
+                        <a
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleNewsLinkClick(item);
+                          }}
+                          style={{ color: "#1569ad", fontWeight: 700, textDecoration: "none" }}
+                        >
+                          View News
+                        </a>
+                      ) : (
+                        <span style={{ color: "#999" }}>No attachment</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
@@ -528,6 +542,6 @@ export default function Events() {
           </div>
         </main>
       </div>
-    </div>
+    </div >
   );
 }
