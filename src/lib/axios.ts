@@ -22,6 +22,7 @@ axiosInstance.interceptors.response.use(
     if (error.response?.status === 401 || error.response?.status === 403) {
       localStorage.removeItem("token");
       localStorage.removeItem("username");
+      window.location.replace("/login"); // Change "/login" if your login route is different
     }
     return Promise.reject(error);
   }
