@@ -182,6 +182,7 @@ function ExamSection({
   // Upload fileLists keyed by Form.List field key, for examResultDTOS / examNoticeDTOS
   const [resultFileLists, setResultFileLists] = useState<Record<string, UploadFile[]>>({});
   const [noticeFileLists, setNoticeFileLists] = useState<Record<string, UploadFile[]>>({});
+  const [topperImageLists, setTopperImageLists] = useState<Record<string, UploadFile[]>>({});
 
   const fetchedForRef = useRef<string | null>(null);
 
@@ -243,6 +244,16 @@ function ExamSection({
               examId: t.examId,
             })),
           };
+
+          const initialTopperImages: Record<string, UploadFile[]> = {};
+          (existing.toppersDTOS ?? []).forEach((t: any, idx: number) => {
+            if (t.studentImage) {
+              initialTopperImages[String(idx)] = [
+                buildUploadFileFromBase64(t.studentImage, `topper-${idx}`, `${t.userName || "student"}.jpg`),
+              ];
+            }
+          });
+          setTopperImageLists(initialTopperImages);
 
           const initialResultFiles: Record<string, UploadFile[]> = {};
           (existing.examResultDTOS ?? []).forEach((r: any, idx: number) => {
@@ -337,6 +348,28 @@ function ExamSection({
     setNoticeFileLists((prev) => ({ ...prev, [entryKey]: [file] }));
   };
 
+  const handleTopperImageChange = async (
+    fieldName: number,
+    entryKey: string,
+    info: { fileList: UploadFile[] }
+  ) => {
+    const file = info.fileList[info.fileList.length - 1];
+
+    if (!file) {
+      setTopperImageLists((prev) => ({ ...prev, [entryKey]: [] }));
+      form.setFieldValue(["toppersDTOS", fieldName, "studentImage"], null);
+      return;
+    }
+
+    if (file.originFileObj) {
+      const base64 = await fileToBase64(file.originFileObj as File);
+      form.setFieldValue(["toppersDTOS", fieldName, "studentImage"], base64);
+      file.url = URL.createObjectURL(file.originFileObj as File);
+    }
+
+    setTopperImageLists((prev) => ({ ...prev, [entryKey]: [file] }));
+  };
+
   const handleFinish = async (values: any) => {
     setSaving(true);
 
@@ -370,6 +403,7 @@ function ExamSection({
         userName: t.userName,
         std: t.std,
         description: t.description,
+        studentImage: t.studentImage ?? null, // ← add this line
       };
     });
 
@@ -676,19 +710,45 @@ function ExamSection({
                           </Form.Item>
                         </Col>
                       </Row>
-                      <Form.Item
-                        {...field}
-                        name={[field.name, "medium"]}
-                        rules={[{ required: true, message: "Medium required" }]}
-                      >
-                        <Select
-                          placeholder="Select medium"
-                          options={[
-                            { value: "English", label: "English" },
-                            { value: "Marathi", label: "Marathi" },
-                          ]}
-                        />
+                      <Form.Item {...field} name={[field.name, "studentImage"]} hidden>
+                        <Input />
                       </Form.Item>
+
+                      <Row gutter={12} align="middle" style={{ marginBottom: 16 }}>
+                        <Col span={16}>
+                          <Form.Item
+                            {...field}
+                            name={[field.name, "medium"]}
+                            rules={[{ required: true, message: "Medium required" }]}
+                            style={{ marginBottom: 0 }}
+                          >
+                            <Select
+                              placeholder="Select medium"
+                              options={[
+                                { value: "English", label: "English" },
+                                { value: "Marathi", label: "Marathi" },
+                              ]}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                          <Upload
+                            maxCount={1}
+                            accept="image/*"
+                            listType="picture-card"
+                            fileList={topperImageLists[String(field.name)] ?? []}
+                            beforeUpload={() => false}
+                            onChange={(info) => handleTopperImageChange(field.name, String(field.name), info)}
+                            onPreview={(file) => {
+                              if (file.url) window.open(file.url, "_blank");
+                            }}
+                          >
+                            {(topperImageLists[String(field.name)] ?? []).length === 0 && (
+                              <div><PlusOutlined /><div style={{ marginTop: 4 }}>Photo</div></div>
+                            )}
+                          </Upload>
+                        </Col>
+                      </Row>
                       <Form.Item {...field} name={[field.name, "description"]} style={{ marginBottom: 0 }}>
                         <TextArea rows={2} placeholder="e.g. School Topper - 98.6%" />
                       </Form.Item>

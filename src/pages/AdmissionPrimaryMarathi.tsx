@@ -34,7 +34,7 @@ const documents = [
   "Previous year's report card",
 ];
 
-export default function AdmissionPrimary() {
+export default function AdmissionPrimaryMarathi() {
   const navigate = useNavigate();
 
   return (

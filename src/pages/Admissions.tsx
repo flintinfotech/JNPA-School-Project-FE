@@ -5,19 +5,19 @@ import { useNavigate } from "react-router-dom";
 const sections = [
   {
     label: "Pre Primary",
-    grades: ["Nursery", "Junior KG", "Senior KG"],
+    grades: ["Playgroup", "Nursery", "Junior KG (LKG)", "Senior KG (UKG)"],
     color: "#c0392b",
     route: "/admissions/pre-primary",
   },
   {
     label: "Primary",
-    grades: ["Grade 1", "Grade 2", "Grade 3", "Grade 4"],
+    grades: ["Grade I", "Grade II", "Grade III", "Grade IV"],
     color: "#1569ad",
     route: "/admissions/primary",
   },
   {
     label: "Secondary",
-    grades: ["Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10"],
+    grades: ["Grade V", "Grade VI", "Grade VII", "Grade VIII", "Grade IX", "Grade X"],
     color: "#1f4d3d",
     route: "/admissions/secondary",
   },
@@ -167,6 +167,7 @@ export default function Admissions() {
                     margin: "0 auto 18px",
                   }}
                 />
+
                 <h3
                   style={{
                     color: "#fff",
@@ -178,6 +179,7 @@ export default function Admissions() {
                 >
                   {s.label}
                 </h3>
+
                 <div style={{ marginBottom: "20px" }}>
                   {s.grades.map((g) => (
                     <p
@@ -194,32 +196,82 @@ export default function Admissions() {
                   ))}
                 </div>
               </div>
-              <button
-                onClick={() => navigate(s.route)}
-                style={{
-                  background: "transparent",
-                  border: "2px solid #fff",
-                  color: "#fff",
-                  padding: "11px 28px",
-                  borderRadius: "30px",
-                  fontSize: "13px",
-                  fontWeight: 700,
-                  letterSpacing: "1px",
-                  textTransform: "uppercase",
-                  cursor: "pointer",
-                  transition: "background 0.2s, color 0.2s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#fff";
-                  e.currentTarget.style.color = s.color;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "transparent";
-                  e.currentTarget.style.color = "#fff";
-                }}
-              >
-                Click Here to Proceed
-              </button>
+
+              {s.label === "Pre Primary" ? (
+                <button
+                  onClick={() => navigate("/admissions/pre-primary")}
+                  style={{
+                    background: "transparent",
+                    border: "2px solid #fff",
+                    color: "#fff",
+                    padding: "11px 28px",
+                    borderRadius: "30px",
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    letterSpacing: "1px",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                  }}
+                >
+                  Click Here to Proceed
+                </button>
+              ) : (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "12px",
+                    width: "100%",
+                    alignItems: "center",
+                  }}
+                >
+                  <button
+                    onClick={() =>
+                      navigate(
+                        s.label === "Primary"
+                          ? "/admissions/primary/english"
+                          : "/admissions/secondary/english"
+                      )
+                    }
+                    style={{
+                      background: "#fff",
+                      color: s.color,
+                      border: "2px solid #fff",
+                      padding: "10px 24px",
+                      borderRadius: "30px",
+                      fontSize: "13px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      width: "220px",
+                    }}
+                  >
+                    English Medium
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      navigate(
+                        s.label === "Primary"
+                          ? "/admissions/primary/marathi"
+                          : "/admissions/secondary/marathi"
+                      )
+                    }
+                    style={{
+                      background: "transparent",
+                      color: "#fff",
+                      border: "2px solid #fff",
+                      padding: "10px 24px",
+                      borderRadius: "30px",
+                      fontSize: "13px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      width: "220px",
+                    }}
+                  >
+                    मराठी माध्यम
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

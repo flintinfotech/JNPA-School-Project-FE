@@ -565,9 +565,18 @@ export default function ExamandResult() {
                                     color: "#fff",
                                     fontSize: "22px",
                                     fontWeight: 800,
+                                    overflow: "hidden",
                                   }}
                                 >
-                                  {initials}
+                                  {t.studentImage ? (
+                                    <img
+                                      src={`data:image/jpeg;base64,${t.studentImage}`}
+                                      alt={t.userName}
+                                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                    />
+                                  ) : (
+                                    initials
+                                  )}
                                 </div>
                                 <div style={{ color: "#1a3a6b", fontWeight: 700, fontSize: "15px" }}>{t.userName}</div>
                                 <div style={{ color: "#777", fontSize: "12px", margin: "4px 0" }}>

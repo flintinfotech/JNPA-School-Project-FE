@@ -26,6 +26,7 @@ export interface TopperDTO {
   userName: string;
   std: string;
   description: string;
+  studentImage?: string; // raw base64, no data: prefix
 }
 
 export interface ExamDTO {

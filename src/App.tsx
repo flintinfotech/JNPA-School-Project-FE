@@ -14,8 +14,6 @@ import Alumni from "./pages/Alumni";
 import Academics from "./pages/Academics";
 import Admissions from "./pages/Admissions";
 import AdmissionPrePrimary from "./pages/AdmissionPrePrimary";
-import AdmissionPrimary from "./pages/AdmissionPrimary";
-import AdmissionSecondary from "./pages/AdmissionSecondary";
 import Awards from "./pages/Awards";
 import Campus from "./pages/Campus";
 import Careers from "./pages/Careers";
@@ -41,8 +39,12 @@ import AcademicsSecondaryMarathi from "./pages/AcademicsSecondaryMarathi";
 import AcademicsSecondaryEnglish from "./pages/AcademicsSecondaryEnglish";
 import AcademicsAdmin from "./pages/AcademicsAdmin";
 import EventsAndNewsAdmin from "./pages/Events&NewsAdmin";
-import ExamAndResultsAdmin from "./pages/Exam&NewsAdmin";
+import ExamAndResultsAdmin from "./pages/Exam&ResultAdmin";
 import AdmissionAdmin from "./pages/AdmissionAdmin";
+import AdmissionPrimaryMarathi from "./pages/AdmissionPrimaryMarathi";
+import AdmissionPrimaryEnglish from "./pages/AdmissionPrimaryEnglish";
+import AdmissionSecondarMarathi from "./pages/AdmissionSecondaryMarathi";
+import AdmissionSecondaryEnglish from "./pages/AdmissionSecondaryEnglish";
 
 export default function App() {
   const { isAuthenticated, login, logout } = useAuth();
@@ -107,8 +109,10 @@ export default function App() {
 
           <Route path="/admissions" element={<Admissions />} />
           <Route path="/admissions/pre-primary" element={<AdmissionPrePrimary />} />
-          <Route path="/admissions/primary" element={<AdmissionPrimary />} />
-          <Route path="/admissions/secondary" element={<AdmissionSecondary />} />
+          <Route path="/admissions/primary/english" element={<AdmissionPrimaryEnglish />} />
+          <Route path="/admissions/primary/marathi" element={<AdmissionPrimaryMarathi />} />
+          <Route path="/admissions/secondary/english" element={<AdmissionSecondaryEnglish />} />
+          <Route path="/admissions/secondary/marathi" element={<AdmissionSecondarMarathi />} />
           <Route path="/awards" element={<Awards />} />
           <Route path="/campus" element={<Campus />} />
           <Route path="/careers" element={<Careers />} />

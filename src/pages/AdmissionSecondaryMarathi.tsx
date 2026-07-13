@@ -37,7 +37,7 @@ const documents = [
   "Character Certificate from previous school",
 ];
 
-export default function AdmissionSecondary() {
+export default function AdmissionSecondarMarathi() {
   const navigate = useNavigate();
 
   return (
