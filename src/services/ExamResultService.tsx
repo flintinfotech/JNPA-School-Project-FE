@@ -2,6 +2,7 @@
 // DTOs
 
 import axiosInstance from "../lib/axios";
+import { apiEndpoints } from "./apiEndpoints";
 
 // ---------------------------------------------------------------------------
 export interface ExamResultDTO {
@@ -43,27 +44,18 @@ export interface ExamDTO {
   toppersDTOS: TopperDTO[];
 }
 
-// ---------------------------------------------------------------------------
-// Endpoints
-// ---------------------------------------------------------------------------
-const ExamEndpoints = {
-  saveExam: () => `/jnpa-school-project/exam/saveExam`,
-  updateExam: () => `/jnpa-school-project/exam/updateExam`,
-  getAllExamsByFilter: (page: number, size: number) =>
-    `/jnpa-school-project/exam/getAllExamsByFilter?page=${page}&size=${size}&paginate=true`,
-};
 
 // ---------------------------------------------------------------------------
 // Calls
 // ---------------------------------------------------------------------------
 export const saveExam = (payload: ExamDTO) =>
-  axiosInstance.post(ExamEndpoints.saveExam(), payload);
+  axiosInstance.post(apiEndpoints.saveExam(), payload);
 
 export const updateExam = (payload: ExamDTO & { examId: number }) =>
-  axiosInstance.put(ExamEndpoints.updateExam(), payload);
+  axiosInstance.put(apiEndpoints.updateExam(), payload);
 
 export const getAllExamsByFilter = (
   page: number,
   size: number,
   filter: { classRoomName?: string; medium?: "English" | "Marathi" } = {}
-) => axiosInstance.post(ExamEndpoints.getAllExamsByFilter(page, size), filter);
+) => axiosInstance.post(apiEndpoints.getAllExamsByFilter(page, size), filter);

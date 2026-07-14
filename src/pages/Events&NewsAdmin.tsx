@@ -66,6 +66,8 @@ const EventsAndNewsAdmin: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [cardPendingDelete, setCardPendingDelete] = useState<NewsCard | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 5;
 
   const loadNews = async (signal?: AbortSignal) => {
     setLoading(true);
@@ -74,6 +76,7 @@ const EventsAndNewsAdmin: React.FC = () => {
       const res = await newsService.getAllNews(0, 50, signal);
       const list = res?.data?.newsDTOS ?? [];
       setCards(list.length ? list.map(dtoToCard) : [emptyCard()]);
+      setCurrentPage(1);
     } catch (err: any) {
       if (err?.name === "CanceledError" || err?.code === "ERR_CANCELED") {
         // request was aborted (e.g. StrictMode's double-invoke, or a fast unmount) — not a real error
@@ -99,7 +102,11 @@ const EventsAndNewsAdmin: React.FC = () => {
   };
 
   const handleAddNew = () => {
-    setCards((prev) => [...prev, emptyCard()]);
+    setCards((prev) => {
+      const next = [...prev, emptyCard()];
+      setCurrentPage(Math.ceil(next.length / pageSize));
+      return next;
+    });
   };
 
   const handleFileChange = (localId: string, fileList: FileList | null) => {
@@ -135,13 +142,19 @@ const EventsAndNewsAdmin: React.FC = () => {
         if (!res?.success) {
           throw new Error(res?.message || "Save failed. Please try again.");
         }
-        updateCard(card.localId, {
-          saving: false,
-          newsId: res.data?.newsId ?? null,
-          existingNewsData: sanitizeNewsData(res.data?.newsData) ?? res.sentNewsData ?? card.existingNewsData,
-          file: null,
-          savedAt: Date.now(),
+        setCards((prev) => {
+          const saved: NewsCard = {
+            ...card,
+            saving: false,
+            newsId: res.data?.newsId ?? null,
+            existingNewsData: sanitizeNewsData(res.data?.newsData) ?? res.sentNewsData ?? card.existingNewsData,
+            file: null,
+            savedAt: Date.now(),
+          };
+          const rest = prev.filter((c) => c.localId !== card.localId);
+          return [saved, ...rest];
         });
+        setCurrentPage(1);
         message.success(res.message || "News saved successfully");
       } else {
         const res = await newsService.updateNews(card.newsId, card.news.trim(), card.file, card.existingNewsData, card.newsDescription);
@@ -276,6 +289,10 @@ const EventsAndNewsAdmin: React.FC = () => {
           color: #B7791F;
         }
         .ena-card-badge.is-saved {
+          background: #E7F5EC;
+          color: #2F855A;
+        }
+        .ena-card-badge.is-top {
           background: #E7F5EC;
           color: #2F855A;
         }
@@ -419,6 +436,48 @@ const EventsAndNewsAdmin: React.FC = () => {
           background: #FBF1DC;
         }
 
+        .ena-pagination {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-top: 18px;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+        .ena-pagination-count {
+          font-size: 13px;
+          color: #667085;
+        }
+        .ena-pagination-controls {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .ena-page-btn {
+          border: 1px solid #D6DAE3;
+          background: #FFFFFF;
+          color: #1B2A4A;
+          border-radius: 8px;
+          padding: 6px 12px;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background 0.15s ease, border-color 0.15s ease;
+        }
+        .ena-page-btn:hover:not(:disabled) {
+          background: #F4F5F7;
+          border-color: #C4CAD6;
+        }
+        .ena-page-btn:disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
+        }
+        .ena-page-btn.is-active {
+          background: #1B2A4A;
+          border-color: #1B2A4A;
+          color: #FFFFFF;
+        }
+
         /* Delete confirmation modal */
         .ena-modal-backdrop {
           position: fixed;
@@ -480,97 +539,137 @@ const EventsAndNewsAdmin: React.FC = () => {
           <div className="ena-loading">Loading news…</div>
         ) : (
           <div className="ena-cards">
-            {cards.map((card) => {
-              const isNew = card.newsId == null;
-              const justSaved = card.savedAt && Date.now() - card.savedAt < 4000;
-              const hasAttachment = Boolean(card.file || card.existingNewsData);
-              return (
-                <div className="ena-card" key={card.localId}>
-                  <div className="ena-card-top">
-                    <span className={`ena-card-badge ${isNew ? "is-new" : justSaved ? "is-saved" : ""}`}>
-                      {isNew ? "New" : justSaved ? "Saved" : `News #${card.newsId}`}
-                    </span>
-                  </div>
-
-                  <div className="ena-row">
-                    <div>
-                      <label className="ena-field-label">News name</label>
-                      <input
-                        className="ena-input"
-                        type="text"
-                        placeholder="e.g. Sports notice"
-                        value={card.news}
-                        onChange={(e) => updateCard(card.localId, { news: e.target.value, error: null })}
-                      />
+            {cards
+              .slice((currentPage - 1) * pageSize, (currentPage - 1) * pageSize + pageSize)
+              .map((card, i) => {
+                const index = (currentPage - 1) * pageSize + i;
+                const isNew = card.newsId == null;
+                const justSaved = card.savedAt && Date.now() - card.savedAt < 4000;
+                const hasAttachment = Boolean(card.file || card.existingNewsData);
+                const isFirstThree = index < 3;
+                const badgeLabel = isNew ? "New" : justSaved ? "Saved" : isFirstThree ? "New" : null;
+                const badgeClass = isNew ? "is-new" : justSaved ? "is-saved" : isFirstThree ? "is-top" : "";
+                return (
+                  <div className="ena-card" key={card.localId}>
+                    <div className="ena-card-top">
+                      {badgeLabel && <span className={`ena-card-badge ${badgeClass}`}>{badgeLabel}</span>}
                     </div>
-                    <div>
-                      <label className="ena-field-label">Attachment (PDF, photo, or any file)</label>
-                      <div className="ena-file-zone">
-                        <label className="ena-file-input-label">
-                          📎 Choose file
-                          <input
-                            type="file"
-                            onChange={(e) => handleFileChange(card.localId, e.target.files)}
-                          />
-                        </label>
-                        {card.file ? (
-                          <span className="ena-file-chip" title={card.file.name}>
-                            {fileLabel(card.file.name)}: {card.file.name}
-                          </span>
-                        ) : card.existingNewsData ? (
-                          <span className="ena-file-chip">File attached</span>
-                        ) : (
-                          <span className="ena-file-chip">No file selected</span>
-                        )}
-                        {hasAttachment && (
-                          <button className="ena-file-preview-link" onClick={() => handlePreview(card)}>
-                            Preview
-                          </button>
-                        )}
-                        {card.file && (
-                          <button
-                            className="ena-file-clear"
-                            onClick={() => updateCard(card.localId, { file: null })}
-                          >
-                            Clear
-                          </button>
-                        )}
+
+                    <div className="ena-row">
+                      <div>
+                        <label className="ena-field-label">News name</label>
+                        <input
+                          className="ena-input"
+                          type="text"
+                          placeholder="e.g. Sports notice"
+                          value={card.news}
+                          onChange={(e) => updateCard(card.localId, { news: e.target.value, error: null })}
+                        />
+                      </div>
+                      <div>
+                        <label className="ena-field-label">Attachment (PDF, photo, or any file)</label>
+                        <div className="ena-file-zone">
+                          <label className="ena-file-input-label">
+                            📎 Choose file
+                            <input
+                              type="file"
+                              onChange={(e) => handleFileChange(card.localId, e.target.files)}
+                            />
+                          </label>
+                          {card.file ? (
+                            <span className="ena-file-chip" title={card.file.name}>
+                              {fileLabel(card.file.name)}: {card.file.name}
+                            </span>
+                          ) : card.existingNewsData ? (
+                            <span className="ena-file-chip">File attached</span>
+                          ) : (
+                            <span className="ena-file-chip">No file selected</span>
+                          )}
+                          {hasAttachment && (
+                            <button className="ena-file-preview-link" onClick={() => handlePreview(card)}>
+                              Preview
+                            </button>
+                          )}
+                          {card.file && (
+                            <button
+                              className="ena-file-clear"
+                              onClick={() => updateCard(card.localId, { file: null })}
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ marginBottom: 14 }}>
+                        <label className="ena-field-label">Description</label>
+                        <textarea
+                          className="ena-input"
+                          rows={3}
+                          placeholder="Add any extra details for this news item…"
+                          value={card.newsDescription}
+                          onChange={(e) => updateCard(card.localId, { newsDescription: e.target.value, error: null })}
+                          style={{ resize: "vertical", fontFamily: "inherit" }}
+                        />
                       </div>
                     </div>
-                    <div style={{ marginBottom: 14 }}>
-                      <label className="ena-field-label">Description</label>
-                      <textarea
-                        className="ena-input"
-                        rows={3}
-                        placeholder="Add any extra details for this news item…"
-                        value={card.newsDescription}
-                        onChange={(e) => updateCard(card.localId, { newsDescription: e.target.value, error: null })}
-                        style={{ resize: "vertical", fontFamily: "inherit" }}
-                      />
+
+                    {card.error && <div className="ena-card-error">{card.error}</div>}
+
+                    <div className="ena-card-actions">
+                      <button
+                        className="ena-btn ena-btn-save"
+                        onClick={() => handleSave(card)}
+                        disabled={card.saving || card.deleting}
+                      >
+                        {card.saving ? "Saving…" : "Save"}
+                      </button>
+                      <button
+                        className="ena-btn ena-btn-remove"
+                        onClick={() => handleRemoveClick(card)}
+                        disabled={card.saving || card.deleting}
+                      >
+                        {card.deleting ? "Removing…" : "Remove"}
+                      </button>
                     </div>
                   </div>
+                );
+              })}
+          </div>
+        )}
 
-                  {card.error && <div className="ena-card-error">{card.error}</div>}
-
-                  <div className="ena-card-actions">
-                    <button
-                      className="ena-btn ena-btn-save"
-                      onClick={() => handleSave(card)}
-                      disabled={card.saving || card.deleting}
-                    >
-                      {card.saving ? "Saving…" : "Save"}
-                    </button>
-                    <button
-                      className="ena-btn ena-btn-remove"
-                      onClick={() => handleRemoveClick(card)}
-                      disabled={card.saving || card.deleting}
-                    >
-                      {card.deleting ? "Removing…" : "Remove"}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+        {!loading && cards.length > pageSize && (
+          <div className="ena-pagination">
+            <span className="ena-pagination-count">
+              Showing {(currentPage - 1) * pageSize + 1}-
+              {Math.min(currentPage * pageSize, cards.length)} of {cards.length}
+            </span>
+            <div className="ena-pagination-controls">
+              <button
+                className="ena-page-btn"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                ‹ Prev
+              </button>
+              {Array.from({ length: Math.ceil(cards.length / pageSize) }, (_, i) => i + 1).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  className={`ena-page-btn${pageNum === currentPage ? " is-active" : ""}`}
+                  onClick={() => setCurrentPage(pageNum)}
+                >
+                  {pageNum}
+                </button>
+              ))}
+              <button
+                className="ena-page-btn"
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(Math.ceil(cards.length / pageSize), p + 1))
+                }
+                disabled={currentPage === Math.ceil(cards.length / pageSize)}
+              >
+                Next ›
+              </button>
+            </div>
           </div>
         )}
 

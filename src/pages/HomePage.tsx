@@ -5,6 +5,7 @@ import Img1 from "../assets/Img1.webp";
 import Img2 from "../assets/Img2.webp";
 import Img3 from "../assets/Img3.webp";
 import Img4 from "../assets/Img4.webp";
+import newsService, { type NewsDTO, sanitizeNewsData, base64ToBlobUrl } from "../services/NewsService";
 
 // ── Sidebar data ─────────────────────────────────────────────────────────────
 
@@ -32,35 +33,7 @@ const sidebarSections = [
     linkLabel: "Click Here",
     accentHighlights: true,
   },
-  {
-    id: "news",
-    title: "News & Events",
-    news: [
-      {
-        label: "JNPV student wins Gold at National Science Olympiad",
-        href: "/events",
-      },
-      {
-        label: "Annual Day 2025 — A grand celebration of talent",
-        href: "/events",
-      },
-      {
-        label: "Admissions open for academic year 2025–26",
-        href: "/admissions",
-      },
-    ],
-  },
 ];
-
-// const quickNavLinks = [
-//   { label: "About Us", href: "/about-us" },
-//   { label: "Academics", href: "/academics" },
-//   { label: "Admissions", href: "/admissions" },
-//   { label: "Campus", href: "/campus" },
-//   { label: "Events", href: "/events" },
-//   { label: "Student Life", href: "/student-life" },
-//   { label: "Exam and Result", href: "/exam-and-result" },
-// ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -69,6 +42,7 @@ export default function HomePage() {
   const images = [Img1, Img2, Img3, Img4];
 
   const [currentImage, setCurrentImage] = useState(0);
+  const [newsItems, setNewsItems] = useState<NewsDTO[]>([]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -77,6 +51,42 @@ export default function HomePage() {
 
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function fetchNews() {
+      try {
+        const res = await newsService.getAllNews(
+          0,
+          5,
+          controller.signal
+        );
+
+        const list = res.data?.newsDTOS ?? [];
+        setNewsItems(list.slice(0, 3));
+      } catch (err: any) {
+        if (
+          err.name !== "CanceledError" &&
+          err.code !== "ERR_CANCELED"
+        ) {
+          setNewsItems([]);
+          console.error("Failed to fetch news:", err);
+        }
+      }
+    }
+
+    fetchNews();
+
+    return () => controller.abort();
+  }, []);
+
+  const handleNewsClick = (item: NewsDTO) => {
+    const validData = sanitizeNewsData(item.newsData);
+    if (!validData) return;
+    const url = base64ToBlobUrl(validData);
+    window.open(url, "_blank");
+  };
 
   return (
     <div style={{ display: "flex", minHeight: "calc(100vh - 68px)", background: "#f4f6fa" }}>
@@ -245,6 +255,7 @@ export default function HomePage() {
           border-bottom: 1px solid rgba(255,255,255,0.06);
           line-height: 1.4;
           transition: color 0.15s, padding-left 0.15s;
+          cursor: pointer;
         }
 
         .hp-sb-news-item:last-child { border-bottom: none; }
@@ -297,234 +308,6 @@ export default function HomePage() {
 
         .hp-sb-connect-link:hover { color: #f5a800; }
 
-        /* ── Main content ── */
-        .hp-main {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          overflow-y: auto;
-        }
-
-        /* Hero image area */
-        .hp-hero {
-          position: relative;
-          width: 100%;
-          height: 480px;
-          background: linear-gradient(135deg, #0f1c3f 0%, #983929 60%, #983929 100%);
-          overflow: hidden;
-          display: flex;
-          align-items: flex-end;
-        }
-
-        .hp-hero-bg {
-          position: absolute;
-          inset: 0;
-          background:
-            linear-gradient(160deg, rgba(26,58,107,0.85) 0%, rgba(15,28,63,0.5) 100%),
-            repeating-linear-gradient(
-              45deg,
-              transparent,
-              transparent 40px,
-              rgba(245,168,0,0.03) 40px,
-              rgba(245,168,0,0.03) 41px
-            );
-        }
-
-        /* Animated geometric accent */
-        .hp-hero-circle {
-          position: absolute;
-          border-radius: 50%;
-          border: 1px solid rgba(245,168,0,0.12);
-          animation: pulseRing 6s ease-in-out infinite;
-        }
-
-        @keyframes pulseRing {
-          0%, 100% { transform: scale(1); opacity: 0.5; }
-          50% { transform: scale(1.05); opacity: 1; }
-        }
-
-        .hp-hero-content {
-          position: relative;
-          z-index: 2;
-          padding: 40px 48px;
-          width: 100%;
-        }
-
-        .hp-hero-eyebrow {
-          font-size: 10px;
-          font-weight: 700;
-          color: #f5a800;
-          letter-spacing: 3.5px;
-          text-transform: uppercase;
-          margin-bottom: 12px;
-        }
-
-        .hp-hero-title {
-          font-size: 38px;
-          font-weight: 900;
-          color: #ffffff;
-          line-height: 1.1;
-          letter-spacing: -0.5px;
-          margin-bottom: 16px;
-          max-width: 560px;
-        }
-
-        .hp-hero-title em {
-          font-style: normal;
-          color: #f5a800;
-        }
-
-        .hp-hero-sub {
-          font-size: 14px;
-          color: rgba(255,255,255,0.65);
-          max-width: 420px;
-          line-height: 1.6;
-          margin-bottom: 28px;
-        }
-
-        .hp-hero-cta {
-          display: inline-flex;
-          align-items: center;
-          gap: 10px;
-          padding: 13px 28px;
-          background: #f5a800;
-          color: #983929;
-          font-size: 12px;
-          font-weight: 800;
-          letter-spacing: 1.5px;
-          text-transform: uppercase;
-          text-decoration: none;
-          transition: background 0.18s, transform 0.15s;
-        }
-
-        .hp-hero-cta:hover {
-          background: #e09500;
-          transform: translateX(3px);
-        }
-
-        .hp-hero-cta-arrow {
-          font-size: 16px;
-          transition: transform 0.15s;
-        }
-
-        .hp-hero-cta:hover .hp-hero-cta-arrow { transform: translateX(4px); }
-
-        /* Quick nav strip */
-        .hp-quicknav {
-          background: #ffffff;
-          border-bottom: 3px solid #f5a800;
-          padding: 0 48px;
-          display: flex;
-          gap: 0;
-          overflow-x: auto;
-          scrollbar-width: none;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        }
-
-        .hp-quicknav::-webkit-scrollbar { display: none; }
-
-        .hp-quicknav-link {
-          display: flex;
-          align-items: center;
-          padding: 16px 20px;
-          font-size: 11px;
-          font-weight: 700;
-          color: #983929;
-          text-decoration: none;
-          letter-spacing: 0.8px;
-          text-transform: uppercase;
-          white-space: nowrap;
-          border-bottom: 3px solid transparent;
-          margin-bottom: -3px;
-          transition: color 0.15s, border-color 0.15s;
-        }
-
-        .hp-quicknav-link:hover {
-          color: #f5a800;
-          border-bottom-color: #f5a800;
-        }
-
-        /* Content cards grid */
-        .hp-cards {
-          padding: 40px 48px;
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 24px;
-        }
-
-        .hp-card {
-          background: #ffffff;
-          border-radius: 2px;
-          overflow: hidden;
-          box-shadow: 0 2px 12px rgba(0,0,0,0.07);
-          transition: transform 0.18s, box-shadow 0.18s;
-          text-decoration: none;
-          display: block;
-        }
-
-        .hp-card:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-        }
-
-        .hp-card-accent {
-          height: 4px;
-          background: #f5a800;
-        }
-
-        .hp-card-body {
-          padding: 24px 26px 26px;
-        }
-
-        .hp-card-eyebrow {
-          font-size: 9px;
-          font-weight: 700;
-          color: #f5a800;
-          letter-spacing: 2.5px;
-          text-transform: uppercase;
-          margin-bottom: 8px;
-        }
-
-        .hp-card-title {
-          font-size: 17px;
-          font-weight: 800;
-          color: #983929;
-          margin-bottom: 10px;
-          line-height: 1.25;
-        }
-
-        .hp-card-desc {
-          font-size: 13px;
-          color: #64748b;
-          line-height: 1.6;
-        }
-
-        .hp-card-footer {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 14px 26px;
-          background: #f8fafc;
-          border-top: 1px solid #e2e8f0;
-        }
-
-        .hp-card-link {
-          font-size: 11px;
-          font-weight: 700;
-          color:#983929;
-          letter-spacing: 0.5px;
-          text-transform: uppercase;
-          text-decoration: none;
-          transition: color 0.15s;
-        }
-
-        .hp-card-link:hover { color: #f5a800; }
-
-        .hp-card-arrow {
-          font-size: 18px;
-          color: #f5a800;
-        }
-
         /* Parent login badge (mirrors DAIS) */
         .hp-parent-login {
           position: fixed;
@@ -572,12 +355,6 @@ export default function HomePage() {
               bottom: 16px;
               right: 16px;
             }
-
-          .hp-hero { height: 320px; }
-          .hp-hero-title { font-size: 26px; }
-          .hp-hero-content { padding: 28px 24px; }
-          .hp-quicknav { padding: 0 16px; }
-          .hp-cards { padding: 24px 16px; grid-template-columns: 1fr; }
         }
       `}</style>
 
@@ -613,17 +390,6 @@ export default function HomePage() {
                 </div>
               )}
 
-              {sec.news && (
-                <div style={{ marginTop: "4px" }}>
-                  {sec.news.map((n, i) => (
-                    <Link key={i} to={n.href} className="hp-sb-news-item" onClick={(e) => e.stopPropagation()}>
-                      <span className="hp-sb-news-dot" />
-                      {n.label}
-                    </Link>
-                  ))}
-                </div>
-              )}
-
               {sec.link && (
                 <Link to={sec.link} className="hp-sb-link" onClick={(e) => e.stopPropagation()}>
                   {sec.linkLabel} →
@@ -631,6 +397,29 @@ export default function HomePage() {
               )}
             </div>
           ))}
+
+          {/* News & Events (live data) */}
+          <div className="hp-sb-section">
+            <div className="hp-sb-section-title">News & Events</div>
+            <div style={{ marginTop: "4px" }}>
+              {newsItems.map((item, i) => (
+                <span
+                  key={item.newsId ?? i}
+                  className="hp-sb-news-item"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNewsClick(item);
+                  }}
+                >
+                  <span className="hp-sb-news-dot" />
+                  {item.news}
+                </span>
+              ))}
+            </div>
+            <Link to="/events" className="hp-sb-link" onClick={(e) => e.stopPropagation()}>
+              Read More →
+            </Link>
+          </div>
 
           {/* Connect block */}
           <div className="hp-sb-connect">
@@ -652,88 +441,11 @@ export default function HomePage() {
               className="hp-slider-image"
             />
           </div>
-          {/* Hero */}
-          {/* <div className="hp-hero">
-            <div className="hp-hero-bg" />
-            <div className="hp-hero-circle" style={{ width: 500, height: 500, top: -150, right: -100 }} />
-            <div className="hp-hero-circle" style={{ width: 320, height: 320, top: -60, right: 40, animationDelay: "2s" }} />
-            <div className="hp-hero-circle" style={{ width: 160, height: 160, top: 30, right: 180, animationDelay: "4s" }} />
-
-            <div className="hp-hero-content">
-              <div className="hp-hero-eyebrow">Welcome to JNPV Education</div>
-              <h1 className="hp-hero-title">
-                Shaping <em>Leaders</em> of<br />Tomorrow
-              </h1>
-              <p className="hp-hero-sub">
-                A legacy of academic excellence, holistic growth, and values-driven education in the heart of Mumbai.
-              </p>
-              <Link to="/about-us" className="hp-hero-cta">
-                Discover Our Story
-                <span className="hp-hero-cta-arrow">→</span>
-              </Link>
-            </div>
-          </div> */}
-
-          {/* Quick nav strip */}
-          {/* <nav className="hp-quicknav">
-            {quickNavLinks.map((link) => (
-              <Link key={link.label} to={link.href} className="hp-quicknav-link">
-                {link.label}
-              </Link>
-            ))}
-          </nav> */}
-
-          {/* Cards grid */}
-          {/* <div className="hp-cards">
-            {[
-              {
-                eyebrow: "Academics",
-                title: "World-Class Curriculum",
-                desc: "CBSE-affiliated programmes designed to challenge, inspire, and prepare students for global opportunities.",
-                href: "/academics",
-                label: "Explore Academics",
-              },
-              {
-                eyebrow: "Admissions",
-                title: "Join the JNPV Family",
-                desc: "Applications now open for the 2025–26 academic year. Start your journey with us today.",
-                href: "/admissions",
-                label: "Apply Now",
-              },
-              {
-                eyebrow: "Campus Life",
-                title: "A Campus Built to Inspire",
-                desc: "State-of-the-art facilities, sprawling green spaces, and a vibrant community at our Mumbai campus.",
-                href: "/campus",
-                label: "See the Campus",
-              },
-              {
-                eyebrow: "Results",
-                title: "Outstanding Achievements",
-                desc: "Year after year, our students excel at board exams and secure placements at top universities worldwide.",
-                href: "/results-and-university",
-                label: "View Results",
-              },
-            ].map((card) => (
-              <Link key={card.title} to={card.href} className="hp-card">
-                <div className="hp-card-accent" />
-                <div className="hp-card-body">
-                  <div className="hp-card-eyebrow">{card.eyebrow}</div>
-                  <div className="hp-card-title">{card.title}</div>
-                  <div className="hp-card-desc">{card.desc}</div>
-                </div>
-                <div className="hp-card-footer">
-                  <span className="hp-card-link">{card.label}</span>
-                  <span className="hp-card-arrow">→</span>
-                </div>
-              </Link>
-            ))}
-          </div> */}
         </main>
       </div>
 
       {/* Parent login badge */}
-      <Link to="/login" className="hp-parent-login">
+      <Link to="" className="hp-parent-login">
         <span className="hp-parent-login-icon">🔒</span>
         Parent's Login
       </Link>

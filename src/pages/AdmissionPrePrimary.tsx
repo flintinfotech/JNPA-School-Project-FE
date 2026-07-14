@@ -1,39 +1,125 @@
+import { useEffect, useState } from "react";
 import SchoolLogo from "../assets/SchoolLogo.avif";
 import Admission1 from "../assets/Admission1.jpg";
 import { useNavigate } from "react-router-dom";
+import { getAllAdmissionsByFilter } from "../services/AdmissionService";
 
-const processSteps = [
-  { step: "01", title: "Enquiry", desc: "Visit the school office or fill out the online enquiry form to learn about seat availability for Pre Primary." },
-  { step: "02", title: "Application Form", desc: "Collect and submit the Pre Primary admission form with all required documents within the announced dates." },
-  { step: "03", title: "Document Verification", desc: "Original documents are verified at the school office before the seat is confirmed." },
-  { step: "04", title: "Fee Payment", desc: "Complete the admission fee payment to secure your child's seat." },
-  { step: "05", title: "Confirmation", desc: "Receive your confirmation letter and welcome kit with orientation details." },
-];
+// ---------------------------------------------------------------------------
+// base64 -> blob preview helpers (same approach as AdmissionAdmin)
+// ---------------------------------------------------------------------------
+const base64ToByteArray = (base64: string): Uint8Array => {
+  const cleaned = base64.includes(",") && base64.trim().startsWith("data:")
+    ? base64.split(",")[1]
+    : base64;
 
-const eligibility = [
-  { grade: "Nursery", criteria: "Child must complete 3 years by 1st June of the academic year" },
-  { grade: "Junior KG", criteria: "Child must complete 4 years by 1st June of the academic year" },
-  { grade: "Senior KG", criteria: "Child must complete 5 years by 1st June of the academic year" },
-];
+  const byteCharacters = atob(cleaned);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  return new Uint8Array(byteNumbers);
+};
 
-const importantDates = [
-  { label: "Registration Opens", date: "1st November 2026" },
-  { label: "Registration Closes", date: "15th December 2026" },
-  { label: "Interaction Session", date: "5th - 8th January 2027" },
-  { label: "Result Announcement", date: "18th January 2027" },
-  { label: "Fee Payment Deadline", date: "31st January 2027" },
-];
+const detectMimeType = (bytes: Uint8Array): string => {
+  const hex = Array.from(bytes.slice(0, 4))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 
-const documents = [
-  "Birth Certificate (original + photocopy)",
-  "Aadhar Card of the child and parents",
-  "Address Proof (utility bill / rental agreement)",
-  "4 passport size photographs of the child",
-  "Medical/Immunisation records of the child",
-];
+  if (hex.startsWith("25504446")) return "application/pdf";
+  if (hex.startsWith("89504e47")) return "image/png";
+  if (hex.startsWith("ffd8ff")) return "image/jpeg";
+  if (hex.startsWith("47494638")) return "image/gif";
+  return "application/octet-stream";
+};
 
 export default function AdmissionPrePrimary() {
   const navigate = useNavigate();
+
+  const [processSteps, setProcessSteps] = useState<{ step: string; title: string; desc: string }[]>([]);
+  const [eligibility, setEligibility] = useState<{ grade: string; criteria: string }[]>([]);
+  const [importantDates, setImportantDates] = useState<{ label: string; date: string }[]>([]);
+  const [documents, setDocuments] = useState<string[]>([]);
+  const [brochure, setBrochure] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function fetchAdmissions() {
+      try {
+        setLoading(true);
+
+        const res = await getAllAdmissionsByFilter(
+          0,
+          10,
+          {
+            classRoomName: "Pre-Primary",
+          },
+          controller.signal
+        );
+
+        const list = res.data?.data?.AdmissionDTOS ?? [];
+        const existing = list[0] ?? null;
+
+        if (existing) {
+          setProcessSteps(
+            (existing.admissionProcessDTOS ?? [])
+              .slice()
+              .sort((a: any, b: any) => Number(a.stepNo) - Number(b.stepNo))
+              .map((p: any) => ({
+                step: p.stepNo,
+                title: p.heading,
+                desc: p.description,
+              }))
+          );
+
+          setEligibility(
+            (existing.eligibilityCriteriaDTOS ?? []).map((e: any) => ({
+              grade: e.title,
+              criteria: e.description,
+            }))
+          );
+
+          setImportantDates(
+            (existing.importantDateDTOS ?? []).map((d: any) => ({
+              label: d.eventName,
+              date: d.eventDate,
+            }))
+          );
+
+          setDocuments(
+            (existing.requiredDocumentDTOS ?? []).map(
+              (r: any) => r.documentName
+            )
+          );
+
+          setBrochure(existing.brochure ?? null);
+        }
+      } catch (err: any) {
+        if (
+          err.name !== "CanceledError" &&
+          err.code !== "ERR_CANCELED"
+        ) {
+          console.error("Failed to fetch admissions:", err);
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchAdmissions();
+
+    return () => controller.abort();
+  }, []);
+
+  const handleBrochurePreview = () => {
+    if (!brochure) return;
+    const byteArray = base64ToByteArray(brochure);
+    const mimeType = detectMimeType(byteArray);
+    const blob = new Blob([byteArray], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+  };
 
   return (
     <div className="adm-pp-page" style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
@@ -143,7 +229,9 @@ export default function AdmissionPrePrimary() {
         </p>
         <div style={{ display: "flex", justifyContent: "center", gap: "14px", flexWrap: "wrap" }}>
           <button
-            style={{ background: "#fff", color: "#c0392b", border: "none", padding: "12px 28px", fontSize: "13px", fontWeight: 800, letterSpacing: "0.5px", textTransform: "uppercase", borderRadius: "4px", cursor: "pointer" }}
+            onClick={handleBrochurePreview}
+            disabled={!brochure}
+            style={{ background: "#fff", color: "#c0392b", border: "none", padding: "12px 28px", fontSize: "13px", fontWeight: 800, letterSpacing: "0.5px", textTransform: "uppercase", borderRadius: "4px", cursor: brochure ? "pointer" : "not-allowed", opacity: brochure ? 1 : 0.6 }}
           >
             Download Brochure
           </button>

@@ -41,5 +41,9 @@ export const apiEndpoints = {
 
   saveExam: () => `/jnpa-school-project/exam/saveExam`,
   updateExam: () => `/jnpa-school-project/exam/updateExam`,
-  getAllExamsByFilter: (page: number, size: number) => `/jnpa-school-project/exam/getAllExamsByFilte?page=${page}&size=${size}&paginate=true`,
+  getAllExamsByFilter: (page: number, size: number) => `/jnpa-school-project/exam/getAllExamsByFilter?page=${page}&size=${size}&paginate=true`,
+
+  saveAdmission: () => `/jnpa-school-project/admission/saveAdmission`,
+  updateAdmisson: () => `/jnpa-school-project/admission/updateAdmission`,
+  getAllAdmissionsByFilter: (page: number, size: number) => `/jnpa-school-project/admission/getAllAdmissionsByFilter?page=${page}&size=${size}&paginate=true`
 };
