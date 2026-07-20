@@ -310,8 +310,7 @@ useEffect(() => {
                 <th className="px-4 py-3 text-sm font-semibold text-gray-700">Standard</th>
                 <th className="px-4 py-3 text-sm font-semibold text-gray-700">Division</th>
                 <th className="px-4 py-3 text-sm font-semibold text-gray-700">Medium</th>
-                <th className="px-4 py-3 text-sm font-semibold text-gray-700">Action</th>
-              </tr>
+                <th className="w-40 px-3 py-3 text-sm font-semibold text-gray-700 text-center">  Action</th></tr>
             </thead>
             <tbody>
               {paginated.map((row) => (
@@ -320,7 +319,7 @@ useEffect(() => {
                   <td className="px-4 py-3 text-sm text-gray-800">{row.division}</td>
                   <td className="px-4 py-3 text-sm text-gray-800">{row.medium}</td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-2">
+                    <div className="flex justify-center items-center gap-3">
                       <button
                         onClick={() => openEditModal(row)}
                         className="bg-blue-600 hover:bg-blue-700 text-white p-1.5 rounded"
@@ -450,14 +449,7 @@ useEffect(() => {
             <span className="text-red-500">*</span> Division
               </label>
 
-          {/* <input
-            name="division"
-            value={form.division}
-            onChange={handleChange}
-            placeholder="Enter Division"
-            className="w-full h-[40px] border border-gray-300 rounded-md px-3"
-            required
-          /> */}
+         
           <select
             name="division"
             value={form.division}
@@ -513,75 +505,7 @@ useEffect(() => {
 
     </div>
   </>
-)}
-
-      {/* {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-md shadow-lg w-full max-w-md p-6">
-            <h2 className="text-lg font-semibold mb-4">
-              {editId !== null ? "Edit Class" : "Add Class"}
-            </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">Standard</label>
-                <input
-                  name="standard"
-                  value={form.standard}
-                  onChange={handleChange}
-                  className="w-full border rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
-                  placeholder="e.g. 10"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">Division</label>
-                <input
-                  name="division"
-                  value={form.division}
-                  onChange={handleChange}
-                  className="w-full border rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
-                  placeholder="e.g. A"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">Medium</label>
-                <select
-                  name="medium"
-                  value={form.medium}
-                  onChange={handleChange}
-                  className="w-full border rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
-                  required
-                >
-                  <option value="">Select medium</option>
-                  <option value="English">English</option>
-                  <option value="Marathi">Marathi</option>
-                  <option value="Hindi">Hindi</option>
-                  <option value="Semi-English">Semi-English</option>
-                </select>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm rounded border text-gray-600 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-sm rounded bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  {editId !== null ? "Update" : "Save"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )} */}
-      
-        
+)}        
     </div>
   );
 };
