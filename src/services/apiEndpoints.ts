@@ -3,6 +3,14 @@
 export const apiEndpoints = {
   login: () => `/jnpa-school-project/auth/login`,
 
+  saveSubject: () => `/jnpa-school-project/subjectMaster/saveSubjectMaster`,
+  updateSubject: () =>`/jnpa-school-project/subjectMaster/updateSubjectMaster`,
+  getSubjectById: (id: number | string) =>`/jnpa-school-project/subjectMaster/getSubjectMasterById/${id}`,
+deleteSubject: (subjectMasterId: number | string) =>`/jnpa-school-project/subjectMaster/deleteSubjectMaster/${subjectMasterId}`,
+getAllSubjects: (page: number, size: number) =>`/jnpa-school-project/subjectMaster/getAllSubjectMasterByFilter?page=${page}&size=${size}&paginate=true`,
+
+
+
   saveUser: () => `/jnpa-school-project/user/saveUser`,
   updateUser: () => `/jnpa-school-project/user/updateUser`,
   getUserById: (userId: number | string) => `/jnpa-school-project/user/getUserById/${userId}`,

@@ -39,6 +39,7 @@ import AcademicsAdmin from "./pages/AcademicsAdmin";
 import EventsAndNewsAdmin from "./pages/Events&NewsAdmin";
 import ExamAndResultsAdmin from "./pages/Exam&ResultAdmin";
 import AdmissionAdmin from "./pages/AdmissionAdmin";
+import SubjectsMaster from "./pages/SubjectsMaster";
 import ClassMaster from "./pages/ClassMaster";
 
 
@@ -60,10 +61,13 @@ export default function App() {
   const isEventsAndNewsAdminPage = location.pathname === "/events-and-news";
   const isExamAndResultsAdminPage = location.pathname === "/exam-and-results";
   const isAdmissionAdminPage = location.pathname === "/admissions-admin";
+  const isSubjectsMasterPage = location.pathname === "/subjects-master"; 
   const isClassMasterPage = location.pathname ==="/class-master";
   const isHomePage = location.pathname === "/";
-  const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage||isClassMasterPage ;
-  const hideFooter = isHomePage || isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage ||isClassMasterPage;
+  const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage;
+  const hideFooter = isHomePage || isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage;
+  // const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage||isClassMasterPage ;
+  // const hideFooter = isHomePage || isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage ||isClassMasterPage;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -99,6 +103,7 @@ export default function App() {
             <Route path="/events-and-news" element={<EventsAndNewsAdmin />} />
             <Route path="/exam-and-results" element={<ExamAndResultsAdmin />} />
             <Route path="/admissions-admin" element={<AdmissionAdmin />} />
+            <Route path="/subjects-master" element={ <SubjectsMaster />} />
             <Route path="/class-master" element={<ClassMaster />} />
            
           </Route>
