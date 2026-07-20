@@ -3,27 +3,39 @@ import config from "../config/config";
 
 const axiosInstance = axios.create({
   baseURL: config.baseURL,
-  headers: { "Content-Type": "application/json" },
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
-// Attach token to every outgoing request
-axiosInstance.interceptors.request.use((req) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    req.headers.Authorization = `Bearer ${token}`;
-  }
-  return req;
-});
+// Attach JWT token to every request
+axiosInstance.interceptors.request.use(
+  (request) => {
+    const token = localStorage.getItem("token");
 
-// Auto-logout on 401 & 403 response status codes
+    if (token) {
+      request.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return request;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Handle unauthorized responses
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 || error.response?.status === 403) {
+    if (
+      error.response?.status === 401 ||
+      error.response?.status === 403
+    ) {
       localStorage.removeItem("token");
       localStorage.removeItem("username");
-      window.location.replace("/login"); // Change "/login" if your login route is different
+
+      window.location.replace("/login");
     }
+
     return Promise.reject(error);
   }
 );

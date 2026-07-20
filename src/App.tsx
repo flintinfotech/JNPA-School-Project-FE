@@ -41,6 +41,7 @@ import AcademicsAdmin from "./pages/AcademicsAdmin";
 import EventsAndNewsAdmin from "./pages/Events&NewsAdmin";
 import ExamAndResultsAdmin from "./pages/Exam&ResultAdmin";
 import AdmissionAdmin from "./pages/AdmissionAdmin";
+import SubjectsMaster from "./pages/SubjectsMaster";
 import AdmissionPrimaryMarathi from "./pages/AdmissionPrimaryMarathi";
 import AdmissionPrimaryEnglish from "./pages/AdmissionPrimaryEnglish";
 import AdmissionSecondarMarathi from "./pages/AdmissionSecondaryMarathi";
@@ -57,9 +58,10 @@ export default function App() {
   const isEventsAndNewsAdminPage = location.pathname === "/events-and-news";
   const isExamAndResultsAdminPage = location.pathname === "/exam-and-results";
   const isAdmissionAdminPage = location.pathname === "/admissions-admin";
+  const isSubjectsMasterPage = location.pathname === "/subjects-master"; 
   const isHomePage = location.pathname === "/";
-  const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage;
-  const hideFooter = isHomePage || isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage;
+  const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage;
+  const hideFooter = isHomePage || isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -93,6 +95,7 @@ export default function App() {
             <Route path="/events-and-news" element={<EventsAndNewsAdmin />} />
             <Route path="/exam-and-results" element={<ExamAndResultsAdmin />} />
             <Route path="/admissions-admin" element={<AdmissionAdmin />} />
+            <Route path="/subjects-master" element={ <SubjectsMaster />} />
           </Route>
 
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />

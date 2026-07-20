@@ -347,7 +347,7 @@ export default function StudentForm({
 
                   return (
                     <div
-                      key={key}
+                      key={key} 
                       className="border border-gray-200 rounded-lg p-4 mb-4 relative"
                     >
                       <div className="flex justify-end">
