@@ -1,6 +1,5 @@
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { useAuth } from "./hooks/useAuth";
-
 import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/HomePage";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -8,7 +7,6 @@ import TermsAndConditions from "./pages/TermsAndConditions";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import AdminLayout from "./components/layout/AdminLayout";
-
 import AboutUs from "./pages/AboutUs";
 import Alumni from "./pages/Alumni";
 import Academics from "./pages/Academics";
@@ -41,10 +39,15 @@ import AcademicsAdmin from "./pages/AcademicsAdmin";
 import EventsAndNewsAdmin from "./pages/Events&NewsAdmin";
 import ExamAndResultsAdmin from "./pages/Exam&ResultAdmin";
 import AdmissionAdmin from "./pages/AdmissionAdmin";
+import ClassMaster from "./pages/ClassMaster";
+
+
 import AdmissionPrimaryMarathi from "./pages/AdmissionPrimaryMarathi";
 import AdmissionPrimaryEnglish from "./pages/AdmissionPrimaryEnglish";
 import AdmissionSecondarMarathi from "./pages/AdmissionSecondaryMarathi";
 import AdmissionSecondaryEnglish from "./pages/AdmissionSecondaryEnglish";
+
+
 
 export default function App() {
   const { isAuthenticated, login, logout } = useAuth();
@@ -57,9 +60,10 @@ export default function App() {
   const isEventsAndNewsAdminPage = location.pathname === "/events-and-news";
   const isExamAndResultsAdminPage = location.pathname === "/exam-and-results";
   const isAdmissionAdminPage = location.pathname === "/admissions-admin";
+  const isClassMasterPage = location.pathname ==="/class-master";
   const isHomePage = location.pathname === "/";
-  const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage;
-  const hideFooter = isHomePage || isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage;
+  const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage||isClassMasterPage ;
+  const hideFooter = isHomePage || isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage ||isClassMasterPage;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -82,6 +86,8 @@ export default function App() {
 
           {/* Admin section: Sidebar + Header, no Navbar/Footer.
               Add new admin screens as children here + entry in adminNav.ts */}
+              
+             
           <Route
             element={
               <AdminLayout isAuthenticated={isAuthenticated} onLogout={logout} />
@@ -93,6 +99,8 @@ export default function App() {
             <Route path="/events-and-news" element={<EventsAndNewsAdmin />} />
             <Route path="/exam-and-results" element={<ExamAndResultsAdmin />} />
             <Route path="/admissions-admin" element={<AdmissionAdmin />} />
+            <Route path="/class-master" element={<ClassMaster />} />
+           
           </Route>
 
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
@@ -129,6 +137,7 @@ export default function App() {
           <Route path="/language-day-celebrations" element={<LanguageDayAndCelebrations />} />
           <Route path="/leadership-series" element={<LeadershipSeries />} />
           <Route path="/visitors" element={<Visitors />} />
+          
         </Routes>
       </div>
 

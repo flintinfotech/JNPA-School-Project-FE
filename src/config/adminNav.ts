@@ -1,6 +1,8 @@
 
 import { LuUsers } from "react-icons/lu";
-import { PiBookOpenText, PiCalendarBlank, PiClipboardText, PiGraduationCap, PiStudent } from "react-icons/pi";
+import { PiBookOpenText, PiCalendarBlank, PiClipboardText, PiGraduationCap, PiStudent} from "react-icons/pi";
+import { MdClass } from "react-icons/md";
+
 
 export interface AdminNavItem {
   label: string;      // shown in sidebar AND as header title
@@ -15,4 +17,6 @@ export const adminNavItems: AdminNavItem[] = [
   { label: "Events & News", path: "/events-and-news", icon: PiCalendarBlank },
   { label: "Exam & Results", path: "/exam-and-results", icon: PiClipboardText },
   { label: "Admission", path: "/admissions-admin", icon: PiGraduationCap },
+  { label: "ClassMaster",path: "/class-master",icon: MdClass }
+
 ];

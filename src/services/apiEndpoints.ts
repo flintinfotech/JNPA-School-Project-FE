@@ -1,3 +1,5 @@
+
+
 export const apiEndpoints = {
   login: () => `/jnpa-school-project/auth/login`,
 
@@ -45,5 +47,18 @@ export const apiEndpoints = {
 
   saveAdmission: () => `/jnpa-school-project/admission/saveAdmission`,
   updateAdmisson: () => `/jnpa-school-project/admission/updateAdmission`,
-  getAllAdmissionsByFilter: (page: number, size: number) => `/jnpa-school-project/admission/getAllAdmissionsByFilter?page=${page}&size=${size}&paginate=true`
+  getAllAdmissionsByFilter: (page: number, size: number) => `/jnpa-school-project/admission/getAllAdmissionsByFilter?page=${page}&size=${size}&paginate=true`,
+
+  saveClassMaster: () =>`/jnpa-school-project/classMaster/saveClassMaster`,
+  
+  updateClassMaster: () =>`/jnpa-school-project/classMaster/updateClassMaster`,
+  getAllClassMaster: (page: number, size: number) =>
+  `/jnpa-school-project/classMaster/getAllClassMasterByFilter?page=${page}&size=${size}&paginate=true`,
+  getClassMasterById: (id: number | string) =>
+  `/jnpa-school-project/classMaster/getClassMasterById/${id}`,
+  deleteClassMaster: (id: number | string) =>
+  `/jnpa-school-project/classMaster/deleteClassMaster/${id}`,
+
 };
+
+
