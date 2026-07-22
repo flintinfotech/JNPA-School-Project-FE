@@ -8,6 +8,7 @@ export interface SubjectDTO {
   subjectName: string;
 }
 
+
 export interface SaveSubjectRequestDTO {
   subjectCode: string;
   subjectName: string;

@@ -41,6 +41,7 @@ import ExamAndResultsAdmin from "./pages/Exam&ResultAdmin";
 import AdmissionAdmin from "./pages/AdmissionAdmin";
 import SubjectsMaster from "./pages/SubjectsMaster";
 import ClassMaster from "./pages/ClassMaster";
+import SubjectAssignment from "./pages/SubjectAssignment";
 
 
 import AdmissionPrimaryMarathi from "./pages/AdmissionPrimaryMarathi";
@@ -63,9 +64,10 @@ export default function App() {
   const isAdmissionAdminPage = location.pathname === "/admissions-admin";
   const isSubjectsMasterPage = location.pathname === "/subjects-master"; 
   const isClassMasterPage = location.pathname ==="/class-master";
+  const isSubjectAssignmentPage = location.pathname ==="/subject-assignment";
   const isHomePage = location.pathname === "/";
-  const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage;
-  const hideFooter = isHomePage || isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage;
+  const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage;
+  const hideFooter = isHomePage || isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage;
   // const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage||isClassMasterPage ;
   // const hideFooter = isHomePage || isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage ||isClassMasterPage;
 
@@ -105,6 +107,7 @@ export default function App() {
             <Route path="/admissions-admin" element={<AdmissionAdmin />} />
             <Route path="/subjects-master" element={ <SubjectsMaster />} />
             <Route path="/class-master" element={<ClassMaster />} />
+            <Route path="/subject-assignment" element={<SubjectAssignment />} />
            
           </Route>
 

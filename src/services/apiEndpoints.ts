@@ -60,12 +60,19 @@ getAllSubjects: (page: number, size: number) =>`/jnpa-school-project/subjectMast
   saveClassMaster: () =>`/jnpa-school-project/classMaster/saveClassMaster`,
   
   updateClassMaster: () =>`/jnpa-school-project/classMaster/updateClassMaster`,
-  getAllClassMaster: (page: number, size: number) =>
-  `/jnpa-school-project/classMaster/getAllClassMasterByFilter?page=${page}&size=${size}&paginate=true`,
+  getAllClassMaster: (page: number, size: number) =>`/jnpa-school-project/classMaster/getAllClassMasterByFilter?page=${page}&size=${size}&paginate=true`,
   getClassMasterById: (id: number | string) =>
   `/jnpa-school-project/classMaster/getClassMasterById/${id}`,
   deleteClassMaster: (id: number | string) =>
   `/jnpa-school-project/classMaster/deleteClassMaster/${id}`,
+
+
+
+
+  getSubjectsByClassId: (id:number) =>
+`/jnpa-school-project/subjectAssignment/getSubjectsByClassId/${id}`,
+
+  assignOrUnassignSubjects: () =>"/jnpa-school-project/subjectAssignment/assignOrUnassignSubjects",
 
 };
 
