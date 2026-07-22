@@ -42,11 +42,13 @@ import AdmissionAdmin from "./pages/AdmissionAdmin";
 import SubjectsMaster from "./pages/SubjectsMaster";
 import ClassMaster from "./pages/ClassMaster";
 
+import UpdateUserProfile from "./pages/userModule/EmployeeDetails";
 
 import AdmissionPrimaryMarathi from "./pages/AdmissionPrimaryMarathi";
 import AdmissionPrimaryEnglish from "./pages/AdmissionPrimaryEnglish";
 import AdmissionSecondarMarathi from "./pages/AdmissionSecondaryMarathi";
 import AdmissionSecondaryEnglish from "./pages/AdmissionSecondaryEnglish";
+
 
 
 
@@ -63,9 +65,13 @@ export default function App() {
   const isAdmissionAdminPage = location.pathname === "/admissions-admin";
   const isSubjectsMasterPage = location.pathname === "/subjects-master"; 
   const isClassMasterPage = location.pathname ==="/class-master";
+
+   const isUpdateUserPage=location.pathname==="/update-user";
   const isHomePage = location.pathname === "/";
-  const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage;
-  const hideFooter = isHomePage || isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage;
+
+ 
+  const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage ||isUpdateUserPage;
+  const hideFooter = isHomePage || isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage||isUpdateUserPage;
   // const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage||isClassMasterPage ;
   // const hideFooter = isHomePage || isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage ||isClassMasterPage;
 
@@ -87,10 +93,6 @@ export default function App() {
               )
             }
           />
-
-          {/* Admin section: Sidebar + Header, no Navbar/Footer.
-              Add new admin screens as children here + entry in adminNav.ts */}
-              
              
           <Route
             element={
@@ -106,6 +108,7 @@ export default function App() {
             <Route path="/subjects-master" element={ <SubjectsMaster />} />
             <Route path="/class-master" element={<ClassMaster />} />
            
+            <Route path="/update-user" element={<UpdateUserProfile/>}/>
           </Route>
 
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />

@@ -66,7 +66,12 @@ getAllSubjects: (page: number, size: number) =>`/jnpa-school-project/subjectMast
   `/jnpa-school-project/classMaster/getClassMasterById/${id}`,
   deleteClassMaster: (id: number | string) =>
   `/jnpa-school-project/classMaster/deleteClassMaster/${id}`,
-
+  saveUserInformation: () =>
+  `/jnpa-school-project/userInformation/saveUserInformation`,
+  getUserInformationById: (id: number) =>
+  `/jnpa-school-project/userInformation/getUserInformationByUserId/${id}`,
+  updateUserInformation: () =>
+  `/jnpa-school-project/userInformation/updateUserInformation`,
 };
 
 
