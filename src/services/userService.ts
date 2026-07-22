@@ -87,6 +87,16 @@ export const deleteUser = async (
   );
   return response.data;
 };
+export const saveUserInformation = async (payload: any) => {
+  const response = await axiosInstance.post(
+    apiEndpoints.saveUserInformation(),
+    payload
+  );
+
+  return response.data;
+};
+
+
 
 export const getAllUsers = async (
   page: number,
@@ -96,5 +106,20 @@ export const getAllUsers = async (
     apiEndpoints.getAllUsers(page, size),
     {}
   );
+  return response.data;
+};
+export const getUserInformationById = async (id: number) => {
+  const response = await axiosInstance.get(
+    apiEndpoints.getUserInformationById(id)
+  );
+
+  return response.data;
+};
+export const updateUserInformation = async (payload: any) => {
+  const response = await axiosInstance.put(
+    apiEndpoints.updateUserInformation(),
+    payload
+  );
+
   return response.data;
 };

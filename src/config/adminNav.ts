@@ -7,6 +7,8 @@ import { PiBookOpenText, PiCalendarBlank, PiClipboardText, PiGraduationCap, PiSt
 // import { PiBookOpenText, PiCalendarBlank, PiClipboardText, PiGraduationCap, PiStudent} from "react-icons/pi";
 import { MdClass } from "react-icons/md";
 
+import { ImProfile } from "react-icons/im";
+
 
 export interface AdminNavItem {
   label: string;      // shown in sidebar AND as header title
@@ -23,6 +25,9 @@ export const adminNavItems: AdminNavItem[] = [
   { label: "Admission", path: "/admissions-admin", icon: PiGraduationCap },
   { label: "Subjects Master", path: "/subjects-master", icon: MdOutlineSubject },
   { label: "ClassMaster",path: "/class-master",icon: MdClass },
+  
+   {label:"Employee Details",path:"/update-user",icon:ImProfile},
+  
   { label: "Subject Assignment", path: "/subject-assignment", icon: MdAssignment },
 
 ];
