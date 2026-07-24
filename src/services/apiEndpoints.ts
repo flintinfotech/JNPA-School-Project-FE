@@ -72,13 +72,15 @@ getAllSubjects: (page: number, size: number) =>`/jnpa-school-project/subjectMast
   updateUserInformation: () =>
   `/jnpa-school-project/userInformation/updateUserInformation`,
 
-
+  deleteUserInformation: (userInformationId: number) =>
+  `/jnpa-school-project/userInformation/deleteUserInformation/${userInformationId}`,
 
 
   getSubjectsByClassId: (id:number) =>
 `/jnpa-school-project/subjectAssignment/getSubjectsByClassId/${id}`,
 
   assignOrUnassignSubjects: () =>"/jnpa-school-project/subjectAssignment/assignOrUnassignSubjects",
+
 
 };
 

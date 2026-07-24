@@ -123,3 +123,11 @@ export const updateUserInformation = async (payload: any) => {
 
   return response.data;
 };
+
+export const deleteUserInformation = async (userInformationId: number) => {
+  const response = await axiosInstance.delete(
+    apiEndpoints.deleteUserInformation(userInformationId)
+  );
+
+  return response.data;
+};

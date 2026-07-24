@@ -92,14 +92,6 @@ export default function UserUpdateProfileTable({
             size="small"
             onClick={() => onEdit(record)}
           />
-          {/* <Popconfirm
-            title="Are you sure you want to delete this user?"
-            onConfirm={() => onDelete(record.userId)}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Button danger icon={<DeleteOutlined />} size="small" />
-          </Popconfirm> */}
         </div>
       ),
     },
@@ -143,6 +135,12 @@ export default function UserUpdateProfileTable({
               </div>
 
               <div className="flex gap-2 justify-end pt-2 border-t border-gray-50">
+
+                <Button
+                  icon={<EyeOutlined />}
+                   size="small"
+                  onClick={() => onView(record)}
+                  />
                 <Button
                   type="primary"
                   icon={<EditOutlined />}

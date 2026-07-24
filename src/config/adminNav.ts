@@ -24,7 +24,7 @@ export const adminNavItems: AdminNavItem[] = [
   { label: "Exam & Results", path: "/exam-and-results", icon: PiClipboardText },
   { label: "Admission", path: "/admissions-admin", icon: PiGraduationCap },
   { label: "Subjects Master", path: "/subjects-master", icon: MdOutlineSubject },
-  { label: "ClassMaster",path: "/class-master",icon: MdClass },
+  { label: "Class Master",path: "/class-master",icon: MdClass },
   
    {label:"Employee Details",path:"/update-user",icon:ImProfile},
   
