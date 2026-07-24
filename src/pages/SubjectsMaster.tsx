@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from "react";
 import type { SubjectDTO } from "../services/subjectService";
 
-
-
 import {
   Table,
   Button,
@@ -17,11 +15,7 @@ import {
   Tag,
 } from "antd";
 
-import {
-  EditOutlined,
-  DeleteOutlined,
-  PlusOutlined,
-} from "@ant-design/icons";
+import { EditOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 
 import {
   saveSubject,
@@ -29,7 +23,6 @@ import {
   deleteSubject,
   getAllSubjects,
   getSubjectById,
-  
 } from "../services/subjectService";
 
 const SubjectMaster: React.FC = () => {
@@ -47,13 +40,13 @@ const SubjectMaster: React.FC = () => {
 
   const [form] = Form.useForm();
   const { useBreakpoint } = Grid;
-const screens = useBreakpoint();
+  const screens = useBreakpoint();
 
- const showDrawer = () => {
-  form.resetFields();
-  setEditingSubject(null);
-  setOpen(true);
-};
+  const showDrawer = () => {
+    form.resetFields();
+    setEditingSubject(null);
+    setOpen(true);
+  };
 
   const closeDrawer = () => {
     setOpen(false);
@@ -93,98 +86,89 @@ const screens = useBreakpoint();
   // =============================
   // Save Subject
   // =============================
- const handleSave = async (values: any) => {
-  try {
-    if (editingSubject) {
-      const response = await updateSubject({
-        subjectMasterId: editingSubject.subjectMasterId,
-        subjectCode: values.subjectCode,
-        subjectName: values.subjectName,
-      });
+  const handleSave = async (values: any) => {
+    try {
+      if (editingSubject) {
+        const response = await updateSubject({
+          subjectMasterId: editingSubject.subjectMasterId,
+          subjectCode: values.subjectCode,
+          subjectName: values.subjectName,
+        });
 
-      message.success(response.message);
-    } else {
-      const response = await saveSubject({
-        subjectCode: values.subjectCode,
-        subjectName: values.subjectName,
-      });
+        message.success(response.message);
+      } else {
+        const response = await saveSubject({
+          subjectCode: values.subjectCode,
+          subjectName: values.subjectName,
+        });
 
-     message.success(response.message);
+        message.success(response.message);
+      }
+
+      form.resetFields();
+      setEditingSubject(null);
+      setOpen(false);
+
+      await loadSubjects();
+    } catch (error) {
+      console.error(error);
+      message.error("Operation failed");
     }
-
-    form.resetFields();
-    setEditingSubject(null);
-    setOpen(false);
-
-    await loadSubjects();
-  } catch (error) {
-    console.error(error);
-    message.error("Operation failed");
-  }
-};
+  };
 
   // =============================
   // Edit Subject
   // =============================
- const handleEdit = async (record: SubjectDTO) => {
-  try {
-    const response = await getSubjectById(record.subjectMasterId);
+  const handleEdit = async (record: SubjectDTO) => {
+    try {
+      const response = await getSubjectById(record.subjectMasterId);
 
-    const subject = response.data;
+      const subject = response.data;
 
-    setEditingSubject(subject);
+      setEditingSubject(subject);
 
-    form.setFieldsValue({
-      subjectCode: subject.subjectCode,
-      subjectName: subject.subjectName,
-    });
+      form.setFieldsValue({
+        subjectCode: subject.subjectCode,
+        subjectName: subject.subjectName,
+      });
 
-    setOpen(true);
-  } catch (error) {
-    console.log(error);
-    message.error("Unable to fetch subject details");
-  }
-};
+      setOpen(true);
+    } catch (error) {
+      console.log(error);
+      message.error("Unable to fetch subject details");
+    }
+  };
 
   // =============================
   // Delete Subject
   // =============================
- const handleDelete = async (id:number) => {
+  const handleDelete = async (id: number) => {
+    try {
+      const response = await deleteSubject(id);
 
-  try {
+      message.success(response.message);
 
-    const response = await deleteSubject(id);
+      // refresh table data
+      loadSubjects();
+    } catch (error: any) {
+      console.log("Delete Error:", error);
 
-    message.success(response.message);
+      message.error(error.response?.data?.message || "Delete operation failed");
+    }
+  };
 
-    // refresh table data
-    loadSubjects();
-
-  } catch(error:any){
-
-    console.log("Delete Error:",error);
-
-    message.error(
-      error.response?.data?.message ||
-      "Delete operation failed"
-    );
-  }
-
-};
-    // =============================
+  // =============================
   // Table Columns
   // =============================
   const columns = [
-   {
-  title: "Sr. No.",
-  key: "srNo",
-  width: 100,
-  render: (_: any, _record: SubjectDTO, index: number) => {
-    return (
-      (pagination.current - 1) * pagination.pageSize + index + 1
-    );
-  },
-},
+    {
+      title: "Sr. No.",
+      key: "srNo",
+      width: 100,
+      render: (_: any, _record: SubjectDTO, index: number) => {
+        return (pagination.current - 1) * pagination.pageSize + index + 1;
+      },
+    },
     {
       title: "Subject Name",
       dataIndex: "subjectName",
@@ -211,155 +195,128 @@ const screens = useBreakpoint();
 
           <Popconfirm
             title="Are you sure you want to delete this subject?"
-            onConfirm={() =>
-              handleDelete(record.subjectMasterId)
-            }
+            onConfirm={() => handleDelete(record.subjectMasterId)}
             okText="Yes"
             cancelText="No"
           >
-            <Button
-              danger
-              icon={<DeleteOutlined />}
-              size="small"
-            />
+            <Button danger icon={<DeleteOutlined />} size="small" />
           </Popconfirm>
         </Space>
       ),
     },
   ];
-    return (
+
+  return (
     <>
       <Card
         // title="Subject Master"
         extra={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={showDrawer}
-          >
+          <Button type="primary" icon={<PlusOutlined />} onClick={showDrawer}>
             Add Subject
           </Button>
         }
       >
-       {screens.md ? (
-  <Table
-    rowKey="subjectMasterId"
-    columns={columns}
-    dataSource={subjects}
-    loading={loading}
-    pagination={{
-      current: pagination.current,
-      pageSize: pagination.pageSize,
-      total: pagination.total,
-      showSizeChanger: true,
-      onChange: (page, pageSize) => {
-        loadSubjects(page, pageSize);
-      },
-    }}
-  />
-) : (
-  <>
-    {subjects.map((subject, index) => (
-      <Card
-        key={subject.subjectMasterId}
-        style={{
-          marginBottom: 15,
-          borderRadius: 12,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            marginBottom: 12,
-          }}
-        >
-          <strong>
-            Sr. No.{" "}
-            {(pagination.current - 1) * pagination.pageSize + index + 1}
-          </strong>
-
-          <Tag color="blue">{subject.subjectCode}</Tag>
-        </div>
-
-        <p>
-          <strong>Subject Name</strong>
-          <br />
-          {subject.subjectName}
-        </p>
-
-        <p>
-          <strong>Subject Code</strong>
-          <br />
-          {subject.subjectCode}
-        </p>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: 10,
-            marginTop: 10,
-          }}
-        >
-          <Button
-            type="primary"
-            icon={<EditOutlined />}
-            size="small"
-            onClick={() => handleEdit(subject)}
+        {screens.md ? (
+          <Table
+            rowKey="subjectMasterId"
+            columns={columns}
+            dataSource={subjects}
+            loading={loading}
+            pagination={{
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              total: pagination.total,
+              showSizeChanger: true,
+              onChange: (page, pageSize) => {
+                loadSubjects(page, pageSize);
+              },
+            }}
           />
+        ) : (
+          <>
+            {subjects.map((subject, index) => (
+              <Card
+                key={subject.subjectMasterId}
+                style={{
+                  marginBottom: 15,
+                  borderRadius: 12,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    marginBottom: 12,
+                  }}
+                >
+                  <strong>
+                    Sr. No. {(pagination.current - 1) * pagination.pageSize + index + 1}
+                  </strong>
 
-          <Popconfirm
-            title="Delete Subject?"
-            onConfirm={() => handleDelete(subject.subjectMasterId)}
-          >
-            <Button
-              danger
-              icon={<DeleteOutlined />}
-              size="small"
-            />
-          </Popconfirm>
-        </div>
-      </Card>
-    ))}
+                  <Tag color="blue">{subject.subjectCode}</Tag>
+                </div>
 
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        gap: 10,
-        marginTop: 20,
-      }}
-    >
-      <Button
-        disabled={pagination.current === 1}
-        onClick={() =>
-          loadSubjects(
-            pagination.current - 1,
-            pagination.pageSize
-          )
-        }
-      >
-        Previous
-      </Button>
+                <p>
+                  <strong>Subject Name</strong>
+                  <br />
+                  {subject.subjectName}
+                </p>
 
-      <Button
-        disabled={
-          pagination.current * pagination.pageSize >=
-          pagination.total
-        }
-        onClick={() =>
-          loadSubjects(
-            pagination.current + 1,
-            pagination.pageSize
-          )
-        }
-      >
-        Next
-      </Button>
-    </div>
-  </>
-)}
+                <p>
+                  <strong>Subject Code</strong>
+                  <br />
+                  {subject.subjectCode}
+                </p>
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    gap: 10,
+                    marginTop: 10,
+                  }}
+                >
+                  <Button
+                    type="primary"
+                    icon={<EditOutlined />}
+                    size="small"
+                    onClick={() => handleEdit(subject)}
+                  />
+
+                  <Popconfirm
+                    title="Delete Subject?"
+                    onConfirm={() => handleDelete(subject.subjectMasterId)}
+                  >
+                    <Button danger icon={<DeleteOutlined />} size="small" />
+                  </Popconfirm>
+                </div>
+              </Card>
+            ))}
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                gap: 10,
+                marginTop: 20,
+              }}
+            >
+              <Button
+                disabled={pagination.current === 1}
+                onClick={() => loadSubjects(pagination.current - 1, pagination.pageSize)}
+              >
+                Previous
+              </Button>
+
+              <Button
+                disabled={pagination.current * pagination.pageSize >= pagination.total}
+                onClick={() => loadSubjects(pagination.current + 1, pagination.pageSize)}
+              >
+                Next
+              </Button>
+            </div>
+          </>
+        )}
       </Card>
 
       <Drawer
@@ -370,11 +327,7 @@ const screens = useBreakpoint();
         onClose={closeDrawer}
         destroyOnClose
       >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSave}
-        >
+        <Form form={form} layout="vertical" onFinish={handleSave}>
           <Form.Item
             label="Subject Code"
             name="subjectCode"
@@ -402,16 +355,11 @@ const screens = useBreakpoint();
           </Form.Item>
 
           <Space>
-            <Button onClick={closeDrawer}>
-              Cancel
-            </Button>
+            <Button onClick={closeDrawer}>Cancel</Button>
 
-            <Button
-  type="primary"
-  htmlType="submit"
->
-  {editingSubject ? "Update" : "Save"}
-</Button>
+            <Button type="primary" htmlType="submit">
+              {editingSubject ? "Update" : "Save"}
+            </Button>
           </Space>
         </Form>
       </Drawer>
@@ -419,4 +367,4 @@ const screens = useBreakpoint();
   );
 };
 
-export default SubjectMaster; 
+export default SubjectMaster;

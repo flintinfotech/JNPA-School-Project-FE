@@ -2,6 +2,8 @@
 import { LuUsers } from "react-icons/lu";
 import { MdOutlineSubject } from "react-icons/md";
 import { MdAssignment } from "react-icons/md";
+import { FaChalkboardTeacher } from "react-icons/fa";
+
 import { PiBookOpenText, PiCalendarBlank, PiClipboardText, PiGraduationCap, PiStudent } from "react-icons/pi";
 
 // import { PiBookOpenText, PiCalendarBlank, PiClipboardText, PiGraduationCap, PiStudent} from "react-icons/pi";
@@ -29,5 +31,6 @@ export const adminNavItems: AdminNavItem[] = [
    {label:"Employee Details",path:"/update-user",icon:ImProfile},
   
   { label: "Subject Assignment", path: "/subject-assignment", icon: MdAssignment },
+  { label: "Teacher Subjects", path: "/teacher-subjects", icon: FaChalkboardTeacher },
 
 ];
