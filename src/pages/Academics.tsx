@@ -11,13 +11,13 @@ const sections = [
   },
   {
     label: "Primary School",
-    grades: ["1 Standard", "2 Standard", "3 Standard", "4 Standard"],
+    grades: ["1st Standard", "2nd Standard", "3rd Standard", "4th Standard"],
     color: "#1569ad",
     route: "/academics/primary",
   },
   {
     label: "Secondary School",
-    grades: ["5 Standard", "6 Standard", "7 Standard", "8 Standard", "9 Standard", "10 Standard"],
+    grades: ["5th Standard", "6th Standard", "7th Standard", "8th Standard", "9th Standard", "10th Standard"],
     color: "#1f4d3d",
     route: "/academics/secondary",
   },
