@@ -42,6 +42,7 @@ import AdmissionAdmin from "./pages/AdmissionAdmin";
 import SubjectsMaster from "./pages/SubjectsMaster";
 import ClassMaster from "./pages/ClassMaster";
 import SubjectAssignment from "./pages/SubjectAssignment";
+import TeacherSubjects from "./pages/TeacherSubject";
 
 import UpdateUserProfile from "./pages/userModule/EmployeeDetails";
 
@@ -49,6 +50,7 @@ import AdmissionPrimaryMarathi from "./pages/AdmissionPrimaryMarathi";
 import AdmissionPrimaryEnglish from "./pages/AdmissionPrimaryEnglish";
 import AdmissionSecondarMarathi from "./pages/AdmissionSecondaryMarathi";
 import AdmissionSecondaryEnglish from "./pages/AdmissionSecondaryEnglish";
+
 
 
 
@@ -69,12 +71,13 @@ export default function App() {
 
    const isUpdateUserPage=location.pathname==="/update-user";
   const isSubjectAssignmentPage = location.pathname ==="/subject-assignment";
+  const isTeacherSubjectsPage = location.pathname ==="/teacher-subjects";
   const isHomePage = location.pathname === "/";
 
  
   
-  const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage||isUpdateUserPage;
-  const hideFooter = isHomePage || isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage||isUpdateUserPage;
+  const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage||isUpdateUserPage ||isTeacherSubjectsPage;
+  const hideFooter = isHomePage || isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage||isUpdateUserPage||isTeacherSubjectsPage;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -109,6 +112,7 @@ export default function App() {
             <Route path="/subjects-master" element={ <SubjectsMaster />} />
             <Route path="/class-master" element={<ClassMaster />} />
             <Route path="/subject-assignment" element={<SubjectAssignment />} />
+            <Route path="/teacher-subjects" element={<TeacherSubjects />} />
            
             <Route path="/update-user" element={<UpdateUserProfile/>}/>
           </Route>

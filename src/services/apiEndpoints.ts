@@ -1,15 +1,14 @@
-
-
 export const apiEndpoints = {
   login: () => `/jnpa-school-project/auth/login`,
 
   saveSubject: () => `/jnpa-school-project/subjectMaster/saveSubjectMaster`,
-  updateSubject: () =>`/jnpa-school-project/subjectMaster/updateSubjectMaster`,
-  getSubjectById: (id: number | string) =>`/jnpa-school-project/subjectMaster/getSubjectMasterById/${id}`,
-deleteSubject: (subjectMasterId: number | string) =>`/jnpa-school-project/subjectMaster/deleteSubjectMaster/${subjectMasterId}`,
-getAllSubjects: (page: number, size: number) =>`/jnpa-school-project/subjectMaster/getAllSubjectMasterByFilter?page=${page}&size=${size}&paginate=true`,
-
-
+  updateSubject: () => `/jnpa-school-project/subjectMaster/updateSubjectMaster`,
+  getSubjectById: (id: number | string) =>
+    `/jnpa-school-project/subjectMaster/getSubjectMasterById/${id}`,
+  deleteSubject: (subjectMasterId: number | string) =>
+    `/jnpa-school-project/subjectMaster/deleteSubjectMaster/${subjectMasterId}`,
+  getAllSubjects: (page: number, size: number) =>
+    `/jnpa-school-project/subjectMaster/getAllSubjectMasterByFilter?page=${page}&size=${size}&paginate=true`,
 
   saveUser: () => `/jnpa-school-project/user/saveUser`,
   updateUser: () => `/jnpa-school-project/user/updateUser`,
@@ -20,8 +19,10 @@ getAllSubjects: (page: number, size: number) =>`/jnpa-school-project/subjectMast
 
   saveStudent: () => `/jnpa-school-project/student/saveStudent`,
   updateStudent: () => `/jnpa-school-project/student/updateStudent`,
-  getStudentById: (studentId: number | string) => `/jnpa-school-project/student/getStudentById/${studentId}`,
-  deleteStudent: (studentId: number | string) => `/jnpa-school-project/student/deleteStudent/${studentId}`,
+  getStudentById: (studentId: number | string) =>
+    `/jnpa-school-project/student/getStudentById/${studentId}`,
+  deleteStudent: (studentId: number | string) =>
+    `/jnpa-school-project/student/deleteStudent/${studentId}`,
   getAllStudents: (page: number, size: number) =>
     `/jnpa-school-project/student/getAllStudentsByFilter?page=${page}&size=${size}&paginate=true`,
 
@@ -51,35 +52,47 @@ getAllSubjects: (page: number, size: number) =>`/jnpa-school-project/subjectMast
 
   saveExam: () => `/jnpa-school-project/exam/saveExam`,
   updateExam: () => `/jnpa-school-project/exam/updateExam`,
-  getAllExamsByFilter: (page: number, size: number) => `/jnpa-school-project/exam/getAllExamsByFilter?page=${page}&size=${size}&paginate=true`,
+  getAllExamsByFilter: (page: number, size: number) =>
+    `/jnpa-school-project/exam/getAllExamsByFilter?page=${page}&size=${size}&paginate=true`,
 
   saveAdmission: () => `/jnpa-school-project/admission/saveAdmission`,
   updateAdmisson: () => `/jnpa-school-project/admission/updateAdmission`,
-  getAllAdmissionsByFilter: (page: number, size: number) => `/jnpa-school-project/admission/getAllAdmissionsByFilter?page=${page}&size=${size}&paginate=true`,
+  getAllAdmissionsByFilter: (page: number, size: number) =>
+    `/jnpa-school-project/admission/getAllAdmissionsByFilter?page=${page}&size=${size}&paginate=true`,
 
-  saveClassMaster: () =>`/jnpa-school-project/classMaster/saveClassMaster`,
-  
-  updateClassMaster: () =>`/jnpa-school-project/classMaster/updateClassMaster`,
-  getAllClassMaster: (page: number, size: number) =>`/jnpa-school-project/classMaster/getAllClassMasterByFilter?page=${page}&size=${size}&paginate=true`,
+  saveClassMaster: () => `/jnpa-school-project/classMaster/saveClassMaster`,
+  updateClassMaster: () => `/jnpa-school-project/classMaster/updateClassMaster`,
+  getAllClassMaster: (page: number, size: number) =>
+    `/jnpa-school-project/classMaster/getAllClassMasterByFilter?page=${page}&size=${size}&paginate=true`,
   getClassMasterById: (id: number | string) =>
-  `/jnpa-school-project/classMaster/getClassMasterById/${id}`,
+    `/jnpa-school-project/classMaster/getClassMasterById/${id}`,
   deleteClassMaster: (id: number | string) =>
-  `/jnpa-school-project/classMaster/deleteClassMaster/${id}`,
-  saveUserInformation: () =>
-  `/jnpa-school-project/userInformation/saveUserInformation`,
+    `/jnpa-school-project/classMaster/deleteClassMaster/${id}`,
+  saveUserInformation: () => `/jnpa-school-project/userInformation/saveUserInformation`,
   getUserInformationById: (id: number) =>
-  `/jnpa-school-project/userInformation/getUserInformationByUserId/${id}`,
-  updateUserInformation: () =>
-  `/jnpa-school-project/userInformation/updateUserInformation`,
+    `/jnpa-school-project/userInformation/getUserInformationByUserId/${id}`,
+  updateUserInformation: () => `/jnpa-school-project/userInformation/updateUserInformation`,
 
+  getSubjectsByClassId: (id: number) =>
+    `/jnpa-school-project/subjectAssignment/getSubjectsByClassId/${id}`,
 
+  assignOrUnassignSubjects: () =>
+    "/jnpa-school-project/subjectAssignment/assignOrUnassignSubjects",
 
+  getAllUsersByFilter: (page: number, size: number) =>
+    `/jnpa-school-project/user/getAllUsersByFilter?page=${page}&size=${size}&paginate=true`,
 
-  getSubjectsByClassId: (id:number) =>
-`/jnpa-school-project/subjectAssignment/getSubjectsByClassId/${id}`,
+  searchClass: (keyword: string) => `/jnpa-school-project/classMaster/search?keyword=${keyword}`,
 
-  assignOrUnassignSubjects: () =>"/jnpa-school-project/subjectAssignment/assignOrUnassignSubjects",
+  // ===============================
+  // Teacher Subject Assignment
+  // ===============================
+  assignTeacherSubjects: () =>
+    "/jnpa-school-project/teacherSubjectAssignment/assignOrUnassignSubjects",
 
+  getAllUserInformation: (page: number, size: number) =>
+    `/jnpa-school-project/userInformation/getAllUserInformationByFilter?page=${page}&size=${size}&paginate=true`,
+
+  getSubjectsByUserInformationId: (userInformationId: number | string) =>
+  `/jnpa-school-project/teacherSubjectAssignment/getSubjectsByUserInformationId/${userInformationId}`,
 };
-
-
