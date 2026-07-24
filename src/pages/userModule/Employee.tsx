@@ -6,8 +6,13 @@ import {
   DatePicker,
   Button,
   Upload,
+  Popconfirm,
 } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import {
+  PlusOutlined,
+  DeleteOutlined,
+  UploadOutlined,
+} from "@ant-design/icons";
 import { useState } from "react";
 import dayjs from "dayjs";
 
@@ -17,6 +22,7 @@ interface UserProps {
   loading: boolean;
   isEditing: boolean;
   viewOnly?: boolean;
+  onDelete?: () => void;
 }
 
 export default function User({
@@ -24,8 +30,20 @@ export default function User({
   onFinish,
   loading,
   isEditing,
+  onDelete,
 }: UserProps) {
   const [activeTab, setActiveTab] = useState("1");
+  const convertToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.readAsDataURL(file);
+
+      reader.onload = () => resolve(reader.result as string);
+
+      reader.onerror = error => reject(error);
+    });
+  };
 
   return (
     <Form
@@ -36,6 +54,25 @@ export default function User({
       <Tabs
         activeKey={activeTab}
         onChange={setActiveTab}
+        tabBarExtraContent={
+          isEditing && (
+            <Popconfirm
+              title="Delete Employee Information"
+              description="Are you sure you want to delete this employee information?"
+              onConfirm={onDelete}
+              okText="Yes"
+              cancelText="No"
+            >
+              <Button
+                danger
+                type="text"
+                icon={<DeleteOutlined />}
+              >
+                Delete Details
+              </Button>
+            </Popconfirm>
+          )
+        }
         items={[
           {
             key: "1",
@@ -43,12 +80,12 @@ export default function User({
             children: (
               <div className="grid grid-cols-2 gap-4">
                 <Form.Item
-                 name="userInformationId"
-                hidden
-                   >
-              <Input />
-            
-            </Form.Item>
+                  name="userInformationId"
+                  hidden
+                >
+                  <Input />
+
+                </Form.Item>
                 <Form.Item
                   label="User ID"
                   name="userId"
@@ -215,116 +252,146 @@ export default function User({
               >
                 {(fields, { add, remove }) => (
                   <>
-                  {fields.map(({ key, name }) => (
-  <div
-    key={key}
-    className="border rounded-lg p-4 mb-5"
-  >
-    <h3 className="font-semibold text-lg mb-4">
-      Document {name + 1}
-    </h3>
+                    {fields.map(({ key, name }) => (
+                      <div
+                        key={key}
+                        className="border rounded-lg p-5 mb-4 relative bg-white"
+                      >
+                        {fields.length > 1 && (
+                          <DeleteOutlined
+                            onClick={() => remove(name)}
+                            style={{
+                              position: "absolute",
+                              right: 18,
+                              top: 18,
+                              color: "red",
+                              cursor: "pointer",
+                              fontSize: 18,
+                            }}
+                          />
+                        )}
 
-    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <Form.Item
+                            label="Document Name"
+                            name={[name, "documentName"]}
+                            rules={[
+                              {
+                                required: false,
+                                message: "Please enter document name",
+                              },
+                            ]}
+                          >
+                            <Input placeholder="Enter Document Name" />
+                          </Form.Item>
 
-      <Form.Item
-        label="Document Name"
-        name={[name, "documentName"]}
-        rules={[
-          {
-            required: false,
-            message: "Please enter document name",
-          },
-        ]}
-      >
-        <Input placeholder="Enter Document Name" />
-      </Form.Item>
+                          <Form.Item
+                            label="Upload Date"
+                            name={[name, "uploadDate"]}
+                            rules={[{ required: true, message: "Please select upload date" }]}
+                            getValueProps={(value) => ({
+                              value: value && !dayjs.isDayjs(value) ? dayjs(value) : value,
+                            })}
+                          >
+                            <DatePicker style={{ width: "100%" }} format="DD-MM-YYYY" />
+                          </Form.Item>
 
-      <Form.Item
-        label="Document Type"
-        name={[name, "documentType"]}
-        rules={[
-          {
-            required: false,
-            message: "Please select document type",
-          },
-        ]}
-      >
-        <Select placeholder="Select Document Type">
-          <Select.Option value="PDF">PDF</Select.Option>
-          <Select.Option value="DOC">DOC</Select.Option>
-          <Select.Option value="Image">Image</Select.Option>
-        </Select>
-      </Form.Item>
+                          <Form.Item
+                            label="File"
+                            name={[name, "document"]}
+                            valuePropName="fileListDummy"
+                            rules={[{ required: true, message: "Please upload a file" }]}
+                            getValueFromEvent={() => form.getFieldValue(["documents", name, "document"])}
+                          >
+                            <Upload
+                              listType="text"
+                              maxCount={1}
+                              fileList={form.getFieldValue(["documents", name, "fileList"]) || []}
+                              beforeUpload={async (file) => {
+                                const base64 = await convertToBase64(file);
+                                const docs = form.getFieldValue("documents") || [];
 
-      <Form.Item
-        label="Upload Date"
-        name={[name, "uploadDate"]}
-      >
-        <DatePicker
-          style={{ width: "100%" }}
-          format="DD-MM-YYYY"
-        />
-      </Form.Item>
+                                const inferredType = file.type.includes("pdf")
+                                  ? "PDF"
+                                  : file.type.includes("image")
+                                    ? "Image"
+                                    : "DOC";
 
-      <Form.Item
-        label="Upload Document"
-        name={[name, "document"]}
-      >
-        <Upload beforeUpload={() => false}>
-          <Button>Select File</Button>
-        </Upload>
-      </Form.Item>
+                                docs[name] = {
+                                  ...docs[name],
+                                  document: base64,
+                                  documentType: inferredType,
+                                  fileList: [
+                                    { uid: file.uid, name: file.name, status: "done", url: base64 },
+                                  ],
+                                };
+                                form.setFieldsValue({ documents: docs });
+                                return false;
+                              }}
+                              onRemove={() => {
+                                const docs = form.getFieldValue("documents") || [];
+                                docs[name] = {
+                                  ...docs[name],
+                                  document: null,
+                                  documentType: null,
+                                  fileList: [],
+                                };
+                                form.setFieldsValue({ documents: docs });
+                              }}
+                              onPreview={(file) => {
+                                const base64 = file.url || (file as any).thumbUrl;
+                                if (!base64 || typeof base64 !== "string" || !base64.includes(",")) {
+                                  return;
+                                }
+                                try {
+                                  const [meta, data] = base64.split(",");
+                                  const mimeMatch = meta.match(/data:(.*);base64/);
+                                  const mimeType = mimeMatch ? mimeMatch[1] : "application/octet-stream";
+                                  const byteCharacters = atob(data);
+                                  const byteNumbers = new Array(byteCharacters.length);
+                                  for (let i = 0; i < byteCharacters.length; i++) {
+                                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                                  }
+                                  const byteArray = new Uint8Array(byteNumbers);
+                                  const blob = new Blob([byteArray], { type: mimeType });
+                                  const objectUrl = URL.createObjectURL(blob);
+                                  window.open(objectUrl, "_blank");
+                                  setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
+                                } catch (err) {
+                                  console.error("Preview failed", err);
+                                }
+                              }}
+                            >
+                              <Button icon={<UploadOutlined />}>Select PDF / Image</Button>
+                            </Upload>
+                          </Form.Item>
+                        </div>
+                      </div>
+                    ))}
 
-      {fields.length > 1 && (
-        <div className="col-span-2 flex justify-end">
-          <Button
-            danger
-            onClick={() => remove(name)}
-          >
-            Remove Document
-          </Button>
-        </div>
-      )}
+                    <div className="flex justify-center mb-6">
+                      <Button
+                        type="dashed"
+                        icon={<PlusOutlined />}
+                        onClick={() =>
+                          add({
+                            documentName: "",
+                            documentType: "",
+                            uploadDate: null,
+                            document: null,
+                          })
+                        }
+                      >
+                        Add Document
+                      </Button>
+                    </div>
 
-    </div>
-  </div>
-))}
-
-<div className="flex justify-center mb-6">
-  <Button
-    type="dashed"
-    icon={<PlusOutlined />}
-    onClick={() =>
-      add({
-        documentName: "",
-        documentType: "",
-        uploadDate: null,
-        document: null,
-      })
-    }
-  >
-    Add Document
-  </Button>
-</div>
-
-<div className="flex justify-between">
-
-  <Button
-    onClick={() => setActiveTab("1")}
-  >
-    Back
-  </Button>
-
-  <Button
-    type="primary"
-    htmlType="submit"
-    loading={loading}
-  >
-    {isEditing ? "Update" : "Save"}
-  </Button>
-
-</div>
-
+                    <div className="flex justify-between">
+                      <Button onClick={() => setActiveTab("1")}>Back</Button>
+                      <Button type="primary" htmlType="submit" loading={loading}>
+                        {isEditing ? "Update" : "Save"}
+                      </Button>
+                    </div>
                   </>
                 )}
               </Form.List>

@@ -73,6 +73,12 @@ export const apiEndpoints = {
     `/jnpa-school-project/userInformation/getUserInformationByUserId/${id}`,
   updateUserInformation: () => `/jnpa-school-project/userInformation/updateUserInformation`,
 
+  deleteUserInformation: (userInformationId: number) =>
+  `/jnpa-school-project/userInformation/deleteUserInformation/${userInformationId}`,
+
+
+  getSubjectsByClassId: (id:number) =>
+`/jnpa-school-project/subjectAssignment/getSubjectsByClassId/${id}`,
   getSubjectsByClassId: (id: number) =>
     `/jnpa-school-project/subjectAssignment/getSubjectsByClassId/${id}`,
 
@@ -96,3 +102,7 @@ export const apiEndpoints = {
   getSubjectsByUserInformationId: (userInformationId: number | string) =>
   `/jnpa-school-project/teacherSubjectAssignment/getSubjectsByUserInformationId/${userInformationId}`,
 };
+
+
+
+

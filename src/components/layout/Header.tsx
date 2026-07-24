@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { LogOut, Menu, UserCircle } from "lucide-react";
-import { adminNavItems } from "../../config/adminNav";
+import { adminNavItems, isAdminNavGroup } from "../../config/adminNav";
 import { useAuth } from "../../hooks/useAuth";
 
 interface Props {
@@ -11,7 +11,14 @@ interface Props {
 
 export default function Header({ onLogout, onMenuClick }: Props) {
   const location = useLocation();
-  const current = adminNavItems.find((item) => item.path === location.pathname);
+
+  // Flatten links (including group children) so we can find the title
+  // regardless of whether the current route is a flat link or nested
+  // inside a collapsible group like "Administrator".
+  const current = adminNavItems
+    .flatMap((item) => (isAdminNavGroup(item) ? item.children : [item]))
+    .find((link) => link.path === location.pathname);
+
   const { user } = useAuth();
 
   const [profileOpen, setProfileOpen] = useState(false);
