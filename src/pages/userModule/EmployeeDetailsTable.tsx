@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button, Popconfirm } from "antd";
-import { EyeOutlined,EditOutlined } from "@ant-design/icons";
+import { EyeOutlined, EditOutlined } from "@ant-design/icons";
 import CommonTable from "../../components/commonTable";
 import type { UserDTO } from "../../services/userService";
 
@@ -81,11 +81,11 @@ export default function UserUpdateProfileTable({
       render: (_: any, record: UserDTO) => (
         <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
           <Button
-                icon={<EyeOutlined />}
-                size="small"
-                 onClick={() => onView(record)}
-                  />
-          
+            icon={<EyeOutlined />}
+            size="small"
+            onClick={() => onView(record)}
+          />
+
           <Button
             type="primary"
             icon={<EditOutlined />}
@@ -138,23 +138,15 @@ export default function UserUpdateProfileTable({
 
                 <Button
                   icon={<EyeOutlined />}
-                   size="small"
+                  size="small"
                   onClick={() => onView(record)}
-                  />
+                />
                 <Button
                   type="primary"
                   icon={<EditOutlined />}
                   size="small"
                   onClick={() => onEdit(record)}
                 />
-                {/* <Popconfirm
-                  title="Are you sure you want to delete this user?"
-                  onConfirm={() => onDelete(record.userId)}
-                  okText="Yes"
-                  cancelText="No"
-                >
-                  <Button danger icon={<DeleteOutlined />} size="small" />
-                </Popconfirm> */}
               </div>
             </div>
           ))}

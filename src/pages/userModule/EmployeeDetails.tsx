@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { Drawer, Form, message ,Modal, Popconfirm, Button } from "antd";
+import { Drawer, Form, message, Modal, Popconfirm, Button } from "antd";
 // import { DeleteOutlined } from "@ant-design/icons";
-import {  getAllUsers,saveUserInformation,updateUserInformation, getUserInformationById,deleteUserInformation, type UserDTO } from "../../services/userService";
+import { getAllUsers, saveUserInformation, updateUserInformation, getUserInformationById, deleteUserInformation, type UserDTO } from "../../services/userService";
 import UserUpdateProfileTable from "./EmployeeDetailsTable";
 import User from "./Employee";
 import dayjs from "dayjs";
@@ -24,25 +24,25 @@ export default function UpdateUserProfile() {
   const [staticData, setStaticData] = useState<StaticDataResponse | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   // Strips any existing "data:...;base64," prefix so we always work with raw base64,
-// whether it came from old (prefixed) or new (raw) saved records.
-const toRawBase64 = (value: string | null | undefined): string | null => {
-  if (!value) return null;
-  return value.includes(",") ? value.split(",")[1] : value;
-};
+  // whether it came from old (prefixed) or new (raw) saved records.
+  const toRawBase64 = (value: string | null | undefined): string | null => {
+    if (!value) return null;
+    return value.includes(",") ? value.split(",")[1] : value;
+  };
   // Detects the real mime type by inspecting the base64-decoded file signature,
-// since documentType (user-entered/selected) can't be trusted.
-const detectMimeFromBase64 = (rawBase64: string): string => {
-  const signature = rawBase64.substring(0, 12); // first ~9 raw bytes as base64 chars
+  // since documentType (user-entered/selected) can't be trusted.
+  const detectMimeFromBase64 = (rawBase64: string): string => {
+    const signature = rawBase64.substring(0, 12); // first ~9 raw bytes as base64 chars
 
-  if (signature.startsWith("JVBERi0")) return "application/pdf";        // %PDF-
-  if (signature.startsWith("iVBORw0KGgo")) return "image/png";          // PNG
-  if (signature.startsWith("/9j/")) return "image/jpeg";                // JPEG
-  if (signature.startsWith("R0lGOD")) return "image/gif";               // GIF
-  if (signature.startsWith("UEsDB")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"; // .docx (zip-based)
-  if (signature.startsWith("0M8R4K")) return "application/msword";      // legacy .doc
+    if (signature.startsWith("JVBERi0")) return "application/pdf";        // %PDF-
+    if (signature.startsWith("iVBORw0KGgo")) return "image/png";          // PNG
+    if (signature.startsWith("/9j/")) return "image/jpeg";                // JPEG
+    if (signature.startsWith("R0lGOD")) return "image/gif";               // GIF
+    if (signature.startsWith("UEsDB")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"; // .docx (zip-based)
+    if (signature.startsWith("0M8R4K")) return "application/msword";      // legacy .doc
 
-  return "application/octet-stream"; // fallback, browser will offer download
-};
+    return "application/octet-stream"; // fallback, browser will offer download
+  };
 
   useEffect(() => {
     const loadStaticData = async () => {
@@ -80,104 +80,104 @@ const detectMimeFromBase64 = (rawBase64: string): string => {
     fetchUsers(page, pageSize);
   }, [page, pageSize, fetchUsers]);
 
-//   const openAddDrawer = () => {
-//     setEditingUser(null);
-//     form.resetFields();
-//     setDrawerOpen(true);
-//   };
+  //   const openAddDrawer = () => {
+  //     setEditingUser(null);
+  //     form.resetFields();
+  //     setDrawerOpen(true);
+  //   };
   const openViewDrawer = async (record: UserDTO) => {
-  try {
-    const response = await getUserInformationById(record.userId);
-    console.log("View API Response:", response);
-    if (response.success) {
-      setViewUser(response.data);
-      setViewDrawerOpen(true);
-    } else {
-      message.error(response.message);
+    try {
+      const response = await getUserInformationById(record.userId);
+      console.log("View API Response:", response);
+      if (response.success) {
+        setViewUser(response.data);
+        setViewDrawerOpen(true);
+      } else {
+        message.error(response.message);
+      }
+    } catch (error: any) {
+      message.error(
+        error?.response?.data?.message ||
+        "Failed to load employee details"
+      );
     }
-  } catch (error: any) {
-    message.error(
-      error?.response?.data?.message ||
-      "Failed to load employee details"
-    );
-  }
-};
+  };
 
 
-const openEditDrawer = async (record: UserDTO) => {
-  console.log("Clicked Record:", record);
-  console.log("Clicked User ID:", record.userId);
-  
+  const openEditDrawer = async (record: UserDTO) => {
+    console.log("Clicked Record:", record);
+    console.log("Clicked User ID:", record.userId);
 
-  try {
-    const response = await getUserInformationById(record.userId);
 
-    console.log("API Response:", response);
-    if (response.success) {
-      const user = response.data;
+    try {
+      const response = await getUserInformationById(record.userId);
 
-      setEditingUser(user);
+      console.log("API Response:", response);
+      if (response.success) {
+        const user = response.data;
 
-      form.setFieldsValue({
-        userInformationId: user.userInformationId,
-        userId: record.userId,
-        employeeCode: user.employeeCode,
-        firstName: user.firstName,
-        middleName: user.middleName,
-        lastName: user.lastName,
-        gender: user.gender,
-        qualification: user.qualification,
-        specialization: user.specialization,
-        experience: user.experience,
-        designation: user.designation,
-        bloodGroup: user.bloodGroup,
-        address: user.address,
-        dateOfBirth: user.dateOfBirth ? dayjs(user.dateOfBirth) : null,
-        joiningDate: user.joiningDate ? dayjs(user.joiningDate) : null,
+        setEditingUser(user);
 
-        // === REPLACED BLOCK STARTS HERE ===
-        documents:
-  user.userDocumentDTOS?.map((doc: any) => {
-    const rawBase64 = toRawBase64(doc.document);
-    const mime = rawBase64 ? detectMimeFromBase64(rawBase64) : "application/octet-stream";
-    const dataUrl = rawBase64 ? `data:${mime};base64,${rawBase64}` : null;
+        form.setFieldsValue({
+          userInformationId: user.userInformationId,
+          userId: record.userId,
+          employeeCode: user.employeeCode,
+          firstName: user.firstName,
+          middleName: user.middleName,
+          lastName: user.lastName,
+          gender: user.gender,
+          qualification: user.qualification,
+          specialization: user.specialization,
+          experience: user.experience,
+          designation: user.designation,
+          bloodGroup: user.bloodGroup,
+          address: user.address,
+          dateOfBirth: user.dateOfBirth ? dayjs(user.dateOfBirth) : null,
+          joiningDate: user.joiningDate ? dayjs(user.joiningDate) : null,
 
-    return {
-      ...doc,
-      document: dataUrl,
-      uploadDate: doc.uploadDate ? dayjs(doc.uploadDate) : null,
-      fileList: dataUrl
-        ? [
-            {
-              uid: "-1",
-              name: doc.documentName,
-              status: "done",
-              url: dataUrl,
-            },
-          ]
-        : [],
-    };
-  }) || [],
-        // === REPLACED BLOCK ENDS HERE ===
-      });
+          // === REPLACED BLOCK STARTS HERE ===
+          documents:
+            user.userDocumentDTOS?.map((doc: any) => {
+              const rawBase64 = toRawBase64(doc.document);
+              const mime = rawBase64 ? detectMimeFromBase64(rawBase64) : "application/octet-stream";
+              const dataUrl = rawBase64 ? `data:${mime};base64,${rawBase64}` : null;
 
-      setEditingUser(user);
-    } else {
-      setEditingUser(null);
-      form.resetFields();
-      form.setFieldsValue({
-        userInformationId: null,
-        userId: record.userId,
-        firstName: record.firstName,
-        lastName: record.lastName,
-      });
+              return {
+                ...doc,
+                document: dataUrl,
+                uploadDate: doc.uploadDate ? dayjs(doc.uploadDate) : null,
+                fileList: dataUrl
+                  ? [
+                    {
+                      uid: "-1",
+                      name: doc.documentName,
+                      status: "done",
+                      url: dataUrl,
+                    },
+                  ]
+                  : [],
+              };
+            }) || [],
+          // === REPLACED BLOCK ENDS HERE ===
+        });
+
+        setEditingUser(user);
+      } else {
+        setEditingUser(null);
+        form.resetFields();
+        form.setFieldsValue({
+          userInformationId: null,
+          userId: record.userId,
+          firstName: record.firstName,
+          lastName: record.lastName,
+        });
+      }
+
+      setDrawerOpen(true);
+    } catch (error) {
+      message.error("Failed to load employee details");
     }
-
-    setDrawerOpen(true);
-  } catch (error) {
-    message.error("Failed to load employee details");
-  }
-};
+  };
 
   const closeDrawer = () => {
     setDrawerOpen(false);
@@ -186,142 +186,142 @@ const openEditDrawer = async (record: UserDTO) => {
   };
 
   const handleDelete = async () => {
-  if (!editingUser?.userInformationId) {
-    message.warning("No employee information found.");
-    return;
-  }
-
-  try {
-    const response = await deleteUserInformation(
-      editingUser.userInformationId
-    );
-
-    if (response.success) {
-      message.success(response.message);
-      closeDrawer();
-      fetchUsers(page, pageSize);
-    } else {
-      message.error(response.message);
+    if (!editingUser?.userInformationId) {
+      message.warning("No employee information found.");
+      return;
     }
-  } catch (error: any) {
-    message.error(
-      error?.response?.data?.message ||
-      "Failed to delete employee information"
-    );
-  }
-};
+
+    try {
+      const response = await deleteUserInformation(
+        editingUser.userInformationId
+      );
+
+      if (response.success) {
+        message.success(response.message);
+        closeDrawer();
+        fetchUsers(page, pageSize);
+      } else {
+        message.error(response.message);
+      }
+    } catch (error: any) {
+      message.error(
+        error?.response?.data?.message ||
+        "Failed to delete employee information"
+      );
+    }
+  };
 
   const handleFormSubmit = async (values: any) => {
-  setSubmitting(true);
+    setSubmitting(true);
 
-  try {
- const payload = {
-  userInformationId: values.userInformationId,
-  userId: values.userId,
-  employeeCode: values.employeeCode,
-  firstName: values.firstName,
-  middleName: values.middleName,
-  lastName: values.lastName,
-  gender: values.gender,
-  qualification: values.qualification,
-  specialization: values.specialization,
-  experience: values.experience,
-  designation: values.designation,
-  bloodGroup: values.bloodGroup,
-  address: values.address,
-  dateOfBirth: values.dateOfBirth.format("YYYY-MM-DD"),
-  joiningDate: values.joiningDate.format("YYYY-MM-DD"),
-  userDocumentDTOS: (values.documents || [])
-  .filter((doc: any) => doc.documentName || doc.document)
-  .map((doc: any) => ({
-    userDocumentId: doc.userDocumentId,
-    userInformationId: doc.userInformationId,
-    documentName: doc.documentName,
-    documentType: doc.documentType,
-    uploadDate: doc.uploadDate
-      ? dayjs(doc.uploadDate).format("YYYY-MM-DD")
-      : null,
-    document: toRawBase64(doc.document), // <-- same helper, always sends raw base64
-  })),
-};
+    try {
+      const payload = {
+        userInformationId: values.userInformationId,
+        userId: values.userId,
+        employeeCode: values.employeeCode,
+        firstName: values.firstName,
+        middleName: values.middleName,
+        lastName: values.lastName,
+        gender: values.gender,
+        qualification: values.qualification,
+        specialization: values.specialization,
+        experience: values.experience,
+        designation: values.designation,
+        bloodGroup: values.bloodGroup,
+        address: values.address,
+        dateOfBirth: values.dateOfBirth.format("YYYY-MM-DD"),
+        joiningDate: values.joiningDate.format("YYYY-MM-DD"),
+        userDocumentDTOS: (values.documents || [])
+          .filter((doc: any) => doc.documentName || doc.document)
+          .map((doc: any) => ({
+            userDocumentId: doc.userDocumentId,
+            userInformationId: doc.userInformationId,
+            documentName: doc.documentName,
+            documentType: doc.documentType,
+            uploadDate: doc.uploadDate
+              ? dayjs(doc.uploadDate).format("YYYY-MM-DD")
+              : null,
+            document: toRawBase64(doc.document), // <-- same helper, always sends raw base64
+          })),
+      };
 
-let response;
+      let response;
 
-// If record exists -> Update API
-if (payload.userInformationId) {
-  response = await updateUserInformation(payload);
-}
-// If record does not exist -> Save API
-else {
-  response = await saveUserInformation(payload);
-}
+      // If record exists -> Update API
+      if (payload.userInformationId) {
+        response = await updateUserInformation(payload);
+      }
+      // If record does not exist -> Save API
+      else {
+        response = await saveUserInformation(payload);
+      }
 
-if (response.success) {
-  message.success(response.message);
-  closeDrawer();
-  fetchUsers(page, pageSize);
-} else {
-  message.error(response.message);
-}
-  } catch (error: any) {
-    message.error(
-      error?.response?.data?.message ||
-      "Something went wrong"
-    );
-  } finally {
-    setSubmitting(false);
-  }
-};
+      if (response.success) {
+        message.success(response.message);
+        closeDrawer();
+        fetchUsers(page, pageSize);
+      } else {
+        message.error(response.message);
+      }
+    } catch (error: any) {
+      message.error(
+        error?.response?.data?.message ||
+        "Something went wrong"
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div>
       {/* Add User Button */}
-      
+
 
       <UserUpdateProfileTable
-            data={users}
-            loading={tableLoading}
-             pagination={{
-              current: page + 1,
-                pageSize,
-                total,
-                onChange: (newPage, newPageSize) => {
-             setPage(newPage - 1);
+        data={users}
+        loading={tableLoading}
+        pagination={{
+          current: page + 1,
+          pageSize,
+          total,
+          onChange: (newPage, newPageSize) => {
+            setPage(newPage - 1);
             setPageSize(newPageSize);
-        },
-    }}
-    onView={openViewDrawer}
-    onEdit={openEditDrawer}
-/>
+          },
+        }}
+        onView={openViewDrawer}
+        onEdit={openEditDrawer}
+      />
 
       <Drawer
-  title="Employee Details"
-  open={drawerOpen}
-  onClose={closeDrawer}
-  width={700}
-  destroyOnClose
->
-  <User
-    form={form}
-    onFinish={handleFormSubmit}
-    isEditing={!!editingUser}
-    loading={submitting}
-    onDelete={handleDelete}
-  />
-</Drawer>
+        title="Employee Details"
+        open={drawerOpen}
+        onClose={closeDrawer}
+        width={700}
+        destroyOnClose
+      >
+        <User
+          form={form}
+          onFinish={handleFormSubmit}
+          isEditing={!!editingUser}
+          loading={submitting}
+          onDelete={handleDelete}
+        />
+      </Drawer>
       <Modal
-  title="Employee Details"
-  open={viewDrawerOpen}
-  onCancel={() => {
-    setViewDrawerOpen(false);
-    setViewUser(null);
-  }}
-  footer={null}
-  width={900}
-  destroyOnClose
->
-  <EmployeeViewer user={viewUser} />
-</Modal>
+        title="Employee Details"
+        open={viewDrawerOpen}
+        onCancel={() => {
+          setViewDrawerOpen(false);
+          setViewUser(null);
+        }}
+        footer={null}
+        width={900}
+        destroyOnClose
+      >
+        <EmployeeViewer user={viewUser} />
+      </Modal>
     </div>
   );
 }
