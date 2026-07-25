@@ -102,3 +102,7 @@ export const apiEndpoints = {
   getSubjectsByUserInformationId: (userInformationId: number | string) =>
   `/jnpa-school-project/teacherSubjectAssignment/getSubjectsByUserInformationId/${userInformationId}`,
 };
+
+
+
+
