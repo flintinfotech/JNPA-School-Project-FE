@@ -153,7 +153,7 @@ export default function AdmissionPrimaryMarathi() {
           </button>
           <h1 style={{ color: "#fff", fontSize: "34px", fontWeight: 500, margin: 0 }}>Primary Admissions</h1>
           <p style={{ color: "rgba(255,255,255,0.85)", fontSize: "14px", marginTop: "6px" }}>
-            Grade 1 · Grade 2 · Grade 3 · Grade 4
+            1st Standard · 2nd Standard · 3rd Standard · 4th Standard
           </p>
         </div>
       </div>

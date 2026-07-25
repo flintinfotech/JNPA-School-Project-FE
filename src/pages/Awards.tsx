@@ -44,10 +44,10 @@ const schoolAwards = [
 ];
 
 const studentAchievers = [
-  { name: "Aditya Rane", grade: "Grade X", achievement: "Gold Medal, National Science Olympiad" },
-  { name: "Ishita Patil", grade: "Grade IX", achievement: "State Level Chess Champion" },
-  { name: "Kabir Shah", grade: "Grade XI", achievement: "1st Prize, Inter-School Debate Championship" },
-  { name: "Myra Iyer", grade: "Grade VIII", achievement: "District Level Athletics - 100m Sprint" },
+  { name: "Aditya Rane", grade: "10th Standard", achievement: "Gold Medal, National Science Olympiad" },
+  { name: "Ishita Patil", grade: "9th Standard", achievement: "State Level Chess Champion" },
+  { name: "Kabir Shah", grade: "8th Standard", achievement: "1st Prize, Inter-School Debate Championship" },
+  { name: "Myra Iyer", grade: "7th Standard", achievement: "District Level Athletics - 100m Sprint" },
 ];
 
 export default function Awards() {

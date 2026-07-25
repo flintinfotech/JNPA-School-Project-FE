@@ -75,7 +75,7 @@ export const adminNavItems: AdminNavEntry[] = [
     ],
   },
     {
-    label: "Academics",
+    label: "Academics ",
     icon: MdAssignmentTurnedIn,
     children: [
        { label: "Subject Assignment", path: "/subject-assignment", icon: MdAssignment },

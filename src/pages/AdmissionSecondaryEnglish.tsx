@@ -153,7 +153,7 @@ export default function AdmissionSecondaryEnglish() {
           </button>
           <h1 style={{ color: "#fff", fontSize: "34px", fontWeight: 500, margin: 0 }}>Secondary Admissions</h1>
           <p style={{ color: "rgba(255,255,255,0.85)", fontSize: "14px", marginTop: "6px" }}>
-            Grade 5 · Grade 6 · Grade 7 · Grade 8 · Grade 9 · Grade 10
+            5th Standard · 6th Standard · 7th Standard · 8th Standard · 9th Standard · 10th Standard
           </p>
         </div>
       </div>
