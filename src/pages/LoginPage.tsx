@@ -160,7 +160,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                   placeholder="••••••••"
                   className="w-full px-3.5 py-2.5 pr-10 rounded-lg border border-slate-300 text-slate-800 placeholder-slate-400 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition"
                 />
-
+                
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
