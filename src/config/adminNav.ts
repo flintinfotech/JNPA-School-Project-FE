@@ -67,15 +67,15 @@ export const adminNavItems: AdminNavEntry[] = [
     label: "Website Modules",
     icon: CgWebsite,
     children: [
-  { label: "Academics", path: "/academics-admin", icon: PiBookOpenText },
-  { label: "Events & News", path: "/events-and-news", icon: PiCalendarBlank },
-  { label: "Exam & Results", path: "/exam-and-results", icon: PiClipboardText },
-  { label: "Admission", path: "/admissions-admin", icon: PiGraduationCap },
+  { label: "Academics Screen", path: "/academics-admin", icon: PiBookOpenText },
+  { label: "Events & News Screen", path: "/events-and-news", icon: PiCalendarBlank },
+  { label: "Exam & Results Screen", path: "/exam-and-results", icon: PiClipboardText },
+  { label: "Admission Screen", path: "/admissions-admin", icon: PiGraduationCap },
      
     ],
   },
     {
-    label: "Academics ",
+    label: "Academics Modules",
     icon: MdAssignmentTurnedIn,
     children: [
        { label: "Subject Assignment", path: "/subject-assignment", icon: MdAssignment },

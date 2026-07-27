@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Button, Popconfirm } from "antd";
+import { Button } from "antd";
 import { EyeOutlined, EditOutlined } from "@ant-design/icons";
 import CommonTable from "../../components/commonTable";
 import type { UserDTO } from "../../services/userService";
