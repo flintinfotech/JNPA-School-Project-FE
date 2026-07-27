@@ -1,5 +1,6 @@
 export const apiEndpoints = {
   login: () => `/jnpa-school-project/auth/login`,
+  getLastFiveAcademicYears: () => `/jnpa-school-project/auth/getLastFiveAcademicYears`,
 
   saveSubject: () => `/jnpa-school-project/subjectMaster/saveSubjectMaster`,
   updateSubject: () => `/jnpa-school-project/subjectMaster/updateSubjectMaster`,
@@ -68,17 +69,14 @@ export const apiEndpoints = {
     `/jnpa-school-project/classMaster/getClassMasterById/${id}`,
   deleteClassMaster: (id: number | string) =>
     `/jnpa-school-project/classMaster/deleteClassMaster/${id}`,
+
   saveUserInformation: () => `/jnpa-school-project/userInformation/saveUserInformation`,
   getUserInformationById: (id: number) =>
     `/jnpa-school-project/userInformation/getUserInformationByUserId/${id}`,
   updateUserInformation: () => `/jnpa-school-project/userInformation/updateUserInformation`,
-
   deleteUserInformation: (userInformationId: number) =>
-  `/jnpa-school-project/userInformation/deleteUserInformation/${userInformationId}`,
+    `/jnpa-school-project/userInformation/deleteUserInformation/${userInformationId}`,
 
-
-  getSubjectsByClassId: (id:number) =>
-`/jnpa-school-project/subjectAssignment/getSubjectsByClassId/${id}`,
   getSubjectsByClassId: (id: number) =>
     `/jnpa-school-project/subjectAssignment/getSubjectsByClassId/${id}`,
 
@@ -100,9 +98,5 @@ export const apiEndpoints = {
     `/jnpa-school-project/userInformation/getAllUserInformationByFilter?page=${page}&size=${size}&paginate=true`,
 
   getSubjectsByUserInformationId: (userInformationId: number | string) =>
-  `/jnpa-school-project/teacherSubjectAssignment/getSubjectsByUserInformationId/${userInformationId}`,
+    `/jnpa-school-project/teacherSubjectAssignment/getSubjectsByUserInformationId/${userInformationId}`,
 };
-
-
-
-

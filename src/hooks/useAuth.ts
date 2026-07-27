@@ -14,6 +14,11 @@ interface AuthState {
   user: AuthUser | null;
 }
 
+interface AcademicYear {
+  startDate: string;
+  endDate: string;
+}
+
 export function useAuth() {
   const [auth, setAuth] = useState<AuthState>(() => {
     const token = localStorage.getItem("token");
@@ -25,24 +30,39 @@ export function useAuth() {
     };
   });
 
-  // Returns null on success, or an error message on failure
+  // Login
   const login = async (
     username: string,
-    password: string
+    password: string,
+    academicYear: AcademicYear
   ): Promise<string | null> => {
     try {
-      const response = await loginUser({ username, password });
+      const response = await loginUser({
+        username: username,
+        password,
+        academicWorkYearDTO: academicYear,
+      });
 
       if (response.success && response.data?.token) {
+        // Save Token
         localStorage.setItem("token", response.data.token);
+
+        // Save Username
         localStorage.setItem(
           "username",
           response.data.userDTO?.userName || username
         );
 
+        // Save User Details
         localStorage.setItem(
           "user",
           JSON.stringify(response.data.userDTO)
+        );
+
+        // Optional: Save Academic Year
+        localStorage.setItem(
+          "academicYear",
+          JSON.stringify(academicYear)
         );
 
         setAuth({
@@ -68,11 +88,22 @@ export function useAuth() {
     }
   };
 
+  // Logout
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("username");
-    setAuth({ isAuthenticated: false, user: null });
+    localStorage.removeItem("user");
+    localStorage.removeItem("academicYear");
+
+    setAuth({
+      isAuthenticated: false,
+      user: null,
+    });
   };
 
-  return { ...auth, login, logout };
+  return {
+    ...auth,
+    login,
+    logout,
+  };
 }

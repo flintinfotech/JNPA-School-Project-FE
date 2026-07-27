@@ -1,30 +1,17 @@
 import React, { useEffect, useState } from "react";
-import {
-  Card,
-  Table,
-  Typography,
-  Button,
-  Drawer,
-  Input,
-  Grid,
-  Checkbox,
-  message,
-} from "antd";
+import {Card,Table,Typography,Button,Drawer,Input,Grid,Checkbox,message,} from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { EditOutlined } from "@ant-design/icons";
 
 import { getAllClassMaster } from "../services/classMasterService";
-import {
-  getSubjectsByClassId,
-  assignOrUnassignSubjects,
-} from "../services/subjectAssignmentService";
+import { getSubjectsByClassId,assignOrUnassignSubjects,} from "../services/subjectAssignmentService";
 import { getAllSubjects } from "../services/subjectService";
 
 const { Title } = Typography;
 const { useBreakpoint } = Grid;
 
 interface ClassMasterDTO {
-  classMasterId: number;
+ classMasterId: number;
   standard: string;
   division: string;
   medium: string;
@@ -47,8 +34,7 @@ const SubjectAssignment: React.FC = () => {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const [selectedClass, setSelectedClass] =
-    useState<ClassMasterDTO | null>(null);
+  const [selectedClass, setSelectedClass] =useState<ClassMasterDTO | null>(null);
 
   // Actual assigned subjects from API
   const [subjectList, setSubjectList] = useState<SubjectDTO[]>([]);
@@ -105,7 +91,6 @@ const SubjectAssignment: React.FC = () => {
   const loadAllSubjects = async () => {
     try {
       const response = await getAllSubjects(0, 100);
-
       setAllSubjects(
         response.data.subjectMasterDTOS || []
       );
