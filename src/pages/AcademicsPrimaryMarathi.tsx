@@ -11,7 +11,7 @@ import {
 
 const highlights = [
   "Activity-based and play-integrated learning approach",
-  "Strong focus on reading fluency and numeracy by Grade III",
+  "Strong focus on reading fluency and numeracy by 3rd standard",
   "Weekly library sessions and storytelling programs",
   "Regular formative assessments with no high-pressure exams",
   "Integration of moral values and civic sense across subjects",
@@ -146,7 +146,7 @@ export default function AcademicsPrimaryMarathi() {
             {`${classRoom?.classRoomName || "Primary"} - Marathi`}
           </h1>
           <p style={{ color: "rgba(255,255,255,0.85)", fontSize: "14px", marginTop: "6px" }}>
-            {classRoom?.description || "Grade I · Grade II · Grade III · Grade IV"}
+            {classRoom?.description || "1st Standard · 2nd Standard · 3rd Standard · 4th Standard"}
           </p>
         </div>
       </div>
