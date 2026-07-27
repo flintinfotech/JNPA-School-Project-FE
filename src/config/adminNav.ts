@@ -64,7 +64,7 @@ export const adminNavItems: AdminNavEntry[] = [
     ],
   },
     {
-    label: "Website Modules",
+    label: "Website Module",
     icon: CgWebsite,
     children: [
   { label: "Academics Screen", path: "/academics-admin", icon: PiBookOpenText },
@@ -75,7 +75,7 @@ export const adminNavItems: AdminNavEntry[] = [
     ],
   },
     {
-    label: "Academics Modules",
+    label: "Academics Module",
     icon: MdAssignmentTurnedIn,
     children: [
        { label: "Subject Assignment", path: "/subject-assignment", icon: MdAssignment },
