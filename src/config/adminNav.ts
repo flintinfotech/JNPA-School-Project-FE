@@ -64,7 +64,7 @@ export const adminNavItems: AdminNavEntry[] = [
     ],
   },
     {
-    label: "Website Modules",
+    label: "Website Module",
     icon: CgWebsite,
     children: [
   { label: "Academics Screen", path: "/academics-admin", icon: PiBookOpenText },
