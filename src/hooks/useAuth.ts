@@ -58,6 +58,10 @@ export function useAuth() {
           "user",
           JSON.stringify(response.data.userDTO)
         );
+        localStorage.setItem(
+  "screens",
+  JSON.stringify(response.data.userDTO.screens || [])
+     );
 
         // Optional: Save Academic Year
         localStorage.setItem(
@@ -94,6 +98,7 @@ export function useAuth() {
     localStorage.removeItem("username");
     localStorage.removeItem("user");
     localStorage.removeItem("academicYear");
+    localStorage.removeItem("screens");
 
     setAuth({
       isAuthenticated: false,

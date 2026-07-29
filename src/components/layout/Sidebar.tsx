@@ -12,6 +12,14 @@ export default function Sidebar({ isOpen, onClose }: Props) {
   const [expanded, setExpanded] = useState(false);
   const location = useLocation();
 
+
+  const allowedScreens = JSON.parse(
+  localStorage.getItem("screens") || "[]"
+);
+
+const screenNames = allowedScreens.map((item: any) =>
+  item.screenName.toLowerCase()
+);
   // Tracks which dropdown groups are open, keyed by group label.
   // A group auto-opens if the current route matches one of its children.
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
@@ -79,7 +87,27 @@ export default function Sidebar({ isOpen, onClose }: Props) {
         </div>
 
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto overflow-x-hidden">
-          {adminNavItems.map((item) => {
+          {adminNavItems
+  .map((item) => {
+    if (isAdminNavGroup(item)) {
+      return {
+        ...item,
+        children: item.children.filter((child) =>
+          screenNames.includes(child.label.toLowerCase())
+        ),
+      };
+    }
+
+    return item;
+  })
+  .filter((item) => {
+    if (isAdminNavGroup(item)) {
+      return item.children.length > 0;
+    }
+
+    return screenNames.includes(item.label.toLowerCase());
+  })
+  .map((item) => {
             // ============================
             // Collapsible Group
             // ============================

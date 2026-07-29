@@ -1,4 +1,4 @@
-import { Form, Input, Select, Button } from "antd";
+import { Form, Input, Select, Button, } from "antd";
 import type { FormInstance, Rule } from "antd/es/form";
 
 export interface FormFieldConfig {
@@ -6,9 +6,10 @@ export interface FormFieldConfig {
   label: string;
   type: "text" | "password" | "email" | "number" | "select";
   required?: boolean;
-  options?: { label: string; value: string }[];
+  options?: { label: string; value: string | number }[];
   rules?: Rule[];
   maxLength?: number;
+  mode?: "multiple" | "tags";
 }
 
 interface CommonFormProps {
@@ -41,7 +42,21 @@ export default function CommonForm({
           }
         >
           {field.type === "select" ? (
-            <Select options={field.options} placeholder={`Select ${field.label}`} />
+            <Select
+              options={field.options}
+              placeholder={`Select ${field.label}`}
+              mode={field.mode}
+              optionRender={
+                field.mode === "multiple"
+                  ? (option) => (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        {/* <Checkbox checked={option.data.selected ?? false} /> */}
+                        {option.label}
+                      </div>
+                    )
+                  : undefined
+              }
+            />
           ) : (
             <Input type={field.type} placeholder={field.label} maxLength={field.maxLength} />
           )}
@@ -54,4 +69,4 @@ export default function CommonForm({
       </Form.Item>
     </Form>
   );
-}
+}   

@@ -31,6 +31,8 @@ function useIsMobile(breakpoint = 768) {
   return isMobile;
 }
 
+
+
 export default function UserTable({
   data,
   loading,
@@ -39,6 +41,8 @@ export default function UserTable({
   onDelete,
 }: UserTableProps) {
   const isMobile = useIsMobile();
+
+  
 
   const columns = [
     {

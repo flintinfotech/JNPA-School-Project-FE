@@ -2,6 +2,12 @@
 import axiosInstance from "../lib/axios";
 import { apiEndpoints } from "./apiEndpoints";
 
+
+export interface ScreenDTO {
+  screenId: number;
+  screenName: string;
+}
+
 export interface UserDTO {
   userId: number;
   userName: string;
@@ -12,6 +18,8 @@ export interface UserDTO {
   role: string;
   section?: string;
   medium?: string;
+
+  screens?: ScreenDTO[];
 }
 
 export interface SaveUserRequestDTO {

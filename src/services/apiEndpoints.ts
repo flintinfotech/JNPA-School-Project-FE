@@ -99,4 +99,18 @@ export const apiEndpoints = {
 
   getSubjectsByUserInformationId: (userInformationId: number | string) =>
     `/jnpa-school-project/teacherSubjectAssignment/getSubjectsByUserInformationId/${userInformationId}`,
+
+  // getAllUsersByFilter: (page: number, size: number) =>
+  //   `/jnpa-school-project/user/getAllUsersByFilter?page=${page}&size=${size}&paginate=true`,
+
+  // searchClass: (keyword: string) => `/jnpa-school-project/classMaster/search?keyword=${keyword}`,
+
+  // ===============================
+  // Screens
+  // ===============================
+  getAllScreens: () => `/jnpa-school-project/user/getAllScreens`,
+
+  // ===============================
+  // Teacher Subject Assignment
+  // ===============================
 };
