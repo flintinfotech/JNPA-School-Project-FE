@@ -39,9 +39,17 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
       setAcademicYears(response.data);
 
-      if (response.data.length > 0) {
-        setSelectedAcademicYear(response.data[0]);
-      }
+     const loadAcademicYears = async () => {
+  try {
+    const response = await axiosInstance.get(
+      "/jnpa-school-project/auth/getLastFiveAcademicYears"
+    );
+
+    setAcademicYears(response.data);
+  } catch (error) {
+    console.error("Failed to load Academic Years", error);
+  }
+};
     } catch (error) {
       console.error("Failed to load Academic Years", error);
     }
@@ -184,37 +192,35 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                 Academic Year
               </label>
 
-              <select
-                id="academicYear"
-                required
-                value={
-                  selectedAcademicYear
-                    ? `${selectedAcademicYear.startDate}-${selectedAcademicYear.endDate}`
-                    : ""
-                }
-                onChange={(e) => {
-                  const year = academicYears.find(
-                    (item) =>
-                      `${item.startDate}-${item.endDate}` === e.target.value
-                  );
+            <select
+  id="academicYear"
+  required
+  value={
+    selectedAcademicYear
+      ? `${selectedAcademicYear.startDate}-${selectedAcademicYear.endDate}`
+      : ""
+  }
+  onChange={(e) => {
+    const year = academicYears.find(
+      (item) =>
+        `${item.startDate}-${item.endDate}` === e.target.value
+    );
 
-                  setSelectedAcademicYear(year || null);
-                }}
-                className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition"
-              >
-                <option value="">
-                  Select Academic Year
-                </option>
+    setSelectedAcademicYear(year || null);
+  }}
+  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition"
+>
+  <option value="">Select Academic Year</option>
 
-                {academicYears.map((year, index) => (
-                  <option
-                    key={index}
-                    value={`${year.startDate}-${year.endDate}`}
-                  >
-                    {year.startDate} - {year.endDate}
-                  </option>
-                ))}
-              </select>
+  {academicYears.map((year, index) => (
+    <option
+      key={index}
+      value={`${year.startDate}-${year.endDate}`}
+    >
+      {year.startDate} - {year.endDate}
+    </option>
+  ))}
+</select>
             </div>
 
             {/* Error */}

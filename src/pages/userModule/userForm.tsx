@@ -1,7 +1,12 @@
+import { useEffect, useState } from "react";
 import CommonForm from "../../components/commonForm";
 import type { FormInstance } from "antd/es/form";
 import type { StaticDataResponse } from "../../services/staticDataService";
 import { Form } from "antd";
+import { apiEndpoints } from "../../services/apiEndpoints"; // adjust path to your actual file
+import axiosInstance from "../../lib/axios"; // adjust to whatever you use for calls
+// import { Select, Checkbox } from "antd";
+
 
 interface UserFormProps {
   form: FormInstance;
@@ -11,8 +16,39 @@ interface UserFormProps {
   staticData: StaticDataResponse | null;
 }
 
+interface ScreenOption {
+  screenId: number;
+  screenName: string;
+}
+
 export default function UserForm({ form, onFinish, isEditing, loading, staticData }: UserFormProps) {
   const selectedRole = Form.useWatch("role", form);
+  const [screens, setScreens] = useState<ScreenOption[]>([]);
+
+  useEffect(() => {
+    const fetchScreens = async () => {
+      try {
+        const res = await axiosInstance.get(apiEndpoints.getAllScreens());
+        setScreens(res.data?.data ?? []);
+      } catch (err) {
+        console.error("Failed to fetch screens", err);
+      }
+    };
+    fetchScreens();
+  }, []);
+  const handleFinish = (values: any) => {
+  const { screenIds, ...rest } = values;
+
+  onFinish({
+    ...rest,
+
+    screens:
+      screenIds?.map((id: number) => ({
+        screenId: id,
+      })) ?? [],
+  });
+};
+
   const fields = [
     {
       name: "userName",
@@ -66,6 +102,17 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
           value: role,
         })) ?? [],
     },
+    {
+      name: "screenIds",
+      label: "Screens",
+      type: "select" as const,
+      mode: "multiple" as const,
+      required: true,
+      options: screens.map((screen) => ({
+        label: screen.screenName,
+        value: screen.screenId,
+      })),
+    },
     ...(selectedRole === "TEACHER"
       ? [
         {
@@ -103,9 +150,12 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
     <CommonForm
       form={form}
       fields={fields}
-      onFinish={onFinish}
+      onFinish={handleFinish}
       submitText={isEditing ? "Update" : "Add"}
       loading={loading}
     />
   );
 }
+
+
+

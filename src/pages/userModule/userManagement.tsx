@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button, Drawer, Form, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import { deleteUser, getAllUsers, saveUser, updateUser, type UserDTO } from "../../services/userService";
+import { deleteUser, getAllUsers,getUserById, saveUser, updateUser, type UserDTO } from "../../services/userService";
 import UserTable from "./userTable";
 import UserForm from "./userForm";
 import { getAllStaticData, type StaticDataResponse } from "../../services/staticDataService";
@@ -61,13 +61,50 @@ export default function UserManagement() {
     setDrawerOpen(true);
   };
 
-  const openEditDrawer = (record: UserDTO) => {
-    setEditingUser(record);
-    form.setFieldsValue(record);
-    setDrawerOpen(true);
-  };
+  const openEditDrawer = async (record: UserDTO) => {
+  try {
+    setTableLoading(true);
 
-  const closeDrawer = () => {
+    const response = await getUserById(record.userId);
+
+    console.log("USER DETAILS", response);
+
+    if (response.success) {
+      const user = response.data;
+
+      setEditingUser(user);
+
+      form.setFieldsValue({
+        userName: user.userName,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        mobileNo: user.mobileNo,
+        role: user.role,
+        section: user.section,
+        medium: user.medium,
+
+        screenIds:
+          user.screens?.map(
+            (screen: any) => screen.screenId
+          ) || [],
+      });
+
+      setDrawerOpen(true);
+    } else {
+      message.error(response.message);
+    }
+  } catch (error: any) {
+    message.error(
+      error?.response?.data?.message ||
+      "Failed to load user"
+    );
+  } finally {
+    setTableLoading(false);
+  }
+};
+
+  const closeDrawer = () => { 
     setDrawerOpen(false);
     form.resetFields();
     setEditingUser(null);
