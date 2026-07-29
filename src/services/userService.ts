@@ -98,13 +98,26 @@ export const saveUserInformation = async (payload: any) => {
 
 
 
+export interface UserSearchFilters {
+  firstName?: string;
+  lastName?: string;
+  role?: string;
+}
+
 export const getAllUsers = async (
   page: number,
-  size: number
+  size: number,
+  filters?: UserSearchFilters
 ): Promise<ApiResponse<GetAllUsersData>> => {
+  const payload = {
+    firstName: filters?.firstName || undefined,
+    lastName: filters?.lastName || undefined,
+    role: filters?.role || undefined,
+  };
+
   const response = await axiosInstance.post<ApiResponse<GetAllUsersData>>(
     apiEndpoints.getAllUsers(page, size),
-    {}
+    payload
   );
   return response.data;
 };

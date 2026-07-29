@@ -1,7 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
-import { Drawer, Form, message, Modal, Popconfirm, Button } from "antd";
-// import { DeleteOutlined } from "@ant-design/icons";
-import { getAllUsers, saveUserInformation, updateUserInformation, getUserInformationById, deleteUserInformation, type UserDTO } from "../../services/userService";
+import { Drawer, Form, message, Modal, Popconfirm, Button, Input, Select, Space } from "antd";
+import { SearchOutlined, ReloadOutlined } from "@ant-design/icons";
+import {
+  getAllUsers,
+  saveUserInformation,
+  updateUserInformation,
+  getUserInformationById,
+  deleteUserInformation,
+  type UserDTO,
+  type UserSearchFilters,
+} from "../../services/userService";
 import UserUpdateProfileTable from "./EmployeeDetailsTable";
 import User from "./Employee";
 import dayjs from "dayjs";
@@ -23,12 +31,26 @@ export default function UpdateUserProfile() {
   const [form] = Form.useForm();
   const [staticData, setStaticData] = useState<StaticDataResponse | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+
+  // Search bar state
+  const [searchFilters, setSearchFilters] = useState<UserSearchFilters>({
+    firstName: "",
+    lastName: "",
+    role: "",
+  });
+
+  // Role dropdown state (fetched from static data on first click, not on mount)
+  const [roleOptions, setRoleOptions] = useState<{ label: string; value: string }[]>([]);
+  const [roleLoading, setRoleLoading] = useState(false);
+  const [rolesFetched, setRolesFetched] = useState(false);
+
   // Strips any existing "data:...;base64," prefix so we always work with raw base64,
   // whether it came from old (prefixed) or new (raw) saved records.
   const toRawBase64 = (value: string | null | undefined): string | null => {
     if (!value) return null;
     return value.includes(",") ? value.split(",")[1] : value;
   };
+
   // Detects the real mime type by inspecting the base64-decoded file signature,
   // since documentType (user-entered/selected) can't be trusted.
   const detectMimeFromBase64 = (rawBase64: string): string => {
@@ -44,47 +66,76 @@ export default function UpdateUserProfile() {
     return "application/octet-stream"; // fallback, browser will offer download
   };
 
-  useEffect(() => {
-    const loadStaticData = async () => {
-      try {
-        const response = await getAllStaticData();
+  // Fetches static data (role list, etc.) only on the first time the Role dropdown is opened
+  const handleRoleDropdownOpen = async (open: boolean) => {
+    if (!open || rolesFetched) return;
 
-        if (response.success) {
-          setStaticData(response.data);
-        }
-      } catch (err) {
-        message.error("Failed to load static data");
-      }
-    };
-
-    loadStaticData();
-  }, []);
-  const fetchUsers = useCallback(async (pageNum: number, size: number) => {
-    setTableLoading(true);
+    setRoleLoading(true);
     try {
-      const response = await getAllUsers(pageNum, size);
+      const response = await getAllStaticData();
       if (response.success) {
-        setUsers(response.data.Data);
-        setTotal(response.data.total);
+        setStaticData(response.data);
+
+        const roles = response.data.role || [];
+
+        setRoleOptions(
+          roles.map((r: string) => ({
+            label: r.charAt(0) + r.slice(1).toLowerCase(),
+            value: r,
+          }))
+        );
+        setRolesFetched(true);
       } else {
-        message.error(response.message || "Failed to load users");
+        message.error(response.message || "Failed to load roles");
       }
     } catch (error: any) {
-      message.error(error?.response?.data?.message || "Failed to load users");
+      message.error(error?.response?.data?.message || "Failed to load roles");
     } finally {
-      setTableLoading(false);
+      setRoleLoading(false);
     }
-  }, []);
+  };
+
+  const fetchUsers = useCallback(
+    async (pageNum: number, size: number, filters?: UserSearchFilters) => {
+      setTableLoading(true);
+      try {
+        const response = await getAllUsers(pageNum, size, filters);
+        if (response.success) {
+          setUsers(response.data.Data);
+          setTotal(response.data.total);
+        } else {
+          message.error(response.message || "Failed to load users");
+        }
+      } catch (error: any) {
+        message.error(error?.response?.data?.message || "Failed to load users");
+      } finally {
+        setTableLoading(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
-    fetchUsers(page, pageSize);
+    fetchUsers(page, pageSize, searchFilters);
+    // searchFilters intentionally left out of deps — search only fires on button click, not per keystroke
   }, [page, pageSize, fetchUsers]);
 
-  //   const openAddDrawer = () => {
-  //     setEditingUser(null);
-  //     form.resetFields();
-  //     setDrawerOpen(true);
-  //   };
+  const handleFilterChange = (field: keyof UserSearchFilters, value: string) => {
+    setSearchFilters((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSearch = () => {
+    setPage(0);
+    fetchUsers(0, pageSize, searchFilters);
+  };
+
+  const handleResetFilters = () => {
+    const cleared: UserSearchFilters = { firstName: "", lastName: "", role: "" };
+    setSearchFilters(cleared);
+    setPage(0);
+    fetchUsers(0, pageSize, cleared);
+  };
+
   const openViewDrawer = async (record: UserDTO) => {
     try {
       const response = await getUserInformationById(record.userId);
@@ -103,11 +154,9 @@ export default function UpdateUserProfile() {
     }
   };
 
-
   const openEditDrawer = async (record: UserDTO) => {
     console.log("Clicked Record:", record);
     console.log("Clicked User ID:", record.userId);
-
 
     try {
       const response = await getUserInformationById(record.userId);
@@ -135,7 +184,6 @@ export default function UpdateUserProfile() {
           dateOfBirth: user.dateOfBirth ? dayjs(user.dateOfBirth) : null,
           joiningDate: user.joiningDate ? dayjs(user.joiningDate) : null,
 
-          // === REPLACED BLOCK STARTS HERE ===
           documents:
             user.userDocumentDTOS?.map((doc: any) => {
               const rawBase64 = toRawBase64(doc.document);
@@ -158,7 +206,6 @@ export default function UpdateUserProfile() {
                   : [],
               };
             }) || [],
-          // === REPLACED BLOCK ENDS HERE ===
         });
 
         setEditingUser(user);
@@ -199,7 +246,7 @@ export default function UpdateUserProfile() {
       if (response.success) {
         message.success(response.message);
         closeDrawer();
-        fetchUsers(page, pageSize);
+        fetchUsers(page, pageSize, searchFilters);
       } else {
         message.error(response.message);
       }
@@ -241,25 +288,22 @@ export default function UpdateUserProfile() {
             uploadDate: doc.uploadDate
               ? dayjs(doc.uploadDate).format("YYYY-MM-DD")
               : null,
-            document: toRawBase64(doc.document), // <-- same helper, always sends raw base64
+            document: toRawBase64(doc.document),
           })),
       };
 
       let response;
 
-      // If record exists -> Update API
       if (payload.userInformationId) {
         response = await updateUserInformation(payload);
-      }
-      // If record does not exist -> Save API
-      else {
+      } else {
         response = await saveUserInformation(payload);
       }
 
       if (response.success) {
         message.success(response.message);
         closeDrawer();
-        fetchUsers(page, pageSize);
+        fetchUsers(page, pageSize, searchFilters);
       } else {
         message.error(response.message);
       }
@@ -275,8 +319,51 @@ export default function UpdateUserProfile() {
 
   return (
     <div>
-      {/* Add User Button */}
+      {/* Employee Details Navbar goes here (your existing header/navbar component) */}
 
+      {/* Search Bar */}
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          flexWrap: "wrap",
+          alignItems: "center",
+          padding: "16px 0",
+        }}
+      >
+        <Input
+          placeholder="First Name"
+          value={searchFilters.firstName}
+          onChange={(e) => handleFilterChange("firstName", e.target.value)}
+          style={{ width: 180 }}
+          allowClear
+        />
+        <Input
+          placeholder="Last Name"
+          value={searchFilters.lastName}
+          onChange={(e) => handleFilterChange("lastName", e.target.value)}
+          style={{ width: 180 }}
+          allowClear
+        />
+        <Select
+          placeholder="Role"
+          value={searchFilters.role || undefined}
+          onChange={(value) => handleFilterChange("role", value || "")}
+          onDropdownVisibleChange={handleRoleDropdownOpen}
+          loading={roleLoading}
+          style={{ width: 180 }}
+          allowClear
+          options={roleOptions}
+        />
+        <Space>
+          <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
+            Search
+          </Button>
+          <Button icon={<ReloadOutlined />} onClick={handleResetFilters}>
+            Reset
+          </Button>
+        </Space>
+      </div>
 
       <UserUpdateProfileTable
         data={users}

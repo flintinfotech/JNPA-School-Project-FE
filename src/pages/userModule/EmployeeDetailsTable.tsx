@@ -100,6 +100,7 @@ export default function UserUpdateProfileTable({
   // Mobile: stacked cards instead of a wide table
   if (isMobile) {
     return (
+      
       <div className="space-y-3">
         {loading && (
           <div className="text-center text-sm text-gray-400 py-6">Loading...</div>
@@ -108,6 +109,8 @@ export default function UserUpdateProfileTable({
         {!loading && data.length === 0 && (
           <div className="text-center text-sm text-gray-400 py-6">No users found</div>
         )}
+
+        
 
         {!loading &&
           data.map((record) => (

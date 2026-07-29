@@ -6,6 +6,7 @@ import {
   Drawer,
   Modal,
   Input,
+  Select,
   Grid,
   Checkbox,
   message,
@@ -18,6 +19,7 @@ import {
   EditOutlined,
   EyeOutlined,
   SearchOutlined,
+  ReloadOutlined,
   BookOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
@@ -30,6 +32,7 @@ import {
 } from "../services/teacherSubjectService";
 
 import { getSubjectsByClassId } from "../services/subjectAssignmentService";
+import { getAllStaticData, type StaticDataResponse } from "../services/staticDataService";
 
 import type {
   TeacherDTO,
@@ -38,6 +41,7 @@ import type {
 
 const { useBreakpoint } = Grid;
 const { Title, Text } = Typography;
+const { Option } = Select;
 
 interface SubjectDTO {
   subjectMasterId: number;
@@ -45,7 +49,6 @@ interface SubjectDTO {
   subjectCode: string;
 }
 
-// Parsed shape used to render each class block in the View modal
 interface ParsedClassSubjectGroup {
   classMasterId: string;
   standard: string;
@@ -54,9 +57,13 @@ interface ParsedClassSubjectGroup {
   subjects: SubjectDTO[];
 }
 
-// Parses a raw key like:
-// "ClassMasterDTO(classMasterId=35, standard=Grade III, division=B, medium=Marathi)"
-// into its individual fields.
+interface TeacherSearchFilters {
+  firstName?: string;
+  lastName?: string;
+  section?: string;
+  medium?: string;
+}
+
 const parseClassMasterKey = (key: string) => {
   const idMatch = key.match(/classMasterId=([^,]+)/);
   const standardMatch = key.match(/standard=([^,]+)/);
@@ -89,6 +96,23 @@ const TeacherSubject: React.FC = () => {
   });
 
   // ===========================
+  // Static Data
+  // ===========================
+
+  const [staticData, setStaticData] = useState<StaticDataResponse | null>(null);
+
+  // ===========================
+  // Search Bar (Teacher list)
+  // ===========================
+
+  const [searchFilters, setSearchFilters] = useState<TeacherSearchFilters>({
+    firstName: "",
+    lastName: "",
+    section: "",
+    medium: "",
+  });
+
+  // ===========================
   // Edit Drawer
   // ===========================
 
@@ -97,7 +121,7 @@ const TeacherSubject: React.FC = () => {
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherDTO | null>(null);
 
   // ===========================
-  // Search Class
+  // Search Class (inside drawer, unrelated to teacher search bar)
   // ===========================
 
   const [searchText, setSearchText] = useState("");
@@ -124,17 +148,43 @@ const TeacherSubject: React.FC = () => {
   const [viewGroups, setViewGroups] = useState<ParsedClassSubjectGroup[]>([]);
 
   // ===========================
+  // Load Static Data
+  // ===========================
+
+  useEffect(() => {
+    const loadStaticData = async () => {
+      try {
+        const response: any = await getAllStaticData();
+        const body = response?.data?.success !== undefined ? response.data : response;
+        if (body?.success) {
+          setStaticData(body.data);
+        }
+      } catch (err) {
+        message.error("Failed to load static data");
+      }
+    };
+
+    loadStaticData();
+  }, []);
+
+  // ===========================
   // Load Teachers
   // ===========================
 
   const loadTeachers = async (
     page = pagination.current,
-    pageSize = pagination.pageSize
+    pageSize = pagination.pageSize,
+    filters: TeacherSearchFilters = searchFilters
   ) => {
     try {
       setLoading(true);
 
-      const response = await getAllTeachers(page - 1, pageSize);
+      const response = await getAllTeachers(page - 1, pageSize, {
+        firstName: filters.firstName || undefined,
+        lastName: filters.lastName || undefined,
+        section: filters.section || undefined,
+        medium: filters.medium || undefined,
+      });
 
       console.log("Teacher Response", response);
 
@@ -155,6 +205,29 @@ const TeacherSubject: React.FC = () => {
   useEffect(() => {
     loadTeachers();
   }, []);
+
+  // ===========================
+  // Search Handlers
+  // ===========================
+
+  const handleFilterChange = (field: keyof TeacherSearchFilters, value: string) => {
+    setSearchFilters((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSearch = () => {
+    loadTeachers(1, pagination.pageSize, searchFilters);
+  };
+
+  const handleResetFilters = () => {
+    const cleared: TeacherSearchFilters = {
+      firstName: "",
+      lastName: "",
+      section: "",
+      medium: "",
+    };
+    setSearchFilters(cleared);
+    loadTeachers(1, pagination.pageSize, cleared);
+  };
 
   // ===========================
   // Edit
@@ -218,7 +291,7 @@ const TeacherSubject: React.FC = () => {
   };
 
   // ===========================
-  // Search Class
+  // Search Class (drawer)
   // ===========================
 
   const handleSearchClass = async (value: string) => {
@@ -241,7 +314,7 @@ const TeacherSubject: React.FC = () => {
   };
 
   // ===========================
-  // Select Class
+  // Select Class (drawer)
   // ===========================
 
   const handleSelectClass = async (item: ClassSearchDTO) => {
@@ -275,10 +348,6 @@ const TeacherSubject: React.FC = () => {
       setSelectedSubjectIds((prev) => prev.filter((item) => item !== id));
     }
   };
-
-  // ===========================
-  // Toggle Subject Card (click anywhere on card)
-  // ===========================
 
   const toggleSubjectCard = (id: number) => {
     const isSelected = selectedSubjectIds.includes(id);
@@ -379,15 +448,11 @@ const TeacherSubject: React.FC = () => {
 
       render: (_, record) => (
         <Space size="middle">
-          {/* View */}
-
           <Button
             icon={<EyeOutlined />}
             size="small"
             onClick={() => handleView(record)}
           />
-
-          {/* Edit */}
 
           <Button
             type="primary"
@@ -406,7 +471,67 @@ const TeacherSubject: React.FC = () => {
 
   return (
     <>
-      <Card title="Teacher Subject">
+      <Card >
+        {/* Search Bar */}
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            flexWrap: "wrap",
+            alignItems: "center",
+            marginBottom: 20,
+          }}
+        >
+          <Input
+            placeholder="First Name"
+            value={searchFilters.firstName}
+            onChange={(e) => handleFilterChange("firstName", e.target.value)}
+            style={{ width: 160 }}
+            allowClear
+          />
+          <Input
+            placeholder="Last Name"
+            value={searchFilters.lastName}
+            onChange={(e) => handleFilterChange("lastName", e.target.value)}
+            style={{ width: 160 }}
+            allowClear
+          />
+          <Select
+            placeholder="Section"
+            value={searchFilters.section || undefined}
+            onChange={(value) => handleFilterChange("section", value || "")}
+            style={{ width: 160 }}
+            allowClear
+          >
+            {staticData?.["class name"]?.map((sec) => (
+              <Option key={sec} value={sec}>
+                {sec}
+              </Option>
+            ))}
+          </Select>
+          <Select
+            placeholder="Medium"
+            value={searchFilters.medium || undefined}
+            onChange={(value) => handleFilterChange("medium", value || "")}
+            style={{ width: 150 }}
+            allowClear
+          >
+            {staticData?.medium?.map((m) => (
+              <Option key={m} value={m}>
+                {m}
+              </Option>
+            ))}
+          </Select>
+          <Space>
+            <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
+              Search
+            </Button>
+            <Button icon={<ReloadOutlined />} onClick={handleResetFilters}>
+              Reset
+            </Button>
+          </Space>
+        </div>
+
         {isMobile ? (
           <>
             {teachers.map((teacher, index) => (
@@ -686,19 +811,16 @@ const TeacherSubject: React.FC = () => {
                 key={group.classMasterId}
                 bordered
                 style={{
-                   border: "1px solid #615959",
+                  border: "1px solid #615959",
                   borderRadius: 10,
                 }}
               >
-                {/* Class Details */}
-
-                <Title level={5} style={{ marginTop: 0, marginBottom: 16 ,}}>
+                <Title level={5} style={{ marginTop: 0, marginBottom: 16 }}>
                   Class Details
                 </Title>
 
                 <div
                   style={{
-                    
                     display: "grid",
                     gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
                     gap: 16,
@@ -707,7 +829,7 @@ const TeacherSubject: React.FC = () => {
                 >
                   <div>
                     <Text strong>Standard</Text>
-                    <Input value={group.standard} disabled style={{ marginTop: 6,color: "#383232"  }} />
+                    <Input value={group.standard} disabled style={{ marginTop: 6, color: "#383232" }} />
                   </div>
 
                   <div>
@@ -717,11 +839,9 @@ const TeacherSubject: React.FC = () => {
 
                   <div>
                     <Text strong>Medium</Text>
-                    <Input value={group.medium} disabled style={{ marginTop: 6 , color: "#383232"}} />
+                    <Input value={group.medium} disabled style={{ marginTop: 6, color: "#383232" }} />
                   </div>
                 </div>
-
-                {/* Assigned Subjects */}
 
                 <Title level={5} style={{ marginBottom: 16 }}>
                   Assigned Subjects
@@ -729,7 +849,6 @@ const TeacherSubject: React.FC = () => {
 
                 <div
                   style={{
-                    
                     display: "grid",
                     gridTemplateColumns: isMobile
                       ? "repeat(2, 1fr)"
@@ -748,7 +867,7 @@ const TeacherSubject: React.FC = () => {
                         textAlign: "center",
                       }}
                     >
-                      <div style={{ fontWeight: 600, fontSize: 14, }}>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>
                         {subject.subjectName}
                       </div>
 
