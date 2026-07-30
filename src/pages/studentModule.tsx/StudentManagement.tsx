@@ -209,7 +209,7 @@ export default function StudentManagement() {
           Add Student
         </Button>
       </div>
-
+      
       {/* Search Bar */}
       <div
         style={{

@@ -54,12 +54,12 @@ export const adminNavItems: AdminNavEntry[] = [
       { label: "Students", path: "/students", icon: PiStudent },
     ],
   },
- 
+
   {
     label: "Masters",
     icon: BsFillClipboard2DataFill,
     children: [
-      { label: "Subjects Master", path: "/subjects-master", icon: MdOutlineSubject },
+      { label: "Subject Master", path: "/subjects-master", icon: MdOutlineSubject },
       { label: "Class Master", path: "/class-master", icon: MdClass },
     ],
   },
