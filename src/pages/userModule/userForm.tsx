@@ -66,7 +66,7 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
       name: "lastName",
       label: "Last Name",
       type: "text" as const,
-      required: false,
+      required: true,
     },
     {
       name: "email",

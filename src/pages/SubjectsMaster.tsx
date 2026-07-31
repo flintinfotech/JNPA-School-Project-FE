@@ -102,7 +102,7 @@ const SubjectMaster: React.FC = () => {
           subjectName: values.subjectName,
         });
 
-        message.success(response.message);
+        message.error(response.message);
       }
 
       form.resetFields();
@@ -328,6 +328,19 @@ const SubjectMaster: React.FC = () => {
         destroyOnClose
       >
         <Form form={form} layout="vertical" onFinish={handleSave}>
+           <Form.Item
+            label="Subject Name"
+            name="subjectName"
+            rules={[
+              {
+                required: true,
+                message: "Please enter Subject Name",
+              },
+            ]}
+          >
+            <Input placeholder="Enter Subject Name" />
+          </Form.Item>
+
           <Form.Item
             label="Subject Code"
             name="subjectCode"
@@ -339,19 +352,6 @@ const SubjectMaster: React.FC = () => {
             ]}
           >
             <Input placeholder="Enter Subject Code" />
-          </Form.Item>
-
-          <Form.Item
-            label="Subject Name"
-            name="subjectName"
-            rules={[
-              {
-                required: true,
-                message: "Please enter Subject Name",
-              },
-            ]}
-          >
-            <Input placeholder="Enter Subject Name" />
           </Form.Item>
 
           <Space>
