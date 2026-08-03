@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Button, Drawer, Form, message, Input, Select, Space } from "antd";
+import { Button, Drawer, Form, message, Input, Select, Space, Row, Col } from "antd";
 import { PlusOutlined, SearchOutlined, ReloadOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { deleteStudent, getAllStudents, getStudentById, saveStudent, updateStudent, type StudentDTO } from "../../services/studentService";
@@ -209,71 +209,79 @@ export default function StudentManagement() {
           Add Student
         </Button>
       </div>
-      
-      {/* Search Bar */}
-      <div
-        style={{
-          display: "flex",
-          gap: 12,
-          flexWrap: "wrap",
-          alignItems: "center",
-          padding: "16px 0",
-        }}
-      >
-        <Input
-          placeholder="First Name"
-          value={searchFilters.firstName}
-          onChange={(e) => handleFilterChange("firstName", e.target.value)}
-          style={{ width: 160 }}
-          allowClear
-        />
-        <Input
-          placeholder="Last Name"
-          value={searchFilters.lastName}
-          onChange={(e) => handleFilterChange("lastName", e.target.value)}
-          style={{ width: 160 }}
-          allowClear
-        />
-        <Select
-          placeholder="Gender"
-          value={searchFilters.gender || undefined}
-          onChange={(value) => handleFilterChange("gender", value || "")}
-          style={{ width: 140 }}
-          allowClear
-        >
-          <Option value="Male">Male</Option>
-          <Option value="Female">Female</Option>
-        </Select>
-        {/* <Input
-          placeholder="Category"
-          value={searchFilters.category}
-          onChange={(e) => handleFilterChange("category", e.target.value)}
-          style={{ width: 160 }}
-          allowClear
-        /> */}
-        <Select
-          placeholder="Status"
-          value={searchFilters.status || undefined}
-          onChange={(value) => handleFilterChange("status", value || "")}
-          style={{ width: 160 }}
-          allowClear
-        >
-          {staticData?.["student status"]?.map((status) => (
-            <Option key={status} value={status}>
-              {status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()}
-            </Option>
-          ))}
-        </Select>
-        <Space>
-          <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
-            Search
-          </Button>
-          <Button icon={<ReloadOutlined />} onClick={handleResetFilters}>
-            Reset
-          </Button>
-        </Space>
-      </div>
 
+      {/* Search Bar */}
+      <Row gutter={[12, 12]} style={{ padding: "16px 0" }}>
+        <Col xs={24} sm={12} md={6} lg={4}>
+          <Input
+            placeholder="First Name"
+            value={searchFilters.firstName}
+            onChange={(e) => handleFilterChange("firstName", e.target.value)}
+            style={{ width: "100%" }}
+            allowClear
+          />
+        </Col>
+
+        <Col xs={24} sm={12} md={6} lg={4}>
+          <Input
+            placeholder="Last Name"
+            value={searchFilters.lastName}
+            onChange={(e) => handleFilterChange("lastName", e.target.value)}
+            style={{ width: "100%" }}
+            allowClear
+          />
+        </Col>
+
+        <Col xs={24} sm={12} md={6} lg={4}>
+          <Select
+            placeholder="Gender"
+            value={searchFilters.gender || undefined}
+            onChange={(value) => handleFilterChange("gender", value || "")}
+            style={{ width: "100%" }}
+            allowClear
+          >
+            <Option value="Male">Male</Option>
+            <Option value="Female">Female</Option>
+          </Select>
+        </Col>
+
+        {/* <Col xs={24} sm={12} md={6} lg={4}>
+    <Input
+      placeholder="Category"
+      value={searchFilters.category}
+      onChange={(e) => handleFilterChange("category", e.target.value)}
+      style={{ width: "100%" }}
+      allowClear
+    />
+  </Col> */}
+
+        <Col xs={24} sm={12} md={6} lg={4}>
+          <Select
+            placeholder="Status"
+            value={searchFilters.status || undefined}
+            onChange={(value) => handleFilterChange("status", value || "")}
+            style={{ width: "100%" }}
+            allowClear
+          >
+            {staticData?.["student status"]?.map((status) => (
+              <Option key={status} value={status}>
+                {status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()}
+              </Option>
+            ))}
+          </Select>
+        </Col>
+
+        <Col xs={24} sm={24} md={24} lg={8}>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
+              Search
+            </Button>
+            <Button icon={<ReloadOutlined />} onClick={handleResetFilters}>
+              Reset
+            </Button>
+          </div>
+        </Col>
+      </Row>
       <StudentTable
         data={students}
         loading={tableLoading}

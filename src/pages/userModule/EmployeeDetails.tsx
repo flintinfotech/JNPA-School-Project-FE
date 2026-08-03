@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Drawer, Form, message, Modal, Popconfirm, Button, Input, Select, Space } from "antd";
+import { Drawer, Form, message, Modal, Popconfirm, Button, Input, Select, Space, Row, Col } from "antd";
 import { SearchOutlined, ReloadOutlined } from "@ant-design/icons";
 import {
   getAllUsers,
@@ -322,48 +322,51 @@ export default function UpdateUserProfile() {
       {/* Employee Details Navbar goes here (your existing header/navbar component) */}
 
       {/* Search Bar */}
-      <div
-        style={{
-          display: "flex",
-          gap: 12,
-          flexWrap: "wrap",
-          alignItems: "center",
-          padding: "16px 0",
-        }}
-      >
-        <Input
-          placeholder="First Name"
-          value={searchFilters.firstName}
-          onChange={(e) => handleFilterChange("firstName", e.target.value)}
-          style={{ width: 180 }}
-          allowClear
-        />
-        <Input
-          placeholder="Last Name"
-          value={searchFilters.lastName}
-          onChange={(e) => handleFilterChange("lastName", e.target.value)}
-          style={{ width: 180 }}
-          allowClear
-        />
-        <Select
-          placeholder="Role"
-          value={searchFilters.role || undefined}
-          onChange={(value) => handleFilterChange("role", value || "")}
-          onDropdownVisibleChange={handleRoleDropdownOpen}
-          loading={roleLoading}
-          style={{ width: 180 }}
-          allowClear
-          options={roleOptions}
-        />
-        <Space>
-          <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
-            Search
-          </Button>
-          <Button icon={<ReloadOutlined />} onClick={handleResetFilters}>
-            Reset
-          </Button>
-        </Space>
-      </div>
+<Row gutter={[12, 12]} style={{ padding: "16px 0" }}>
+  <Col xs={24} sm={12} md={6}>
+    <Input
+      placeholder="First Name"
+      value={searchFilters.firstName}
+      onChange={(e) => handleFilterChange("firstName", e.target.value)}
+      style={{ width: "100%" }}
+      allowClear
+    />
+  </Col>
+
+  <Col xs={24} sm={12} md={6}>
+    <Input
+      placeholder="Last Name"
+      value={searchFilters.lastName}
+      onChange={(e) => handleFilterChange("lastName", e.target.value)}
+      style={{ width: "100%" }}
+      allowClear
+    />
+  </Col>
+
+  <Col xs={24} sm={12} md={6}>
+    <Select
+      placeholder="Role"
+      value={searchFilters.role || undefined}
+      onChange={(value) => handleFilterChange("role", value || "")}
+      onDropdownVisibleChange={handleRoleDropdownOpen}
+      loading={roleLoading}
+      style={{ width: "100%" }}
+      allowClear
+      options={roleOptions}
+    />
+  </Col>
+
+  <Col xs={24} sm={12} md={6}>
+  <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+    <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
+      Search
+    </Button>
+    <Button icon={<ReloadOutlined />} onClick={handleResetFilters}>
+      Reset
+    </Button>
+  </div>
+</Col>
+</Row>
 
       <UserUpdateProfileTable
         data={users}
