@@ -6,6 +6,8 @@ import { MdOutlineAdminPanelSettings } from "react-icons/md";
 import { CgWebsite } from "react-icons/cg";
 import { BsFillClipboard2DataFill } from "react-icons/bs";
 import { MdAssignmentTurnedIn } from "react-icons/md";
+import { GrCircleInformation } from "react-icons/gr";
+
 
 
 
@@ -46,21 +48,22 @@ export const isAdminNavGroup = (
 
 export const adminNavItems: AdminNavEntry[] = [
   {
-    label: "Administrator",
-    icon: MdOutlineAdminPanelSettings,
-    children: [
-      { label: "Users", path: "/users", icon: LuUsers },
-      { label: "Employee Details", path: "/update-user", icon: ImProfile },
-      { label: "Students", path: "/students", icon: PiStudent },
-    ],
-  },
+  label: "Administrator",
+  icon: MdOutlineAdminPanelSettings,
+  children: [
+    { label: "Users", path: "/users", icon: LuUsers },
+    { label: "Employee Details", path: "/update-user", icon: ImProfile },
+    { label: "Students", path: "/students", icon: PiStudent },
+    { label: "Admission Inquiry", path:"/admission-inquiry",icon:GrCircleInformation},
+  ],
+},
 
   {
     label: "Masters",
     icon: BsFillClipboard2DataFill,
     children: [
       { label: "Subject Master", path: "/subjects-master", icon: MdOutlineSubject },
-      { label: "Class Master", path: "/class-master", icon: MdClass },
+      { label: "Class Master", path: "/class-master", icon: MdClass },     
     ],
   },
     {
@@ -79,7 +82,7 @@ export const adminNavItems: AdminNavEntry[] = [
     icon: MdAssignmentTurnedIn,
     children: [
        { label: "Subject Assignment", path: "/subject-assignment", icon: MdAssignment },
-  {label: "Teacher Subjects",path: "/teacher-subjects",icon: FaChalkboardTeacher,},
+       {label: "Teacher Subjects",path: "/teacher-subjects",icon: FaChalkboardTeacher,},
     ],
   },
  

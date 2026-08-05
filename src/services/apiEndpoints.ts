@@ -105,6 +105,16 @@ export const apiEndpoints = {
 
   // searchClass: (keyword: string) => `/jnpa-school-project/classMaster/search?keyword=${keyword}`,
 
+
+  saveAdmissionInquiry: () =>
+    `/jnpa-school-project/inquiry/saveAdmissionInquiry`,
+
+  getAllAdmissionInquiryByFilter: (page: number, size: number) =>
+  `/jnpa-school-project/inquiry/getAllAdmissionInquiryByFilter?page=${page}&size=${size}&paginate=true`,
+
+  updateAdmissionInquiryById: (id: number | string) =>
+  `/jnpa-school-project/inquiry/updateAdmissionInquiryById?id=${id}`,
+  
   // ===============================
   // Screens
   // ===============================

@@ -308,16 +308,44 @@ export default function HomePage() {
 
         .hp-sb-connect-link:hover { color: #f5a800; }
 
-        /* Parent login badge (mirrors DAIS) */
-        .hp-parent-login {
+        /* ── Fixed bottom-right quick actions (Admission Inquiry + Parent's Login) ── */
+        .hp-quick-actions {
           position: fixed;
           bottom: 24px;
           right: 24px;
           z-index: 100;
           display: flex;
+          flex-direction: column;
+          gap: 12px;
+          align-items: flex-end;
+        }
+
+        .hp-admission-Inquiry {
+          display: flex;
           align-items: center;
           gap: 8px;
-          padding: 12px 20px;
+          padding: 12px 9px;
+          background:#983929;
+          color: #ffffff;
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+          text-decoration: none;
+          box-shadow: 0 4px 20px rgba(21,105,173,0.35);
+          border-left: 3px solid #f5a800;
+          transition: background 0.18s;
+        }
+
+        .hp-admission-Inquiry:hover { background: #f5a800; color:#983929; }
+
+        .hp-admission-Inquiry-icon { font-size: 14px; }
+
+        /* Parent login badge (mirrors DAIS) */
+        .hp-parent-login {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 12px 23px;
           background: #983929;
           color: #ffffff;
           font-size: 12px;
@@ -351,7 +379,7 @@ export default function HomePage() {
               flex-direction: column;
             }
 
-            .hp-parent-login {
+            .hp-quick-actions {
               bottom: 16px;
               right: 16px;
             }
@@ -444,11 +472,17 @@ export default function HomePage() {
         </main>
       </div>
 
-      {/* Parent login badge */}
-      <Link to="" className="hp-parent-login">
-        <span className="hp-parent-login-icon">🔒</span>
-        Parent's Login
-      </Link>
+      {/* Fixed quick-action buttons: Admission Inquiry (top) + Parent's Login (bottom) */}
+      <div className="hp-quick-actions">
+        <Link to="/admissions" className="hp-admission-Inquiry">
+          <span className="hp-admission-Inquiry-icon">📝</span>
+          Admission Inquiry
+        </Link>
+        <Link to="" className="hp-parent-login">
+          <span className="hp-parent-login-icon">🔒</span>
+          Parent's Login
+        </Link>
+      </div>
     </div>
   );
 }
