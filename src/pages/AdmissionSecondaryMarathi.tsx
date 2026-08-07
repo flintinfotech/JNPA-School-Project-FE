@@ -4,6 +4,7 @@ import Admission1 from "../assets/Admission1.jpg";
 import { useNavigate } from "react-router-dom";
 import { getAllAdmissionsByFilter } from "../services/AdmissionService";
 import { saveAdmissionInquiry } from "../services/InquiryService";
+import { message } from "antd";
 
 // ---------------------------------------------------------------------------
 // base64 -> blob preview helpers (same approach as AdmissionAdmin)
@@ -61,36 +62,43 @@ export default function AdmissionSecondarMarathi() {
   };
 
   const handleInquirySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setInquiryStatus("sending");
-    try {
-      // Only firstName, lastName, contactNumber, standard, and medium are
-      // collected on this form. "status" isn't shown to the person filling
-      // it out, so it's always sent as "NEW" for a fresh public Inquiry.
-      // Any field the API supports but this form doesn't collect (e.g.
-      // "stream") is simply omitted, and the backend stores it as null.
-      await saveAdmissionInquiry({
-        firstName: InquiryForm.firstName,
-        lastName: InquiryForm.lastName,
-        contactNumber: InquiryForm.contactNumber,
-        standard: InquiryForm.standard,
-        medium: InquiryForm.medium,
-        status: "NEW",
-      });
+  e.preventDefault();
+  setInquiryStatus("sending");
 
-      setInquiryStatus("sent");
-      setInquiryForm({
-        firstName: "",
-        lastName: "",
-        contactNumber: "",
-        standard: "",
-        medium: "",
-      });
-    } catch (err) {
-      console.error("Failed to send Inquiry:", err);
-      setInquiryStatus("error");
-    }
-  };
+  try {
+    await saveAdmissionInquiry({
+      firstName: InquiryForm.firstName,
+      lastName: InquiryForm.lastName,
+      contactNumber: InquiryForm.contactNumber,
+      standard: InquiryForm.standard,
+      medium: InquiryForm.medium,
+      status: "NEW",
+    });
+
+    // Show success message
+    message.success("Inquiry submitted successfully!");
+
+    // Reset form
+    setInquiryForm({
+      firstName: "",
+      lastName: "",
+      contactNumber: "",
+      standard: "",
+      medium: "",
+    });
+
+    setInquiryStatus("idle");
+
+    // Close modal automatically
+    setShowInquiryModal(false);
+  } catch (err) {
+    console.error("Failed to send Inquiry:", err);
+
+    message.error("Something went wrong. Please try again.");
+
+    setInquiryStatus("error");
+  }
+};
   // ──────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -484,9 +492,20 @@ export default function AdmissionSecondarMarathi() {
                       <option value="Nursery">Nursery</option>
                       <option value="LKG">LKG</option>
                       <option value="UKG">UKG</option>
-                      {Array.from({ length: 12 }, (_, i) => i + 1).map((c) => (
-                        <option key={c} value={`Class ${c}`}>Class {c}</option>
-                      ))}
+                       <option value="1st Standard">1st Standard</option>
+                      <option value="2nd Standard">2nd Standard</option>
+                      <option value="3rd Standard">3rd Standard</option>
+                       <option value="4th Standard">4th Standard</option>
+                      <option value="5th Standard">5th Standard</option>
+                      <option value="6th Standard">6th Standard</option>
+                      <option value="7th Standard">7th Standard</option>
+                      <option value="8th Standard">8th Standard</option>
+                      <option value="9th Standard">9th Standard</option>
+                       <option value="10th Standard">10th Standard</option>
+                      <option value="11th Standard">11th Standard</option>
+                      <option value="12th Standard">12th Standard</option>
+
+                      
                     </select>
                   </div>
                 </div>
@@ -529,7 +548,7 @@ export default function AdmissionSecondarMarathi() {
                   {InquiryStatus === "sending" ? "Submitting..." : "Submit Inquiry"}
                 </button>
 
-                {InquiryStatus === "sent" && (
+                {/* {InquiryStatus === "sent" && (
                   <div style={{ marginTop: "14px", fontSize: "12px", fontWeight: 600, color: "#2e7d32", textAlign: "center" }}>
                     Inquiry submitted successfully! We'll be in touch soon.
                   </div>
@@ -538,7 +557,7 @@ export default function AdmissionSecondarMarathi() {
                   <div style={{ marginTop: "14px", fontSize: "12px", fontWeight: 600, color: "#c62828", textAlign: "center" }}>
                     Something went wrong. Please try again.
                   </div>
-                )}
+                )} */}
               </form>
             </div>
           </div>

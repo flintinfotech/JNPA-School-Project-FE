@@ -371,6 +371,10 @@ const AdmissionInquiry: React.FC = () => {
                 <th className="px-4 py-3 text-sm font-semibold text-gray-700 text-center">
                   Status
                 </th>
+
+                <th className="px-4 py-3 text-sm font-semibold text-gray-700 text-center">
+                  Action
+                </th>
               </tr>
             </thead>
 
@@ -414,17 +418,19 @@ const AdmissionInquiry: React.FC = () => {
                     {/* <td className="text-center px-3 py-2 text-sm text-gray-700">
                       {row.stream ?? "-"}
                     </td> */}
+                    {/* Status Column */}
                     <td className="text-center px-3 py-2">
-                      <div className="flex items-center justify-center gap-3">
-                        <StatusBadge status={row.status} />
+                      <StatusBadge status={row.status} />
+                    </td>
 
+                    {/* Action Column */}
+                    <td className="px-4 py-2">
+                      <div className="flex justify-center items-center">
                         <button
                           onClick={() => handleEditStatus(row)}
-                          className="w-6 h-6 bg-blue-600 hover:bg-blue-700 rounded text-white"
+                          className="w-7 h-7 flex items-center justify-center rounded-md bg-blue-600 hover:bg-blue-700 text-white transition"
                         >
-                          <div className="w-full h-full flex items-center justify-center">
-                            <EditOutlined />
-                          </div>
+                          <EditOutlined />
                         </button>
                       </div>
                     </td>

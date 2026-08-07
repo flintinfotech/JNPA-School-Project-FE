@@ -324,7 +324,7 @@ export default function HomePage() {
           display: flex;
           align-items: center;
           gap: 8px;
-          padding: 12px 9px;
+          padding: 12px 11px;
           background:#983929;
           color: #ffffff;
           font-size: 12px;
