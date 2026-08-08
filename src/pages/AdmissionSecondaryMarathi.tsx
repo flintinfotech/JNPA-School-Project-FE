@@ -203,7 +203,7 @@ export default function AdmissionSecondarMarathi() {
       {/* Header */}
       <div style={{ background: "#1f4d3d", position: "relative" }}>
         <div className="adm-header-inner" style={{ maxWidth: "1200px", margin: "0 auto", padding: "18px 40px 0" }}>
-          <img src={SchoolLogo} alt="JNPV Logo" style={{ height: "78px", width: "auto", display: "block" }} />
+          <img src={SchoolLogo} alt="JNPV Logo" onClick={()=>navigate("/")} style={{ height: "78px", width: "auto", display: "block" }} />
         </div>
         <div className="adm-title-wrap" style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 40px 26px" }}>
           <button

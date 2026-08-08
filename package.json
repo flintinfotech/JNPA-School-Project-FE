@@ -12,13 +12,16 @@
   "dependencies": {
     "@ant-design/icons": "^5.3.7",
     "antd": "^6.4.5",
+    "apexcharts": "^6.7.0",
     "axios": "^1.18.1",
     "dayjs": "^1.11.21",
     "lucide-react": "^1.23.0",
     "react": "^19.2.6",
+    "react-apexcharts": "^2.1.1",
     "react-dom": "^19.2.6",
     "react-icons": "^5.7.0",
-    "react-router-dom": "^7.18.0"
+    "react-router-dom": "^7.18.0",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

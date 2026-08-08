@@ -123,4 +123,16 @@ export const apiEndpoints = {
   // ===============================
   // Teacher Subject Assignment
   // ===============================
+
+  //Dashboard
+  getAllStudentsCount: () =>
+  `/jnpa-school-project/dashboard/getAllStudentsCount`,
+
+   getAllUsersCount: () =>
+  "/jnpa-school-project/dashboard/getAllUsersCount",
+   
+   // apiEndpoints.ts
+getAllAdmissionInquiryCount: () =>
+  "/jnpa-school-project/dashboard/getAllAdmissionInquiryCount",
+  
 };

@@ -51,6 +51,7 @@ import AdmissionPrimaryEnglish from "./pages/AdmissionPrimaryEnglish";
 import AdmissionSecondarMarathi from "./pages/AdmissionSecondaryMarathi";
 import AdmissionSecondaryEnglish from "./pages/AdmissionSecondaryEnglish";
 import AdmissionInquiry from "./pages/AdmissionInquiry";
+import Dashboard from "./pages/Dashboard";
 
 
 
@@ -76,13 +77,14 @@ export default function App() {
   const isSubjectAssignmentPage = location.pathname ==="/subject-assignment";
   const isTeacherSubjectsPage = location.pathname ==="/teacher-subjects";
   const isAdmissionInquiryPage = location.pathname ==="/admission-inquiry";
+  const isDashboardPasge =location.pathname ==="/dashboard";
   
   const isHomePage = location.pathname === "/";
 
  
   
-  const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage||isUpdateUserPage ||isTeacherSubjectsPage || isAdmissionInquiryPage ;
-  const hideFooter = isHomePage || isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage||isUpdateUserPage||isTeacherSubjectsPage || isAdmissionInquiryPage;
+  const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage||isUpdateUserPage ||isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPasge;
+  const hideFooter = isHomePage || isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage||isUpdateUserPage||isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPasge;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -96,7 +98,7 @@ export default function App() {
             path="/login"
             element={
               isAuthenticated ? (
-                <Navigate to="/users" replace />
+                <Navigate to="/dashboard" replace />
               ) : (
                 <LoginPage onLogin={login} />
               )
@@ -120,6 +122,8 @@ export default function App() {
             <Route path="/teacher-subjects" element={<TeacherSubjects />} />
             <Route path="/update-user" element={<UpdateUserProfile/>}/>
             <Route path="/admission-inquiry" element={<AdmissionInquiry/>}/>
+            <Route path="/dashboard" element={<Dashboard/>}/>
+
           </Route>
 
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />

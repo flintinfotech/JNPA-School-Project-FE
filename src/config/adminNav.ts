@@ -1,5 +1,5 @@
 import { LuUsers } from "react-icons/lu";
-import { MdOutlineSubject } from "react-icons/md";
+import { MdOutlineSubject ,MdDashboard} from "react-icons/md";
 import { MdAssignment } from "react-icons/md";
 import { FaChalkboardTeacher } from "react-icons/fa";
 import { MdOutlineAdminPanelSettings } from "react-icons/md";
@@ -7,10 +7,6 @@ import { CgWebsite } from "react-icons/cg";
 import { BsFillClipboard2DataFill } from "react-icons/bs";
 import { MdAssignmentTurnedIn } from "react-icons/md";
 import { GrCircleInformation } from "react-icons/gr";
-
-
-
-
 import {
   PiBookOpenText,
   PiCalendarBlank,
@@ -47,6 +43,12 @@ export const isAdminNavGroup = (
 };
 
 export const adminNavItems: AdminNavEntry[] = [
+   {
+    label:"Dashboard",
+    path: "/dashboard",
+    icon: MdDashboard,
+  },
+  
   {
   label: "Administrator",
   icon: MdOutlineAdminPanelSettings,

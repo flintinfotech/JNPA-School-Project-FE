@@ -387,7 +387,7 @@ export default function Navbar() {
         <div className={`nav-expanded${menuOpen ? " open" : ""}`}>
           {/* Logo left */}
           <div className='nav-exp-logo'>
-            <img src={SchoolLogo} alt='JNPV Logo' className='nav-exp-logo-icon' />
+            <img src={SchoolLogo} alt='JNPV Logo' onClick={()=> navigate("/")} className='nav-exp-logo-icon' />
             <div className='nav-exp-logo-text'>
               <span className='nav-exp-logo-name'>JNPV</span>
               <span className='nav-exp-logo-sub'>Education</span>
@@ -401,7 +401,7 @@ export default function Navbar() {
                 <div className='nav-exp-col' key={i}>
                   {col.links.map((link) => (
                     <a key={link.label} onClick={() => handleNav(link.href)}>
-                      {"> "}
+                      {"● "}
                       {link.label}
                     </a>
                   ))}

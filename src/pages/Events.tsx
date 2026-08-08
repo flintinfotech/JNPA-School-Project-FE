@@ -466,6 +466,7 @@ export default function Events() {
               <div style={{ borderRight: "1px solid rgba(255,255,255,0.25)", paddingRight: "16px" }}>News</div>
               <div style={{ borderRight: "1px solid rgba(255,255,255,0.25)", paddingRight: "16px" }}>Description</div>
               <div>News Link</div>
+              
             </div>
 
             {newsLoading ? (

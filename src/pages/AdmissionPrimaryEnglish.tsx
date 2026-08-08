@@ -201,7 +201,17 @@ export default function AdmissionPrimaryEnglish() {
       {/* Header */}
       <div style={{ background: "#1569ad", position: "relative" }}>
         <div className="adm-header-inner" style={{ maxWidth: "1200px", margin: "0 auto", padding: "18px 40px 0" }}>
-          <img src={SchoolLogo} alt="JNPV Logo" style={{ height: "78px", width: "auto", display: "block" }} />
+          <img
+            src={SchoolLogo}
+            alt="JNPV Logo"
+            onClick={() => navigate("/")}
+            style={{
+              height: "78px",
+              width: "auto",
+              display: "block",
+              cursor: "pointer",
+            }}
+          />
         </div>
         <div className="adm-title-wrap" style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 40px 26px" }}>
           <button

@@ -58,7 +58,13 @@ export default function Admissions() {
           <img
             src={SchoolLogo}
             alt="JNPV Logo"
-            style={{ height: "78px", width: "auto", display: "block" }}
+            onClick={() => navigate("/")}
+            style={{
+              height: "78px",
+              width: "auto",
+              display: "block",
+              cursor: "pointer",
+            }}
           />
         </div>
         <div
