@@ -58,47 +58,61 @@ export default function AdmissionSecondarMarathi() {
   const handleInquiryChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    setInquiryForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+
+    if (name === "contactNumber") {
+      const digitsOnly = value.replace(/\D/g, "").slice(0, 10);
+      setInquiryForm((prev) => ({ ...prev, contactNumber: digitsOnly }));
+      return;
+    }
+
+    setInquiryForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleInquirySubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setInquiryStatus("sending");
+    e.preventDefault();
 
-  try {
-    await saveAdmissionInquiry({
-      firstName: InquiryForm.firstName,
-      lastName: InquiryForm.lastName,
-      contactNumber: InquiryForm.contactNumber,
-      standard: InquiryForm.standard,
-      medium: InquiryForm.medium,
-      status: "NEW",
-    });
+    if (!/^\d{10}$/.test(InquiryForm.contactNumber)) {
+      message.warning("Contact number must be exactly 10 digits.");
+      return;
+    }
 
-    // Show success message
-    message.success("Inquiry submitted successfully!");
+    setInquiryStatus("sending");
 
-    // Reset form
-    setInquiryForm({
-      firstName: "",
-      lastName: "",
-      contactNumber: "",
-      standard: "",
-      medium: "",
-    });
+    try {
+      await saveAdmissionInquiry({
+        firstName: InquiryForm.firstName,
+        lastName: InquiryForm.lastName,
+        contactNumber: InquiryForm.contactNumber,
+        standard: InquiryForm.standard,
+        medium: InquiryForm.medium,
+        status: "NEW",
+      });
 
-    setInquiryStatus("idle");
+      // Show success message
+      message.success("Inquiry submitted successfully!");
 
-    // Close modal automatically
-    setShowInquiryModal(false);
-  } catch (err) {
-    console.error("Failed to send Inquiry:", err);
+      // Reset form
+      setInquiryForm({
+        firstName: "",
+        lastName: "",
+        contactNumber: "",
+        standard: "",
+        medium: "",
+      });
 
-    message.error("Something went wrong. Please try again.");
+      setInquiryStatus("idle");
 
-    setInquiryStatus("error");
-  }
-};
+      // Close modal automatically
+      setShowInquiryModal(false);
+    } catch (err) {
+      console.error("Failed to send Inquiry:", err);
+
+      message.error("Something went wrong. Please try again.");
+
+      setInquiryStatus("error");
+    }
+  };
   // ──────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -203,7 +217,7 @@ export default function AdmissionSecondarMarathi() {
       {/* Header */}
       <div style={{ background: "#1f4d3d", position: "relative" }}>
         <div className="adm-header-inner" style={{ maxWidth: "1200px", margin: "0 auto", padding: "18px 40px 0" }}>
-          <img src={SchoolLogo} alt="JNPV Logo" onClick={()=>navigate("/")} style={{ height: "78px", width: "auto", display: "block" }} />
+          <img src={SchoolLogo} alt="JNPV Logo" onClick={() => navigate("/")} style={{ height: "78px", width: "auto", display: "block" }} />
         </div>
         <div className="adm-title-wrap" style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 40px 26px" }}>
           <button
@@ -471,6 +485,8 @@ export default function AdmissionSecondarMarathi() {
                     <input
                       name="contactNumber"
                       type="tel"
+                      inputMode="numeric"
+                      maxLength={10}
                       value={InquiryForm.contactNumber}
                       onChange={handleInquiryChange}
                       required
@@ -492,20 +508,18 @@ export default function AdmissionSecondarMarathi() {
                       <option value="Nursery">Nursery</option>
                       <option value="LKG">LKG</option>
                       <option value="UKG">UKG</option>
-                       <option value="1st Standard">1st Standard</option>
+                      <option value="1st Standard">1st Standard</option>
                       <option value="2nd Standard">2nd Standard</option>
                       <option value="3rd Standard">3rd Standard</option>
-                       <option value="4th Standard">4th Standard</option>
+                      <option value="4th Standard">4th Standard</option>
                       <option value="5th Standard">5th Standard</option>
                       <option value="6th Standard">6th Standard</option>
                       <option value="7th Standard">7th Standard</option>
                       <option value="8th Standard">8th Standard</option>
                       <option value="9th Standard">9th Standard</option>
-                       <option value="10th Standard">10th Standard</option>
+                      <option value="10th Standard">10th Standard</option>
                       <option value="11th Standard">11th Standard</option>
                       <option value="12th Standard">12th Standard</option>
-
-                      
                     </select>
                   </div>
                 </div>

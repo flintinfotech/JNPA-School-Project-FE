@@ -19,6 +19,23 @@ import { getAllStaticData, type StaticDataResponse } from "../../services/static
 
 const { Option } = Select;
 
+const STANDARD_OPTIONS = [
+  "Playgroup",
+  "Nursery",
+  "Junior KG (LKG)",
+  "Senior KG (UKG)",
+  "1st Standard",
+  "2nd Standard",
+  "3rd Standard",
+  "4th Standard",
+  "5th Standard",
+  "6th Standard",
+  "7th Standard",
+  "8th Standard",
+  "9th Standard",
+  "10th Standard",
+];
+
 interface StudentFormProps {
   form: FormInstance;
   onFinish: (values: any) => void;
@@ -347,7 +364,7 @@ export default function StudentForm({
 
                   return (
                     <div
-                      key={key} 
+                      key={key}
                       className="border border-gray-200 rounded-lg p-4 mb-4 relative"
                     >
                       <div className="flex justify-end">
@@ -541,7 +558,22 @@ export default function StudentForm({
                         name={[name, "standard"]}
                         rules={[{ required: true, message: "Standard required" }]}
                       >
-                        <Input placeholder="e.g. 4" />
+                        <Select placeholder="Select standard" allowClear>
+                          <Option value="Playgroup">Playgroup</Option>
+                          <Option value="Nursery">Nursery</Option>
+                          <Option value="LKG">LKG</Option>
+                          <Option value="UKG">UKG</Option>
+                          <Option value="1st Standard">1st</Option>
+                          <Option value="2nd Standard">2nd</Option>
+                          <Option value="3rd Standard">3rd</Option>
+                          <Option value="4th Standard">4th</Option>
+                          <Option value="5th Standard">5th</Option>
+                          <Option value="6th Standard">6th</Option>
+                          <Option value="7th Standard">7th</Option>
+                          <Option value="8th Standard">8th</Option>
+                          <Option value="9th Standard">9th</Option>
+                          <Option value="10th Standard">10th</Option>
+                        </Select>
                       </Form.Item>
                       <Form.Item
                         {...restField}

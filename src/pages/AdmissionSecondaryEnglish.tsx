@@ -58,11 +58,25 @@ export default function AdmissionSecondaryEnglish() {
   const handleInquiryChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    setInquiryForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+
+    if (name === "contactNumber") {
+      const digitsOnly = value.replace(/\D/g, "").slice(0, 10);
+      setInquiryForm((prev) => ({ ...prev, contactNumber: digitsOnly }));
+      return;
+    }
+
+    setInquiryForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleInquirySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!/^\d{10}$/.test(InquiryForm.contactNumber)) {
+      message.warning("Contact number must be exactly 10 digits.");
+      return;
+    }
+
     setInquiryStatus("sending");
 
     try {
@@ -483,6 +497,8 @@ export default function AdmissionSecondaryEnglish() {
                     <input
                       name="contactNumber"
                       type="tel"
+                      inputMode="numeric"
+                      maxLength={10}
                       value={InquiryForm.contactNumber}
                       onChange={handleInquiryChange}
                       required

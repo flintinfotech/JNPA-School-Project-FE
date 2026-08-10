@@ -8,10 +8,14 @@ export interface ApiResponse<T> {
   timestamp: string;
 }
 
+export interface StandardGenderCount {
+  boys: number;
+  girls: number;
+}
+
 export interface StudentDashboardData {
-  Total: number;
-  Male: number;
-  Female: number;
+  Total: StandardGenderCount;
+  [standard: string]: StandardGenderCount;
 }
 
 // Only TEACHER is guaranteed now; PARENT/ACCOUNTANT may or may not

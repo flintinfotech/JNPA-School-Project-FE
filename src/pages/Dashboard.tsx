@@ -7,6 +7,11 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
 } from "recharts";
 import {
   getAllStudentsCount,
@@ -123,9 +128,178 @@ function DonutChart({
   );
 }
 
+// ── Standard-wise ordering, matching the real API labels ──
+const STANDARD_ORDER = [
+  "Playgroup",
+  "Nursery",
+  "Junior KG (LKG)",
+  "Senior KG (UKG)",
+  "1st Standard",
+  "2nd Standard",
+  "3rd Standard",
+  "4th Standard",
+  "5th Standard",
+  "6th Standard",
+  "7th Standard",
+  "8th Standard",
+  "9th Standard",
+  "10th Standard",
+  "11th Standard",
+  "12th Standard",
+];
+
+// Handles shorthand variants some data sources might still send
+// ("LKG", "UKG", bare "4") by mapping them onto the same order.
+const STANDARD_ALIASES: Record<string, string> = {
+  PG: "Playgroup",
+  LKG: "Junior KG (LKG)",
+  UKG: "Senior KG (UKG)",
+};
+
+const standardSortIndex = (label: string) => {
+  const normalized = STANDARD_ALIASES[label] ?? label;
+
+  const directIdx = STANDARD_ORDER.indexOf(normalized);
+  if (directIdx !== -1) return directIdx;
+
+  // Fallback: pull a leading number out of labels like "4" or "4th Standard"
+  // and slot it after the 4 pre-numeric entries (Playgroup..Senior KG).
+  const numMatch = normalized.match(/\d+/);
+  if (numMatch) return 4 + Number(numMatch[0]) - 1;
+
+  // Unknown label: push to the end, alphabetically among unknowns.
+  return Number.MAX_SAFE_INTEGER;
+};
+
+// Shorter labels for display on the chart axis/tooltip only —
+// sorting above still uses the full raw key from the API.
+const STANDARD_DISPLAY_LABELS: Record<string, string> = {
+  "Junior KG (LKG)": "LKG",
+  "Senior KG (UKG)": "UKG",
+};
+
+const standardDisplayLabel = (label: string) =>
+  STANDARD_DISPLAY_LABELS[label] ?? label;
+
+// ── Bar chart: Total Students, grouped Boys/Girls per standard ──
+interface StandardGenderCount {
+  boys: number;
+  girls: number;
+}
+
+interface StandardBarChartProps {
+  total: number;
+  byStandard: Record<string, StandardGenderCount>;
+  male?: number;
+  female?: number;
+  loading?: boolean;
+  emptyLabel?: string;
+}
+
+function StandardBarChart({
+  total,
+  byStandard,
+  male = 0,
+  female = 0,
+  loading,
+  emptyLabel = "No data",
+}: StandardBarChartProps) {
+  const chartData = Object.entries(byStandard)
+    .filter(([standard]) => standard !== "Total")
+    .sort(([a], [b]) => standardSortIndex(a) - standardSortIndex(b))
+    .map(([standard, counts]) => ({
+      standard: standardDisplayLabel(standard),
+      boys: counts?.boys ?? 0,
+      girls: counts?.girls ?? 0,
+    }));
+
+  const hasData = chartData.length > 0;
+  const hasGenderData = male + female > 0;
+
+  return (
+    <div className="rounded-2xl p-4 sm:p-5 shadow-sm bg-white">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-base sm:text-lg font-semibold text-gray-700">
+          Total Student
+        </h3>
+        {!loading && hasData && (
+          <span className="text-sm sm:text-base font-bold text-gray-800">
+            Total: {total}
+          </span>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="h-56 sm:h-64 flex items-center justify-center text-gray-400 text-sm">
+          Loading...
+        </div>
+      ) : !hasData ? (
+        <div className="h-56 sm:h-64 flex items-center justify-center text-gray-400 text-sm">
+          {emptyLabel}
+        </div>
+      ) : (
+        <div className="flex flex-col lg:flex-row gap-4">
+          <div className="flex-1 h-72 sm:h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="standard" tick={{ fontSize: 12 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Legend wrapperStyle={{ fontSize: "12px" }} />
+                <Bar dataKey="boys" name="Boys" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="girls" name="Girls" fill="#f97316" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {hasGenderData && (
+            <div className="lg:w-48 flex lg:flex-col items-center justify-center gap-4 lg:gap-2 border-t lg:border-t-0 lg:border-l border-gray-100 pt-4 lg:pt-0 lg:pl-4">
+              <div className="w-28 h-28 shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: "Boys", value: male },
+                        { name: "Girls", value: female },
+                      ]}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius="55%"
+                      outerRadius="85%"
+                      paddingAngle={2}
+                    >
+                      <Cell fill="#3b82f6" />
+                      <Cell fill="#f97316" />
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="text-xs text-gray-600 space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
+                  Boys: {male}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-orange-500 inline-block" />
+                  Girls: {female}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const Dashboard = () => {
   // ── Students ──────────────────────────────────────────
   const [studentsTotal, setStudentsTotal] = useState(0);
+  const [studentsByStandard, setStudentsByStandard] = useState<
+    Record<string, { boys: number; girls: number }>
+  >({});
   const [studentsMale, setStudentsMale] = useState(0);
   const [studentsFemale, setStudentsFemale] = useState(0);
   const [studentsLoading, setStudentsLoading] = useState(true);
@@ -163,10 +337,12 @@ const Dashboard = () => {
         const res = await getAllStudentsCount();
 
         if (isMounted) {
-          const data = res.data?.data;
-          setStudentsTotal(data?.Total ?? 0);
-          setStudentsMale(data?.Male ?? 0);
-          setStudentsFemale(data?.Female ?? 0);
+          const data = res.data?.data ?? {};
+          const totalEntry = data.Total ?? { boys: 0, girls: 0 };
+          setStudentsTotal((totalEntry.boys ?? 0) + (totalEntry.girls ?? 0));
+          setStudentsMale(totalEntry.boys ?? 0);
+          setStudentsFemale(totalEntry.girls ?? 0);
+          setStudentsByStandard(data);
         }
       } catch (error) {
         if (isMounted) setStudentsError("Failed to load students count");
@@ -283,20 +459,20 @@ const Dashboard = () => {
         />
       </div>
 
-      {/* Donut charts row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
-        <DonutChart
-          title="Total Student "
+      {/* Student chart: full width */}
+      <div className="mb-3 sm:mb-4">
+        <StandardBarChart
           total={studentsTotal}
-          segments={[
-            { name: `Male (${studentsMale})`, value: studentsMale },
-            { name: `Female (${studentsFemale})`, value: studentsFemale },
-          ]}
-          colors={["#3b82f6", "#f97316"]}
+          byStandard={studentsByStandard}
+          male={studentsMale}
+          female={studentsFemale}
           loading={studentsLoading}
           emptyLabel="No student data"
         />
+      </div>
 
+      {/* Inquiry chart: below, own row */}
+      <div className="grid grid-cols-1 gap-3 sm:gap-4">
         <DonutChart
           title="Total Inquiry"
           total={inquiryTotal}
