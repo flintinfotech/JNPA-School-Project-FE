@@ -52,6 +52,7 @@ import AdmissionSecondarMarathi from "./pages/AdmissionSecondaryMarathi";
 import AdmissionSecondaryEnglish from "./pages/AdmissionSecondaryEnglish";
 import AdmissionInquiry from "./pages/AdmissionInquiry";
 import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
 
 
 
@@ -77,14 +78,15 @@ export default function App() {
   const isSubjectAssignmentPage = location.pathname ==="/subject-assignment";
   const isTeacherSubjectsPage = location.pathname ==="/teacher-subjects";
   const isAdmissionInquiryPage = location.pathname ==="/admission-inquiry";
-  const isDashboardPasge =location.pathname ==="/dashboard";
-  
+  const isDashboardPage =location.pathname ==="/dashboard";
+  const isProfilePage =location.pathname ==="/profile";
+
   const isHomePage = location.pathname === "/";
 
  
   
-  const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage||isUpdateUserPage ||isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPasge;
-  const hideFooter = isHomePage || isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage||isUpdateUserPage||isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPasge;
+  const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage||isUpdateUserPage ||isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage;
+  const hideFooter = isHomePage || isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage||isUpdateUserPage||isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -123,7 +125,7 @@ export default function App() {
             <Route path="/update-user" element={<UpdateUserProfile/>}/>
             <Route path="/admission-inquiry" element={<AdmissionInquiry/>}/>
             <Route path="/dashboard" element={<Dashboard/>}/>
-
+            <Route path="/profile" element={<Profile/>}/>
           </Route>
 
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />

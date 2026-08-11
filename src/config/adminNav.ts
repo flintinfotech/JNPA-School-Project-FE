@@ -15,6 +15,7 @@ import {
   PiStudent,
 } from "react-icons/pi";
 
+
 import { MdClass } from "react-icons/md";
 
 import { ImProfile } from "react-icons/im";
@@ -86,6 +87,9 @@ export const adminNavItems: AdminNavEntry[] = [
        { label: "Subject Assignment", path: "/subject-assignment", icon: MdAssignment },
        {label: "Teacher Subjects",path: "/teacher-subjects",icon: FaChalkboardTeacher,},
     ],
+  },
+  {
+    label: "Profile", path:"/profile",icon:ImProfile 
   },
  
 ];

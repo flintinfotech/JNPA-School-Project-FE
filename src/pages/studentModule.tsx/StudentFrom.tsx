@@ -45,6 +45,7 @@ interface StudentFormProps {
   staticData: StaticDataResponse | null;
 }
 
+
 const tabKeys = ["details", "parents", "documents", "academic"];
 
 const fileToBase64 = (file: File): Promise<string> =>
@@ -55,15 +56,36 @@ const fileToBase64 = (file: File): Promise<string> =>
     reader.onerror = (error) => reject(error);
   });
 
-const base64ToBlobUrl = (base64: string, mimeType: string): string => {
-  const byteChars = atob(base64);
-  const byteNumbers = new Array(byteChars.length);
-  for (let i = 0; i < byteChars.length; i++) {
-    byteNumbers[i] = byteChars.charCodeAt(i);
+const base64ToBlobUrl = (
+  base64: string | null | undefined,
+  mimeType: string
+): string => {
+  if (!base64) return "";
+
+  // Backend sometimes returns Java byte[] as [B@xxxx
+  if (base64.startsWith("[B@")) {
+    return "";
   }
-  const byteArray = new Uint8Array(byteNumbers);
-  const blob = new Blob([byteArray], { type: mimeType || "application/octet-stream" });
-  return URL.createObjectURL(blob);
+
+  try {
+    const byteChars = atob(base64);
+    const byteNumbers = new Array(byteChars.length);
+
+    for (let i = 0; i < byteChars.length; i++) {
+      byteNumbers[i] = byteChars.charCodeAt(i);
+    }
+
+    const byteArray = new Uint8Array(byteNumbers);
+
+    const blob = new Blob([byteArray], {
+      type: mimeType || "application/octet-stream",
+    });
+
+    return URL.createObjectURL(blob);
+  } catch (error) {
+    console.error("Invalid profile image Base64:", error);
+    return "";
+  }
 };
 
 const detectMimeType = (base64: string): string => {
@@ -85,7 +107,23 @@ export default function StudentForm({
   const [activeTab, setActiveTab] = useState("details");
 
   const documentsWatch: any[] = Form.useWatch("studentDocuments", form) || [];
+  const profileImgWatch: string | null = Form.useWatch("profileImg", form);
 
+  const photoUrl = profileImgWatch
+  ? base64ToBlobUrl(profileImgWatch, detectMimeType(profileImgWatch))
+  : "";
+
+const photoFileList: UploadFile[] = photoUrl
+  ? [
+      {
+        uid: "profile-photo",
+        name: "Student Photo",
+        status: "done",
+        url: photoUrl,
+      },
+    ]
+  : [];
+  
   const fieldsByTab: Record<string, any[]> = {
     details: [
       "firstName",
@@ -119,6 +157,7 @@ export default function StudentForm({
     const idx = tabKeys.indexOf(activeTab);
     if (idx > 0) setActiveTab(tabKeys[idx - 1]);
   };
+
 
   const handleFinish = async () => {
     try {
@@ -233,6 +272,47 @@ export default function StudentForm({
                   </Option>
                 ))}
               </Select>
+            </Form.Item>
+            <Form.Item
+              label="Student Photo"
+              name="profileImg"
+              className="md:col-span-2"
+              getValueFromEvent={() => form.getFieldValue("profileImg")}
+            >
+              <Upload
+                listType="picture-card"
+                maxCount={1}
+                fileList={photoFileList}
+                beforeUpload={async (file) => {
+                  const isImage = file.type.startsWith("image/");
+                  if (!isImage) {
+                    message.error("Please upload an image file");
+                    return Upload.LIST_IGNORE;
+                  }
+                  const base64 = await fileToBase64(file);
+                  const rawBase64 = base64.split(",")[1];
+                  form.setFieldValue("profileImg", rawBase64);
+                  return false;
+                }}
+                onRemove={() => {
+                  form.setFieldValue("profileImg", null);
+                }}
+                onPreview={() => {
+                  if (!profileImgWatch) return;
+                  const url = base64ToBlobUrl(
+                    profileImgWatch,
+                    detectMimeType(profileImgWatch)
+                  );
+                  window.open(url, "_blank");
+                }}
+              >
+                {photoFileList.length === 0 && (
+                  <div>
+                    <PlusOutlined />
+                    <div style={{ marginTop: 8 }}>Upload</div>
+                  </div>
+                )}
+              </Upload>
             </Form.Item>
           </div>
         </Tabs.TabPane>
@@ -538,7 +618,7 @@ export default function StudentForm({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
                       <Form.Item
                         {...restField}
-                        label="Admission No"
+                        label="Admission Id"
                         name={[name, "admissionNo"]}
                         rules={[{ required: true, message: "Admission no required" }]}
                       >

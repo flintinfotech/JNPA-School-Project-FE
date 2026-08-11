@@ -30,6 +30,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [selectedAcademicYear, setSelectedAcademicYear] =
     useState<AcademicYear | null>(null);
+    
 
   const loadAcademicYears = async () => {
     try {
