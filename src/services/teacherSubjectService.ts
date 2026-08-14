@@ -2,7 +2,7 @@ import axiosInstance from "../lib/axios";
 import { apiEndpoints } from "./apiEndpoints";
 
 export interface TeacherDTO {
-  userInformationId: number;
+  employeeDetailsId: number;
   userId: number;
   firstName: string;
   lastName: string;
@@ -52,7 +52,7 @@ export interface SubjectDTO {
 }
 
 export interface AssignTeacherSubjectDTO {
-  userInformationId: number;
+  employeeDetailsId: number;
   classMasterId: number;
   subjectIds: number[];
 }
@@ -61,10 +61,10 @@ export const assignTeacherSubjects = async (payload: AssignTeacherSubjectDTO) =>
   return await axiosInstance.post(apiEndpoints.assignTeacherSubjects(), payload);
 };
 
-export const getSubjectsByUserInformationId = async (
-  userInformationId: number
+export const getSubjectsByEmployeeDetailsId = async (
+  employeeDetailsId: number
 ) => {
   return await axiosInstance.get(
-    apiEndpoints.getSubjectsByUserInformationId(userInformationId)
+    apiEndpoints.getSubjectsByEmployeeDetailsId(employeeDetailsId)
   );
 };

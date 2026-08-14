@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Button, Popconfirm } from "antd";
-import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { Button} from "antd";
+import { EditOutlined, } from "@ant-design/icons";
 import CommonTable from "../../components/commonTable";
 import type { UserDTO } from "../../services/userService";
 
@@ -38,7 +38,7 @@ export default function UserTable({
   loading,
   pagination,
   onEdit,
-  onDelete,
+  // onDelete,
 }: UserTableProps) {
   const isMobile = useIsMobile();
 
@@ -88,14 +88,14 @@ export default function UserTable({
             size="small"
             onClick={() => onEdit(record)}
           />
-          <Popconfirm
+          {/* <Popconfirm
             title="Are you sure you want to delete this user?"
             onConfirm={() => onDelete(record.userId)}
             okText="Yes"
             cancelText="No"
           >
             <Button danger icon={<DeleteOutlined />} size="small" />
-          </Popconfirm>
+          </Popconfirm> */}
         </div>
       ),
     },
@@ -145,14 +145,14 @@ export default function UserTable({
                   size="small"
                   onClick={() => onEdit(record)}
                 />
-                <Popconfirm
+                {/* <Popconfirm
                   title="Are you sure you want to delete this user?"
                   onConfirm={() => onDelete(record.userId)}
                   okText="Yes"
                   cancelText="No"
                 >
                   <Button danger icon={<DeleteOutlined />} size="small" />
-                </Popconfirm>
+                </Popconfirm> */}
               </div>
             </div>
           ))}

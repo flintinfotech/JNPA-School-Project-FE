@@ -30,7 +30,7 @@ import {
   getAllTeachers,
   searchClass,
   assignTeacherSubjects,
-  getSubjectsByUserInformationId,
+  getSubjectsByEmployeeDetailsId,
 } from "../services/teacherSubjectService";
 
 import { getSubjectsByClassId } from "../services/subjectAssignmentService";
@@ -258,8 +258,8 @@ const TeacherSubject: React.FC = () => {
     setViewLoading(true);
 
     try {
-      const response = await getSubjectsByUserInformationId(
-        teacher.userInformationId
+      const response = await getSubjectsByEmployeeDetailsId(
+        teacher.employeeDetailsId
       );
 
       console.log("View Subjects Response", response);
@@ -378,7 +378,7 @@ const TeacherSubject: React.FC = () => {
 
     try {
       const payload = {
-        userInformationId: selectedTeacher.userInformationId,
+        employeeDetailsId: selectedTeacher.employeeDetailsId,
         classMasterId: selectedClassId,
         subjectIds: selectedSubjectIds,
       };
@@ -544,7 +544,7 @@ const TeacherSubject: React.FC = () => {
           <>
             {teachers.map((teacher, index) => (
               <Card
-                key={teacher.userInformationId}
+                key={teacher.employeeDetailsId}
                 style={{
                   marginBottom: 16,
                   borderRadius: 12,
@@ -610,7 +610,7 @@ const TeacherSubject: React.FC = () => {
           </>
         ) : (
           <Table
-            rowKey="userInformationId"
+            rowKey="employeeDetailsId"
             columns={columns}
             dataSource={teachers}
             loading={loading}

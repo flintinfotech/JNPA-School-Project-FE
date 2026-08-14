@@ -12,7 +12,7 @@ const sections = [
   {
     label: "Primary",
     grades: ["1st Standard", "2nd Standard", "3rd Standard", "4th Standard"],
-    color: "#1569ad",
+    color: "#1569ad", 
     route: "/admissions/primary",
   },
   {

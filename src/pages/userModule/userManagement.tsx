@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button, Drawer, Form, message } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
-import { deleteUser, getAllUsers,getUserById, saveUser, updateUser, type UserDTO } from "../../services/userService";
+// import { PlusOutlined } from "@ant-design/icons";
+import {  getAllUsers,getUserById, saveUser, updateUser, type UserDTO } from "../../services/userService";
 import UserTable from "./userTable";
 import UserForm from "./userForm";
 import { getAllStaticData, type StaticDataResponse } from "../../services/staticDataService";
@@ -55,11 +55,11 @@ export default function UserManagement() {
     fetchUsers(page, pageSize);
   }, [page, pageSize, fetchUsers]);
 
-  const openAddDrawer = () => {
-    setEditingUser(null);
-    form.resetFields();
-    setDrawerOpen(true);
-  };
+  // const openAddDrawer = () => {
+  //   setEditingUser(null);
+  //   form.resetFields();
+  //   setDrawerOpen(true);
+  // };
 
   const openEditDrawer = async (record: UserDTO) => {
   try {
@@ -139,28 +139,28 @@ export default function UserManagement() {
     }
   };
 
-  const handleDelete = async (userId: number) => {
-    try {
-      const response = await deleteUser(userId);
-      if (response.success) {
-        message.success(response.message || "User deleted successfully");
-        fetchUsers(page, pageSize);
-      } else {
-        message.error(response.message || "Failed to delete user");
-      }
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || "Failed to delete user");
-    }
-  };
+  // const handleDelete = async (userId: number) => {
+  //   try {
+  //     const response = await deleteUser(userId);
+  //     if (response.success) {
+  //       message.success(response.message || "User deleted successfully");
+  //       fetchUsers(page, pageSize);
+  //     } else {
+  //       message.error(response.message || "Failed to delete user");
+  //     }
+  //   } catch (error: any) {
+  //     message.error(error?.response?.data?.message || "Failed to delete user");
+  //   }
+  // };
 
   return (
     <div>
       {/* Add User Button */}
-      <div className="flex justify-end mb-4">
+      {/* <div className="flex justify-end mb-4">
         <Button type="primary" icon={<PlusOutlined />} onClick={openAddDrawer}>
           Add User
         </Button>
-      </div>
+      </div> */}
                  
       <UserTable
         data={users}
@@ -175,7 +175,7 @@ export default function UserManagement() {
           },
         }}
         onEdit={openEditDrawer}
-        onDelete={handleDelete}
+        // onDelete={handleDelete}
       />
       
       <Drawer

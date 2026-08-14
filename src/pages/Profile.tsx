@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Spin, Empty, message, Tabs } from "antd";
 import { PaperClipOutlined } from "@ant-design/icons";
-import { getUserInformationById } from "../services/userService";
-import { getSubjectsByUserInformationId } from "../services/teacherSubjectService";
+import { getEmployeeDetailsById } from "../services/userService";
+import { getSubjectsByEmployeeDetailsId } from "../services/teacherSubjectService";
 
 // ===========================
 // Types (matches actual API response)
@@ -16,7 +16,7 @@ interface LoggedInUser {
 
 interface UserDocumentDTO {
   userDocumentId: number;
-  userInformationId: number;
+  employeeDetailsId: number;
   documentName: string;
   documentType: string | null;
   uploadDate: string;
@@ -24,7 +24,7 @@ interface UserDocumentDTO {
 }
 
 interface TeacherInformation {
-  userInformationId: number;
+  employeeDetailsId: number;
   userId: number;
   firstName?: string;
   middleName?: string | null;
@@ -189,14 +189,14 @@ export default function Profile() {
         setLoading(true);
 
         // Step 1: get this teacher's userInformation (personal + teaching details + documents)
-        const infoResponse: any = await getUserInformationById(parsedUser.userId);
+        const infoResponse: any = await getEmployeeDetailsById(parsedUser.userId);
         const info: TeacherInformation = infoResponse?.data || infoResponse;
         setTeacherInfo(info);
 
         // Step 2: get subjects assigned to this teacher, grouped by class
-        if (info?.userInformationId) {
-          const subjectsResponse = await getSubjectsByUserInformationId(
-            info.userInformationId
+        if (info?.employeeDetailsId) {
+          const subjectsResponse = await getSubjectsByEmployeeDetailsId(
+            info.employeeDetailsId
           );
 
           const data = subjectsResponse.data?.data || {};

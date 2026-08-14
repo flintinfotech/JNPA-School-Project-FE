@@ -37,17 +37,17 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
     fetchScreens();
   }, []);
   const handleFinish = (values: any) => {
-  const { screenIds, ...rest } = values;
+    const { screenIds, ...rest } = values;
 
-  onFinish({
-    ...rest,
+    onFinish({
+      ...rest,
 
-    screens:
-      screenIds?.map((id: number) => ({
-        screenId: id,
-      })) ?? [],
-  });
-};
+      screens:
+        screenIds?.map((id: number) => ({
+          screenId: id,
+        })) ?? [],
+    });
+  };
 
   const fields = [
     {
@@ -79,7 +79,9 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
       label: "Mobile No",
       type: "text" as const,
       required: true,
-      maxLength: 10
+      minLength: 10,
+      maxLength: 10,
+      pattern: "^[0-9]{10}$"
     },
     ...(!isEditing
       ? [
@@ -87,7 +89,6 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
           name: "password",
           label: "Password",
           type: "password" as const,
-          required: true,
         },
       ]
       : []),
@@ -95,7 +96,7 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
       name: "role",
       label: "Role",
       type: "select" as const,
-      required: true,
+
       options:
         staticData?.role.map((role) => ({
           label: role.charAt(0).toUpperCase() + role.slice(1).toLowerCase(),
@@ -107,7 +108,6 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
       label: "Screens",
       type: "select" as const,
       mode: "multiple" as const,
-      required: true,
       options: screens.map((screen) => ({
         label: screen.screenName,
         value: screen.screenId,

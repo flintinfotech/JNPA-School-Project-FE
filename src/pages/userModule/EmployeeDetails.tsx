@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { Drawer, Form, message, Modal, Popconfirm, Button, Input, Select, Space, Row, Col } from "antd";
-import { SearchOutlined, ReloadOutlined } from "@ant-design/icons";
+import { Drawer, Form, message, Modal, Popconfirm, Button, Input, Select, Space, Row, Col, } from "antd";
+import { SearchOutlined, ReloadOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   getAllUsers,
-  saveUserInformation,
-  updateUserInformation,
-  getUserInformationById,
-  deleteUserInformation,
+  saveEmployeeDetails,
+  updateEmployeeDetails,
+  getEmployeeDetailsById,
+  deleteEmployeeDetails,
   type UserDTO,
   type UserSearchFilters,
 } from "../../services/userService";
@@ -66,6 +66,11 @@ export default function UpdateUserProfile() {
     return "application/octet-stream"; // fallback, browser will offer download
   };
 
+  const openAddDrawer = () => {
+    setEditingUser(null);
+    form.resetFields();
+    setDrawerOpen(true);
+  };
   // Fetches static data (role list, etc.) only on the first time the Role dropdown is opened
   const handleRoleDropdownOpen = async (open: boolean) => {
     if (!open || rolesFetched) return;
@@ -138,7 +143,7 @@ export default function UpdateUserProfile() {
 
   const openViewDrawer = async (record: UserDTO) => {
     try {
-      const response = await getUserInformationById(record.userId);
+      const response = await getEmployeeDetailsById(record.userId);
       console.log("View API Response:", response);
       if (response.success) {
         setViewUser(response.data);
@@ -159,7 +164,7 @@ export default function UpdateUserProfile() {
     console.log("Clicked User ID:", record.userId);
 
     try {
-      const response = await getUserInformationById(record.userId);
+      const response = await getEmployeeDetailsById(record.userId);
 
       console.log("API Response:", response);
       if (response.success) {
@@ -168,13 +173,17 @@ export default function UpdateUserProfile() {
         setEditingUser(user);
 
         form.setFieldsValue({
-          userInformationId: user.userInformationId,
+          employeeDetailsId: user.employeeDetailsId,
           userId: record.userId,
           employeeCode: user.employeeCode,
+          userName:user.userName,
           firstName: user.firstName,
           middleName: user.middleName,
           lastName: user.lastName,
           gender: user.gender,
+          role:user.role,
+          email:user.email,
+          mobileNo:user.mobileNo,
           qualification: user.qualification,
           specialization: user.specialization,
           experience: user.experience,
@@ -183,6 +192,7 @@ export default function UpdateUserProfile() {
           address: user.address,
           dateOfBirth: user.dateOfBirth ? dayjs(user.dateOfBirth) : null,
           joiningDate: user.joiningDate ? dayjs(user.joiningDate) : null,
+          leavingDate: user.leavingDate ? dayjs(user.leavingDate) : null,
 
           documents:
             user.userDocumentDTOS?.map((doc: any) => {
@@ -213,7 +223,7 @@ export default function UpdateUserProfile() {
         setEditingUser(null);
         form.resetFields();
         form.setFieldsValue({
-          userInformationId: null,
+          employeeDetailsId: null,
           userId: record.userId,
           firstName: record.firstName,
           lastName: record.lastName,
@@ -233,14 +243,14 @@ export default function UpdateUserProfile() {
   };
 
   const handleDelete = async () => {
-    if (!editingUser?.userInformationId) {
+    if (!editingUser?.employeeDetailsId) {
       message.warning("No employee information found.");
       return;
     }
 
     try {
-      const response = await deleteUserInformation(
-        editingUser.userInformationId
+      const response = await deleteEmployeeDetails(
+        editingUser.employeeDetailsId
       );
 
       if (response.success) {
@@ -263,13 +273,17 @@ export default function UpdateUserProfile() {
 
     try {
       const payload = {
-        userInformationId: values.userInformationId,
+        employeeDetailsId: values.employeeDetailsId,
         userId: values.userId,
         employeeCode: values.employeeCode,
+        userName:values.userName,
         firstName: values.firstName,
         middleName: values.middleName,
         lastName: values.lastName,
         gender: values.gender,
+        role:values.role,
+        email:values.email,
+        mobileNo:values.mobileNo,
         qualification: values.qualification,
         specialization: values.specialization,
         experience: values.experience,
@@ -278,11 +292,12 @@ export default function UpdateUserProfile() {
         address: values.address,
         dateOfBirth: values.dateOfBirth.format("YYYY-MM-DD"),
         joiningDate: values.joiningDate.format("YYYY-MM-DD"),
+        leavingDate: values.leavingDate ? values.leavingDate.format("YYYY-MM-DD") : null,
         userDocumentDTOS: (values.documents || [])
           .filter((doc: any) => doc.documentName || doc.document)
           .map((doc: any) => ({
             userDocumentId: doc.userDocumentId,
-            userInformationId: doc.userInformationId,
+            employeeDetailsId: doc.employeeDetailsId,
             documentName: doc.documentName,
             documentType: doc.documentType,
             uploadDate: doc.uploadDate
@@ -294,10 +309,10 @@ export default function UpdateUserProfile() {
 
       let response;
 
-      if (payload.userInformationId) {
-        response = await updateUserInformation(payload);
+      if (payload.employeeDetailsId) {
+        response = await updateEmployeeDetails(payload);
       } else {
-        response = await saveUserInformation(payload);
+        response = await saveEmployeeDetails(payload);
       }
 
       if (response.success) {
@@ -319,54 +334,59 @@ export default function UpdateUserProfile() {
 
   return (
     <div>
+      <div className="flex justify-end mb-4">
+        <Button type="primary" icon={<PlusOutlined />} onClick={openAddDrawer}>
+          Add User
+        </Button>
+      </div>
       {/* Employee Details Navbar goes here (your existing header/navbar component) */}
 
       {/* Search Bar */}
-<Row gutter={[12, 12]} style={{ padding: "16px 0" }}>
-  <Col xs={24} sm={12} md={6}>
-    <Input
-      placeholder="First Name"
-      value={searchFilters.firstName}
-      onChange={(e) => handleFilterChange("firstName", e.target.value)}
-      style={{ width: "100%" }}
-      allowClear
-    />
-  </Col>
+      <Row gutter={[12, 12]} style={{ padding: "16px 0" }}>
+        <Col xs={24} sm={12} md={6}>
+          <Input
+            placeholder="First Name"
+            value={searchFilters.firstName}
+            onChange={(e) => handleFilterChange("firstName", e.target.value)}
+            style={{ width: "100%" }}
+            allowClear
+          />
+        </Col>
 
-  <Col xs={24} sm={12} md={6}>
-    <Input
-      placeholder="Last Name"
-      value={searchFilters.lastName}
-      onChange={(e) => handleFilterChange("lastName", e.target.value)}
-      style={{ width: "100%" }}
-      allowClear
-    />
-  </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Input
+            placeholder="Last Name"
+            value={searchFilters.lastName}
+            onChange={(e) => handleFilterChange("lastName", e.target.value)}
+            style={{ width: "100%" }}
+            allowClear
+          />
+        </Col>
 
-  <Col xs={24} sm={12} md={6}>
-    <Select
-      placeholder="Role"
-      value={searchFilters.role || undefined}
-      onChange={(value) => handleFilterChange("role", value || "")}
-      onDropdownVisibleChange={handleRoleDropdownOpen}
-      loading={roleLoading}
-      style={{ width: "100%" }}
-      allowClear
-      options={roleOptions}
-    />
-  </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Select
+            placeholder="Role"
+            value={searchFilters.role || undefined}
+            onChange={(value) => handleFilterChange("role", value || "")}
+            onDropdownVisibleChange={handleRoleDropdownOpen}
+            loading={roleLoading}
+            style={{ width: "100%" }}
+            allowClear
+            options={roleOptions}
+          />
+        </Col>
 
-  <Col xs={24} sm={12} md={6}>
-  <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-    <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
-      Search
-    </Button>
-    <Button icon={<ReloadOutlined />} onClick={handleResetFilters}>
-      Reset
-    </Button>
-  </div>
-</Col>
-</Row>
+        <Col xs={24} sm={12} md={6}>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
+              Search
+            </Button>
+            <Button icon={<ReloadOutlined />} onClick={handleResetFilters}>
+              Reset
+            </Button>
+          </div>
+        </Col>
+      </Row>
 
       <UserUpdateProfileTable
         data={users}

@@ -54,8 +54,9 @@ export const adminNavItems: AdminNavEntry[] = [
   label: "Administrator",
   icon: MdOutlineAdminPanelSettings,
   children: [
-    { label: "Users", path: "/users", icon: LuUsers },
+    
     { label: "Employee Details", path: "/update-user", icon: ImProfile },
+    { label: "Users", path: "/users", icon: LuUsers },
     { label: "Students", path: "/students", icon: PiStudent },
     { label: "Admission Inquiry", path:"/admission-inquiry",icon:GrCircleInformation},
   ],
