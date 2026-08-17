@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Drawer, Form, message, Modal, Popconfirm, Button, Input, Select, Space, Row, Col, } from "antd";
 import { SearchOutlined, ReloadOutlined, PlusOutlined } from "@ant-design/icons";
 import {
-  getAllUsers,
+  getAllEmployeeDetailsByFilter,
   saveEmployeeDetails,
   updateEmployeeDetails,
   getEmployeeDetailsById,
@@ -101,24 +101,24 @@ export default function UpdateUserProfile() {
   };
 
   const fetchUsers = useCallback(
-    async (pageNum: number, size: number, filters?: UserSearchFilters) => {
-      setTableLoading(true);
-      try {
-        const response = await getAllUsers(pageNum, size, filters);
-        if (response.success) {
-          setUsers(response.data.Data);
-          setTotal(response.data.total);
-        } else {
-          message.error(response.message || "Failed to load users");
-        }
-      } catch (error: any) {
-        message.error(error?.response?.data?.message || "Failed to load users");
-      } finally {
-        setTableLoading(false);
+  async (pageNum: number, size: number, filters?: UserSearchFilters) => {
+    setTableLoading(true);
+    try {
+      const response = await getAllEmployeeDetailsByFilter(pageNum, size, filters);
+      if (response.success) {
+        setUsers(response.data.Data);
+        setTotal(response.data.total);
+      } else {
+        message.error(response.message || "Failed to load employees");
       }
-    },
-    []
-  );
+    } catch (error: any) {
+      message.error(error?.response?.data?.message || "Failed to load employees");
+    } finally {
+      setTableLoading(false);
+    }
+  },
+  []
+);
 
   useEffect(() => {
     fetchUsers(page, pageSize, searchFilters);

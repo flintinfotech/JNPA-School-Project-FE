@@ -73,9 +73,9 @@ export const apiEndpoints = {
   saveEmployeeDetails: () => `/jnpa-school-project/employeeDetails/saveEmployeeDetails`,
   getEmployeeDetailsById: (id: number) =>
     `/jnpa-school-project/employeeDetails/getEmployeeDetailsByEmployeeId/${id}`,
-  updateemployeeDetails: () => `/jnpa-school-project/employeeDetails/updateemployeeDetails`,
-  deleteemployeeDetails: (employeeDetailsId: number) =>
-    `/jnpa-school-project/employeeDetails/deleteemployeeDetails/${employeeDetailsId}`,
+  updateEmployeeDetails: () => `/jnpa-school-project/employeeDetails/updateEmployeeDetails`,
+  deleteEmployeeDetails: (employeeDetailsId: number) =>
+    `/jnpa-school-project/employeeDetails/deleteEmployeeDetails/${employeeDetailsId}`,
 
   getSubjectsByClassId: (id: number) =>
     `/jnpa-school-project/subjectAssignment/getSubjectsByClassId/${id}`,
@@ -95,7 +95,7 @@ export const apiEndpoints = {
     "/jnpa-school-project/teacherSubjectAssignment/assignOrUnassignSubjects",
 
   getAllemployeeDetails: (page: number, size: number) =>
-    `/jnpa-school-project/employeeDetails/getAllemployeeDetailsByFilter?page=${page}&size=${size}&paginate=true`,
+    `/jnpa-school-project/employeeDetails/getAllEmployeeDetailsByFilter?page=${page}&size=${size}&paginate=true`,
 
   getSubjectsByEmployeeDetailsId: (employeeDetailsId: number | string) =>
     `/jnpa-school-project/teacherSubjectAssignment/getSubjectsByEmployeeDetailsId/${employeeDetailsId}`,

@@ -6,6 +6,7 @@ import {
   DatePicker,
   Button,
   Upload,
+  message,
   Popconfirm,
 } from "antd";
 import {
@@ -70,11 +71,17 @@ export default function User({
   };
 
   return (
-    <Form
-      form={form}
-      layout="vertical"
-      onFinish={onFinish}
-    >
+   <Form
+  form={form}
+  layout="vertical"
+  onFinish={onFinish}
+  onFinishFailed={({ errorFields }) => {
+    message.error("Please fix the highlighted fields before submitting.");
+    console.log("Validation failed on:", errorFields);
+    // optionally: if any errorField path starts with "documents", switch to tab "2"
+  }}
+  scrollToFirstError
+>
       <Tabs
         activeKey={activeTab}
         onChange={setActiveTab}
