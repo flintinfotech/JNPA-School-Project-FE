@@ -30,6 +30,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [selectedAcademicYear, setSelectedAcademicYear] =
     useState<AcademicYear | null>(null);
+    
 
   const loadAcademicYears = async () => {
     try {
@@ -39,17 +40,17 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
       setAcademicYears(response.data);
 
-     const loadAcademicYears = async () => {
-  try {
-    const response = await axiosInstance.get(
-      "/jnpa-school-project/auth/getLastFiveAcademicYears"
-    );
+      const loadAcademicYears = async () => {
+        try {
+          const response = await axiosInstance.get(
+            "/jnpa-school-project/auth/getLastFiveAcademicYears"
+          );
 
-    setAcademicYears(response.data);
-  } catch (error) {
-    console.error("Failed to load Academic Years", error);
-  }
-};
+          setAcademicYears(response.data);
+        } catch (error) {
+          console.error("Failed to load Academic Years", error);
+        }
+      };
     } catch (error) {
       console.error("Failed to load Academic Years", error);
     }
@@ -168,7 +169,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                   placeholder="••••••••"
                   className="w-full px-3.5 py-2.5 pr-10 rounded-lg border border-slate-300 text-slate-800 placeholder-slate-400 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition"
                 />
-                
+
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
@@ -192,35 +193,35 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                 Academic Year
               </label>
 
-            <select
-  id="academicYear"
-  required
-  value={
-    selectedAcademicYear
-      ? `${selectedAcademicYear.startDate}-${selectedAcademicYear.endDate}`
-      : ""
-  }
-  onChange={(e) => {
-    const year = academicYears.find(
-      (item) =>
-        `${item.startDate}-${item.endDate}` === e.target.value
-    );
+              <select
+                id="academicYear"
+                required
+                value={
+                  selectedAcademicYear
+                    ? `${selectedAcademicYear.startDate}-${selectedAcademicYear.endDate}`
+                    : ""
+                }
+                onChange={(e) => {
+                  const year = academicYears.find(
+                    (item) =>
+                      `${item.startDate}-${item.endDate}` === e.target.value
+                  );
 
-    setSelectedAcademicYear(year || null);
-  }}
-  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition"
->
-  <option value="">Select Academic Year</option>
+                  setSelectedAcademicYear(year || null);
+                }}
+                className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition"
+              >
+                <option value="">Select Academic Year</option>
 
-  {academicYears.map((year, index) => (
-    <option
-      key={index}
-      value={`${year.startDate}-${year.endDate}`}
-    >
-      {year.startDate} - {year.endDate}
-    </option>
-  ))}
-</select>
+                {academicYears.map((year, index) => (
+                  <option
+                    key={index}
+                    value={`${year.startDate}-${year.endDate}`}
+                  >
+                    {year.startDate} - {year.endDate}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Error */}

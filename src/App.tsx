@@ -50,6 +50,11 @@ import AdmissionPrimaryMarathi from "./pages/AdmissionPrimaryMarathi";
 import AdmissionPrimaryEnglish from "./pages/AdmissionPrimaryEnglish";
 import AdmissionSecondarMarathi from "./pages/AdmissionSecondaryMarathi";
 import AdmissionSecondaryEnglish from "./pages/AdmissionSecondaryEnglish";
+import AdmissionInquiry from "./pages/AdmissionInquiry";
+import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
+
+
 
 
 
@@ -72,12 +77,16 @@ export default function App() {
    const isUpdateUserPage=location.pathname==="/update-user";
   const isSubjectAssignmentPage = location.pathname ==="/subject-assignment";
   const isTeacherSubjectsPage = location.pathname ==="/teacher-subjects";
+  const isAdmissionInquiryPage = location.pathname ==="/admission-inquiry";
+  const isDashboardPage =location.pathname ==="/dashboard";
+  const isProfilePage =location.pathname ==="/profile";
+
   const isHomePage = location.pathname === "/";
 
  
   
-  const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage||isUpdateUserPage ||isTeacherSubjectsPage;
-  const hideFooter = isHomePage || isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage||isUpdateUserPage||isTeacherSubjectsPage;
+  const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage||isUpdateUserPage ||isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage;
+  const hideFooter = isHomePage || isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage||isUpdateUserPage||isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -91,7 +100,7 @@ export default function App() {
             path="/login"
             element={
               isAuthenticated ? (
-                <Navigate to="/users" replace />
+                <Navigate to="/dashboard" replace />
               ) : (
                 <LoginPage onLogin={login} />
               )
@@ -113,13 +122,15 @@ export default function App() {
             <Route path="/class-master" element={<ClassMaster />} />
             <Route path="/subject-assignment" element={<SubjectAssignment />} />
             <Route path="/teacher-subjects" element={<TeacherSubjects />} />
-           
             <Route path="/update-user" element={<UpdateUserProfile/>}/>
+            <Route path="/admission-inquiry" element={<AdmissionInquiry/>}/>
+            <Route path="/dashboard" element={<Dashboard/>}/>
+            <Route path="/profile" element={<Profile/>}/>
           </Route>
 
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
-
+         
           <Route path="/about-us" element={<AboutUs />} />
           <Route path="/alumni" element={<Alumni />} />
           <Route path="/academics" element={<Academics />} />

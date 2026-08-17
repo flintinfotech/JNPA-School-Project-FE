@@ -13,8 +13,9 @@ import {
   DeleteOutlined,
   UploadOutlined,
 } from "@ant-design/icons";
-import { useState } from "react";
 import dayjs from "dayjs";
+import { getAllStaticData } from "../../services/staticDataService";
+import { useState, useEffect } from "react";
 
 interface UserProps {
   form: any;
@@ -33,6 +34,29 @@ export default function User({
   onDelete,
 }: UserProps) {
   const [activeTab, setActiveTab] = useState("1");
+
+  // Role dropdown state
+  const [roles, setRoles] = useState<string[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      setRolesLoading(true);
+      try {
+        const res = await getAllStaticData();
+        if (res?.success) {
+          setRoles(res.data?.role || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch roles", err);
+      } finally {
+        setRolesLoading(false);
+      }
+    };
+
+    fetchRoles();
+  }, []);
+
   const convertToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -80,22 +104,28 @@ export default function User({
             children: (
               <div className="grid grid-cols-2 gap-4">
                 <Form.Item
-                  name="userInformationId"
+                  name="employeeDetailsId"
+                  hidden
+                >
+                  <Input disabled />
+                </Form.Item>
+                <Form.Item
+                  name="userId"
                   hidden
                 >
                   <Input />
-
-                </Form.Item>
-                <Form.Item
-                  label="User ID"
-                  name="userId"
-                >
-                  <Input disabled />
                 </Form.Item>
 
                 <Form.Item
                   label="Employee Code"
                   name="employeeCode"
+                  rules={[{ required: true }]}
+                >
+                  <Input />
+                </Form.Item>
+                <Form.Item
+                  label="User Name"
+                  name="userName"
                   rules={[{ required: true }]}
                 >
                   <Input />
@@ -136,6 +166,37 @@ export default function User({
                   </Select>
                 </Form.Item>
 
+                <Form.Item label="Role" name="role" rules={[{ required: true }]}>
+                  <Select placeholder="Select Role" loading={rolesLoading}>
+                    {roles.map((role) => (
+                      <Select.Option key={role} value={role}>
+                        {role}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+
+                <Form.Item
+                  label="Email "
+                  name="email"
+                  rules={[{ required: true }]}
+                >
+                  <Input />
+                </Form.Item>
+                <Form.Item
+                  label="Mobile No"
+                  name="mobileNo"
+                  rules={[
+                    { required: true, message: "Please enter mobile number" },
+                    {
+                      pattern: /^[6-9]\d{9}$/,
+                      message: "Enter a valid 10-digit mobile number",
+                    },
+                  ]}
+                >
+                  <Input maxLength={10} placeholder="Enter Mobile Number" />
+                </Form.Item>
+
                 <Form.Item
                   label="Date Of Birth"
                   name="dateOfBirth"
@@ -166,9 +227,15 @@ export default function User({
                 <Form.Item
                   label="Experience"
                   name="experience"
-                  rules={[{ required: true }]}
+                  rules={[
+                    { required: true, message: "Please enter experience" },
+                    {
+                      pattern: /^\d+(\.\d+)?$/,
+                      message: "Enter a valid number",
+                    },
+                  ]}
                 >
-                  <Input type="number" />
+                  <Input type="number" min={0} placeholder="Enter Experience (years)" />
                 </Form.Item>
 
                 <Form.Item
@@ -183,6 +250,15 @@ export default function User({
                   label="Joining Date"
                   name="joiningDate"
                   rules={[{ required: true }]}
+                >
+                  <DatePicker
+                    style={{ width: "100%" }}
+                    format="DD-MM-YYYY"
+                  />
+                </Form.Item>
+                <Form.Item
+                  label="Leaving Date"
+                  name="leavingDate"
                 >
                   <DatePicker
                     style={{ width: "100%" }}
@@ -217,7 +293,6 @@ export default function User({
                 </Form.Item>
 
                 <div className="col-span-2 flex justify-between mt-4">
-
                   <Button disabled>
                     Back
                   </Button>
@@ -228,9 +303,7 @@ export default function User({
                   >
                     Next
                   </Button>
-
                 </div>
-
               </div>
             ),
           },
@@ -257,19 +330,23 @@ export default function User({
                         key={key}
                         className="border rounded-lg p-5 mb-4 relative bg-white"
                       >
-                        {fields.length > 1 && (
-                          <DeleteOutlined
-                            onClick={() => remove(name)}
-                            style={{
-                              position: "absolute",
-                              right: 18,
-                              top: 18,
-                              color: "red",
-                              cursor: "pointer",
-                              fontSize: 18,
-                            }}
-                          />
-                        )}
+                        {/* Delete icon: always visible, always deletable
+                            regardless of whether a file has been uploaded */}
+                        <DeleteOutlined
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            remove(name);
+                          }}
+                          style={{
+                            position: "absolute",
+                            right: 18,
+                            top: 18,
+                            color: "red",
+                            cursor: "pointer",
+                            fontSize: 20,
+                            zIndex: 10,
+                          }}
+                        />
 
                         <div className="grid grid-cols-2 gap-4">
                           <Form.Item

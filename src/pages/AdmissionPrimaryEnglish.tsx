@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import SchoolLogo from "../assets/SchoolLogo.avif";
 import Admission1 from "../assets/Admission1.jpg";
+import { message } from "antd";
 import { useNavigate } from "react-router-dom";
 import { getAllAdmissionsByFilter } from "../services/AdmissionService";
+import { saveAdmissionInquiry } from "../services/InquiryService";
 
 // ---------------------------------------------------------------------------
 // base64 -> blob preview helpers (same approach as AdmissionAdmin)
@@ -41,6 +43,75 @@ export default function AdmissionPrimaryEnglish() {
   const [documents, setDocuments] = useState<string[]>([]);
   const [brochure, setBrochure] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // ── Inquiry modal state ──────────────────────────────────────────────
+  const [showInquiryModal, setShowInquiryModal] = useState(false);
+  const [InquiryForm, setInquiryForm] = useState({
+    firstName: "",
+    lastName: "",
+    contactNumber: "",
+    standard: "",
+    medium: "",
+  });
+  const [InquiryStatus, setInquiryStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+
+  const handleInquiryChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+
+    if (name === "contactNumber") {
+      const digitsOnly = value.replace(/\D/g, "").slice(0, 10);
+      setInquiryForm((prev) => ({ ...prev, contactNumber: digitsOnly }));
+      return;
+    }
+
+    setInquiryForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleInquirySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!/^\d{10}$/.test(InquiryForm.contactNumber)) {
+      message.warning("Contact number must be exactly 10 digits.");
+      return;
+    }
+
+    setInquiryStatus("sending");
+
+    try {
+      await saveAdmissionInquiry({
+        firstName: InquiryForm.firstName,
+        lastName: InquiryForm.lastName,
+        contactNumber: InquiryForm.contactNumber,
+        standard: InquiryForm.standard,
+        medium: InquiryForm.medium,
+        status: "NEW",
+      });
+
+      // Reset the form
+      setInquiryForm({
+        firstName: "",
+        lastName: "",
+        contactNumber: "",
+        standard: "",
+        medium: "",
+      });
+
+      // Close the inquiry modal
+      setShowInquiryModal(false);
+
+      // Show success message
+      message.success("Inquiry submitted successfully!");
+
+      // Reset status
+      setInquiryStatus("idle");
+    } catch (err) {
+      console.error("Failed to send Inquiry:", err);
+      setInquiryStatus("error");
+    }
+  };
+  // ──────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     const controller = new AbortController();
@@ -136,13 +207,25 @@ export default function AdmissionPrimaryEnglish() {
           .adm-pr-page .adm-process-grid { grid-template-columns: 1fr !important; }
           .adm-pr-page .adm-split { grid-template-columns: 1fr !important; gap: 28px !important; }
           .adm-pr-page .adm-bottom-cta { padding: 36px 20px !important; }
+          .adm-pr-page .adm-Inquiry-cta { padding: 40px 20px !important; }
+          .adm-pr-page .adm-Inquiry-cta h2 { font-size: 24px !important; }
         }
       `}</style>
 
       {/* Header */}
       <div style={{ background: "#1569ad", position: "relative" }}>
         <div className="adm-header-inner" style={{ maxWidth: "1200px", margin: "0 auto", padding: "18px 40px 0" }}>
-          <img src={SchoolLogo} alt="JNPV Logo" style={{ height: "78px", width: "auto", display: "block" }} />
+          <img
+            src={SchoolLogo}
+            alt="JNPV Logo"
+            onClick={() => navigate("/")}
+            style={{
+              height: "78px",
+              width: "auto",
+              display: "block",
+              cursor: "pointer",
+            }}
+          />
         </div>
         <div className="adm-title-wrap" style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 40px 26px" }}>
           <button
@@ -240,6 +323,269 @@ export default function AdmissionPrimaryEnglish() {
           </button>
         </div>
       </div>
+
+      {/* Admission Inquiry CTA */}
+      <div
+        className="adm-Inquiry-cta"
+        style={{
+          padding: "25px 80px",
+          background: "linear-gradient(135deg, #1E66A8 0%, #983929 100%)",
+          textAlign: "center",
+          position: "relative",
+          overflow: "hidden",
+          marginTop: "24px",
+        }}
+      >
+        <div style={{ position: "relative", zIndex: 2, maxWidth: "800px", margin: "0 auto" }}>
+          <div
+            style={{
+              display: "inline-block",
+              color: "#F5A800",
+              fontSize: "13px",
+              fontWeight: 800,
+              letterSpacing: "3px",
+              textTransform: "uppercase",
+              marginBottom: "18px",
+            }}
+          >
+            Every Great Journey Starts Here
+          </div>
+
+          <h2 style={{ color: "#FFFFFF", fontSize: "38px", fontWeight: 800, marginBottom: "18px", lineHeight: "1.3" }}>
+            Your Child's Future Begins With One Inquiry
+          </h2>
+
+          <button
+            onClick={() => setShowInquiryModal(true)}
+            style={{
+              background: "#F5A800",
+              color: "#1E66A8",
+              border: "none",
+              padding: "16px 42px",
+              fontSize: "14px",
+              fontWeight: 700,
+              letterSpacing: "1px",
+              textTransform: "uppercase",
+              borderRadius: "50px",
+              cursor: "pointer",
+              transition: "all 0.3s ease",
+              boxShadow: "0 10px 30px rgba(245,168,0,0.35)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-4px)";
+              e.currentTarget.style.boxShadow = "0 15px 35px rgba(245,168,0,0.45)";
+              e.currentTarget.style.background = "#FFD34D";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "0 10px 30px rgba(245,168,0,0.35)";
+              e.currentTarget.style.background = "#F5A800";
+            }}
+          >
+            Inquire Now →
+          </button>
+        </div>
+
+        <div style={{ position: "absolute", top: "-80px", right: "-80px", width: "260px", height: "260px", borderRadius: "50%", background: "rgba(255,255,255,0.08)", zIndex: 1 }} />
+        <div style={{ position: "absolute", bottom: "-100px", left: "-70px", width: "220px", height: "220px", borderRadius: "50%", background: "rgba(245,168,0,0.10)", zIndex: 1 }} />
+        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "420px", height: "420px", borderRadius: "50%", border: "1px solid rgba(255,255,255,0.08)", zIndex: 1 }} />
+      </div>
+
+      {/* ── Admission Inquiry Modal ────────────────────────────────────── */}
+      {showInquiryModal && (
+        <div
+          onClick={() => setShowInquiryModal(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "20px",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff",
+              borderRadius: "10px",
+              width: "100%",
+              maxWidth: "560px",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              position: "relative",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                background: "#1569ad",
+                padding: "24px 32px",
+                borderRadius: "10px 10px 0 0",
+                position: "relative",
+              }}
+            >
+              <button
+                onClick={() => setShowInquiryModal(false)}
+                style={{
+                  position: "absolute",
+                  top: "16px",
+                  right: "20px",
+                  background: "none",
+                  border: "none",
+                  color: "#fff",
+                  fontSize: "22px",
+                  cursor: "pointer",
+                  lineHeight: 1,
+                }}
+                aria-label="Close"
+              >
+                ×
+              </button>
+              <h2 style={{ color: "#fff", fontSize: "20px", fontWeight: 800, margin: 0 }}>
+                Admission Inquiry
+              </h2>
+              <p style={{ color: "rgba(255,255,255,0.85)", fontSize: "13px", marginTop: "6px" }}>
+                Fill in the details and our admissions team will get back to you.
+              </p>
+            </div>
+
+            {/* Form */}
+            <div style={{ padding: "28px 32px 32px" }}>
+              <form onSubmit={handleInquirySubmit}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <label style={{ fontSize: "11px", fontWeight: 700, color: "#555", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: "6px" }}>
+                      First Name
+                    </label>
+                    <input
+                      name="firstName"
+                      type="text"
+                      value={InquiryForm.firstName}
+                      onChange={handleInquiryChange}
+                      required
+                      style={{ border: "1.5px solid #e0e0e0", borderRadius: "6px", padding: "10px 12px", fontSize: "13px", outline: "none" }}
+                    />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <label style={{ fontSize: "11px", fontWeight: 700, color: "#555", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: "6px" }}>
+                      Last Name
+                    </label>
+                    <input
+                      name="lastName"
+                      type="text"
+                      value={InquiryForm.lastName}
+                      onChange={handleInquiryChange}
+                      required
+                      style={{ border: "1.5px solid #e0e0e0", borderRadius: "6px", padding: "10px 12px", fontSize: "13px", outline: "none" }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <label style={{ fontSize: "11px", fontWeight: 700, color: "#555", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: "6px" }}>
+                      Contact Number
+                    </label>
+                    <input
+                      name="contactNumber"
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={10}
+                      value={InquiryForm.contactNumber}
+                      onChange={handleInquiryChange}
+                      required
+                      style={{ border: "1.5px solid #e0e0e0", borderRadius: "6px", padding: "10px 12px", fontSize: "13px", outline: "none" }}
+                    />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <label style={{ fontSize: "11px", fontWeight: 700, color: "#555", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: "6px" }}>
+                      Standard
+                    </label>
+                    <select
+                      name="standard"
+                      value={InquiryForm.standard}
+                      onChange={handleInquiryChange}
+                      required
+                      style={{ border: "1.5px solid #e0e0e0", borderRadius: "6px", padding: "10px 12px", fontSize: "13px", outline: "none", background: "#fff" }}
+                    >
+                      <option value="">Select Standard</option>
+                      <option value="Nursery">Nursery</option>
+                      <option value="LKG">LKG</option>
+                      <option value="UKG">UKG</option>
+                      <option value="1st Standard">1st Standard</option>
+                      <option value="2nd Standard">2nd Standard</option>
+                      <option value="3rd Standard">3rd Standard</option>
+                      <option value="4th Standard">4th Standard</option>
+                      <option value="5th Standard">5th Standard</option>
+                      <option value="6th Standard">6th Standard</option>
+                      <option value="7th Standard">7th Standard</option>
+                      <option value="8th Standard">8th Standard</option>
+                      <option value="9th Standard">9th Standard</option>
+                      <option value="10th Standard">10th Standard</option>
+                      <option value="11th Standard">11th Standard</option>
+                      <option value="12th Standard">12th Standard</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", marginBottom: "22px" }}>
+                  <label style={{ fontSize: "11px", fontWeight: 700, color: "#555", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: "6px" }}>
+                    Medium
+                  </label>
+                  <select
+                    name="medium"
+                    value={InquiryForm.medium}
+                    onChange={handleInquiryChange}
+                    required
+                    style={{ border: "1.5px solid #e0e0e0", borderRadius: "6px", padding: "10px 12px", fontSize: "13px", outline: "none", background: "#fff" }}
+                  >
+                    <option value="">Select Medium</option>
+                    <option value="English">English</option>
+                    <option value="Marathi">Marathi</option>
+                  </select>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={InquiryStatus === "sending"}
+                  style={{
+                    background: "#1569ad",
+                    color: "#fff",
+                    border: "none",
+                    padding: "12px 28px",
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    letterSpacing: "0.5px",
+                    textTransform: "uppercase",
+                    borderRadius: "6px",
+                    cursor: InquiryStatus === "sending" ? "not-allowed" : "pointer",
+                    opacity: InquiryStatus === "sending" ? 0.6 : 1,
+                    width: "100%",
+                  }}
+                >
+                  {InquiryStatus === "sending" ? "Submitting..." : "Submit Inquiry"}
+                </button>
+
+                {InquiryStatus === "sent" && (
+                  <div style={{ marginTop: "14px", fontSize: "12px", fontWeight: 600, color: "#2e7d32", textAlign: "center" }}>
+                    Inquiry submitted successfully! We'll be in touch soon.
+                  </div>
+                )}
+                {InquiryStatus === "error" && (
+                  <div style={{ marginTop: "14px", fontSize: "12px", fontWeight: 600, color: "#c62828", textAlign: "center" }}>
+                    Something went wrong. Please try again.
+                  </div>
+                )}
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ──────────────────────────────────────────────────────────────── */}
     </div>
   );
 }

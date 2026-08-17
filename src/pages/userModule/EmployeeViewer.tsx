@@ -85,11 +85,11 @@ export default function EmployeeViewer({ user }: any) {
                     <Input value={user.employeeCode} disabled styles={{ input: { color: "#000", }, }} />
                   </Form.Item>
                 </div>
-                <div style={{ flex: "1 1 45%" }}>
+                {/* <div style={{ flex: "1 1 45%" }}>
                   <Form.Item label="User ID">
                     <Input value={user.userId} disabled styles={{ input: { color: "#000", }, }} />
                   </Form.Item>
-                </div>
+                </div> */}
                 <div style={{ flex: "1 1 45%" }}>
                   <Form.Item label="First Name">
                     <Input value={user.firstName} disabled styles={{ input: { color: "#000", }, }} />
@@ -134,6 +134,16 @@ export default function EmployeeViewer({ user }: any) {
                 <div style={{ flex: "1 1 45%" }}>
                   <Form.Item label="Blood Group">
                     <Input value={user.bloodGroup} disabled styles={{ input: { color: "#000", }, }} />
+                  </Form.Item>
+                </div>
+                <div style={{ flex: "1 1 45%" }}>
+                  <Form.Item label="Joining Date">
+                    <Input value={user.joiningDate} disabled styles={{ input: { color: "#000", }, }} />
+                  </Form.Item>
+                </div>
+                <div style={{ flex: "1 1 45%" }}>
+                  <Form.Item label="Leaving Date">
+                    <Input value={user.leavingDate} disabled styles={{ input: { color: "#000", }, }} />
                   </Form.Item>
                 </div>
                 <div style={{ flex: "1 1 100%" }}>

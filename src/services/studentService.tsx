@@ -50,6 +50,7 @@ export interface StudentDTO {
   caste?: string;
   nationality?: string;
   status: string;
+  profileImg?: string | null; // base64 student photo
   parentEntities: ParentDTO[];
   studentDocuments: StudentDocumentDTO[];
   academicInformation: AcademicInformationDTO[];

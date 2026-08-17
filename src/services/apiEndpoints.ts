@@ -70,12 +70,12 @@ export const apiEndpoints = {
   deleteClassMaster: (id: number | string) =>
     `/jnpa-school-project/classMaster/deleteClassMaster/${id}`,
 
-  saveUserInformation: () => `/jnpa-school-project/userInformation/saveUserInformation`,
-  getUserInformationById: (id: number) =>
-    `/jnpa-school-project/userInformation/getUserInformationByUserId/${id}`,
-  updateUserInformation: () => `/jnpa-school-project/userInformation/updateUserInformation`,
-  deleteUserInformation: (userInformationId: number) =>
-    `/jnpa-school-project/userInformation/deleteUserInformation/${userInformationId}`,
+  saveEmployeeDetails: () => `/jnpa-school-project/employeeDetails/saveEmployeeDetails`,
+  getEmployeeDetailsById: (id: number) =>
+    `/jnpa-school-project/employeeDetails/getEmployeeDetailsByEmployeeId/${id}`,
+  updateemployeeDetails: () => `/jnpa-school-project/employeeDetails/updateemployeeDetails`,
+  deleteemployeeDetails: (employeeDetailsId: number) =>
+    `/jnpa-school-project/employeeDetails/deleteemployeeDetails/${employeeDetailsId}`,
 
   getSubjectsByClassId: (id: number) =>
     `/jnpa-school-project/subjectAssignment/getSubjectsByClassId/${id}`,
@@ -94,17 +94,27 @@ export const apiEndpoints = {
   assignTeacherSubjects: () =>
     "/jnpa-school-project/teacherSubjectAssignment/assignOrUnassignSubjects",
 
-  getAllUserInformation: (page: number, size: number) =>
-    `/jnpa-school-project/userInformation/getAllUserInformationByFilter?page=${page}&size=${size}&paginate=true`,
+  getAllemployeeDetails: (page: number, size: number) =>
+    `/jnpa-school-project/employeeDetails/getAllemployeeDetailsByFilter?page=${page}&size=${size}&paginate=true`,
 
-  getSubjectsByUserInformationId: (userInformationId: number | string) =>
-    `/jnpa-school-project/teacherSubjectAssignment/getSubjectsByUserInformationId/${userInformationId}`,
+  getSubjectsByEmployeeDetailsId: (employeeDetailsId: number | string) =>
+    `/jnpa-school-project/teacherSubjectAssignment/getSubjectsByEmployeeDetailsId/${employeeDetailsId}`,
 
   // getAllUsersByFilter: (page: number, size: number) =>
   //   `/jnpa-school-project/user/getAllUsersByFilter?page=${page}&size=${size}&paginate=true`,
 
   // searchClass: (keyword: string) => `/jnpa-school-project/classMaster/search?keyword=${keyword}`,
 
+
+  saveAdmissionInquiry: () =>
+    `/jnpa-school-project/inquiry/saveAdmissionInquiry`,
+
+  getAllAdmissionInquiryByFilter: (page: number, size: number) =>
+  `/jnpa-school-project/inquiry/getAllAdmissionInquiryByFilter?page=${page}&size=${size}&paginate=true`,
+
+  updateAdmissionInquiryById: (id: number | string) =>
+  `/jnpa-school-project/inquiry/updateAdmissionInquiryById?id=${id}`,
+  
   // ===============================
   // Screens
   // ===============================
@@ -113,4 +123,16 @@ export const apiEndpoints = {
   // ===============================
   // Teacher Subject Assignment
   // ===============================
+
+  //Dashboard
+  getAllStudentsCount: () =>
+  `/jnpa-school-project/dashboard/getAllStudentsCount`,
+
+   getAllUsersCount: () =>
+  "/jnpa-school-project/dashboard/getAllUsersCount",
+   
+   // apiEndpoints.ts
+getAllAdmissionInquiryCount: () =>
+  "/jnpa-school-project/dashboard/getAllAdmissionInquiryCount",
+  
 };

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Card, Table, Typography, Button, Drawer, Input, Select, Grid, Checkbox, message, Space } from "antd";
+import { Card, Table, Typography, Button, Drawer, Input, Select, Grid, Checkbox, message, Space, Row, Col } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { EditOutlined, SearchOutlined, ReloadOutlined } from "@ant-design/icons";
 
@@ -288,66 +288,67 @@ const SubjectAssignment: React.FC = () => {
   return (
     <Card>
       {/* Search Bar */}
-      <div
-        style={{
-          display: "flex",
-          gap: 12,
-          flexWrap: "wrap",
-          alignItems: "center",
-          marginBottom: 20,
-        }}
-      >
-        <Select
-          placeholder="Standard"
-          value={searchFilters.standard || undefined}
-          onChange={(value) => handleFilterChange("standard", value || "")}
-          style={{ width: 180 }}
-          allowClear
-        >
-          {staticData?.standard?.map((std) => (
-            <Option key={std} value={std}>
-              {std}
-            </Option>
-          ))}
-        </Select>
+      {/* Search Bar */}
+      <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
+        <Col xs={24} sm={12} md={6}>
+          <Select
+            placeholder="Standard"
+            value={searchFilters.standard || undefined}
+            onChange={(value) => handleFilterChange("standard", value || "")}
+            style={{ width: "100%" }}
+            allowClear
+          >
+            {staticData?.standard?.map((std) => (
+              <Option key={std} value={std}>
+                {std}
+              </Option>
+            ))}
+          </Select>
+        </Col>
 
-        <Select
-          placeholder="Division"
-          value={searchFilters.division || undefined}
-          onChange={(value) => handleFilterChange("division", value || "")}
-          style={{ width: 150 }}
-          allowClear
-        >
-          {staticData?.division?.map((div) => (
-            <Option key={div} value={div}>
-              {div}
-            </Option>
-          ))}
-        </Select>
+        <Col xs={24} sm={12} md={6}>
+          <Select
+            placeholder="Division"
+            value={searchFilters.division || undefined}
+            onChange={(value) => handleFilterChange("division", value || "")}
+            style={{ width: "100%" }}
+            allowClear
+          >
+            {staticData?.division?.map((div) => (
+              <Option key={div} value={div}>
+                {div}
+              </Option>
+            ))}
+          </Select>
+        </Col>
 
-        <Select
-          placeholder="Medium"
-          value={searchFilters.medium || undefined}
-          onChange={(value) => handleFilterChange("medium", value || "")}
-          style={{ width: 150 }}
-          allowClear
-        >
-          {staticData?.medium?.map((m) => (
-            <Option key={m} value={m}>
-              {m}
-            </Option>
-          ))}
-        </Select>
+        <Col xs={24} sm={12} md={6}>
+          <Select
+            placeholder="Medium"
+            value={searchFilters.medium || undefined}
+            onChange={(value) => handleFilterChange("medium", value || "")}
+            style={{ width: "100%" }}
+            allowClear
+          >
+            {staticData?.medium?.map((m) => (
+              <Option key={m} value={m}>
+                {m}
+              </Option>
+            ))}
+          </Select>
+        </Col>
 
-        <Space>
-          <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
-            Search
-          </Button>
-          <Button icon={<ReloadOutlined />} onClick={handleResetFilters}>
-            Reset
-          </Button>
-        </Space>
-      </div>
+        <Col xs={24} sm={24} md={6}>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
+              Search
+            </Button>
+            <Button icon={<ReloadOutlined />} onClick={handleResetFilters}>
+              Reset
+            </Button>
+          </div>
+        </Col>
+      </Row>
 
       {isMobile ? (
         <div>

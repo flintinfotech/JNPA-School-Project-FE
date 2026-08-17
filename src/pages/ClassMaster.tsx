@@ -175,7 +175,7 @@ const ClassMaster: React.FC = () => {
       });
   };
 
-  // ===========================
+  // =========================== 
   // Delete
   // ===========================
 
@@ -399,6 +399,7 @@ const ClassMaster: React.FC = () => {
         </div>
 
         {/* Table */}
+
         <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
 
           <table className="w-full border-collapse">

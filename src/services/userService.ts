@@ -95,9 +95,9 @@ export const deleteUser = async (
   );
   return response.data;
 };
-export const saveUserInformation = async (payload: any) => {
+export const saveEmployeeDetails = async (payload: any) => {
   const response = await axiosInstance.post(
-    apiEndpoints.saveUserInformation(),
+    apiEndpoints.saveEmployeeDetails(),
     payload
   );
 
@@ -129,25 +129,25 @@ export const getAllUsers = async (
   );
   return response.data;
 };
-export const getUserInformationById = async (id: number) => {
+export const getEmployeeDetailsById = async (id: number) => {
   const response = await axiosInstance.get(
-    apiEndpoints.getUserInformationById(id)
+    apiEndpoints.getEmployeeDetailsById(id)
   );
 
   return response.data;
 };
-export const updateUserInformation = async (payload: any) => {
+export const updateEmployeeDetails = async (payload: any) => {
   const response = await axiosInstance.put(
-    apiEndpoints.updateUserInformation(),
+    apiEndpoints.updateEmployeeDetails(),
     payload
   );
 
   return response.data;
 };
 
-export const deleteUserInformation = async (userInformationId: number) => {
+export const deleteEmployeeDetails = async (employeeDetailsId: number) => {
   const response = await axiosInstance.delete(
-    apiEndpoints.deleteUserInformation(userInformationId)
+    apiEndpoints.deleteEmployeeDetails(employeeDetailsId)
   );
 
   return response.data;

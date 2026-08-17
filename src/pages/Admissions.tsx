@@ -12,7 +12,7 @@ const sections = [
   {
     label: "Primary",
     grades: ["1st Standard", "2nd Standard", "3rd Standard", "4th Standard"],
-    color: "#1569ad",
+    color: "#1569ad", 
     route: "/admissions/primary",
   },
   {
@@ -58,7 +58,13 @@ export default function Admissions() {
           <img
             src={SchoolLogo}
             alt="JNPV Logo"
-            style={{ height: "78px", width: "auto", display: "block" }}
+            onClick={() => navigate("/")}
+            style={{
+              height: "78px",
+              width: "auto",
+              display: "block",
+              cursor: "pointer",
+            }}
           />
         </div>
         <div

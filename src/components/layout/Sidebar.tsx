@@ -14,12 +14,12 @@ export default function Sidebar({ isOpen, onClose }: Props) {
 
 
   const allowedScreens = JSON.parse(
-  localStorage.getItem("screens") || "[]"
-);
+    localStorage.getItem("screens") || "[]"
+  );
 
-const screenNames = allowedScreens.map((item: any) =>
-  item.screenName.toLowerCase()
-);
+  const screenNames = allowedScreens.map((item: any) =>
+    item.screenName.toLowerCase()
+  );
   // Tracks which dropdown groups are open, keyed by group label.
   // A group auto-opens if the current route matches one of its children.
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
@@ -88,135 +88,132 @@ const screenNames = allowedScreens.map((item: any) =>
 
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto overflow-x-hidden">
           {adminNavItems
-  .map((item) => {
-    if (isAdminNavGroup(item)) {
-      return {
-        ...item,
-        children: item.children.filter((child) =>
-          screenNames.includes(child.label.toLowerCase())
-        ),
-      };
-    }
+            .map((item) => {
+              if (isAdminNavGroup(item)) {
+                return {
+                  ...item,
+                  children: item.children.filter((child) =>
+                    screenNames.includes(child.label.toLowerCase())
+                  ),
+                };
+              }
 
-    return item;
-  })
-  .filter((item) => {
-    if (isAdminNavGroup(item)) {
-      return item.children.length > 0;
-    }
+              return item;
+            })
+            .filter((item) => {
+              if (isAdminNavGroup(item)) {
+                return item.children.length > 0;
+              }
 
-    return screenNames.includes(item.label.toLowerCase());
-  })
-  .map((item) => {
-            // ============================
-            // Collapsible Group
-            // ============================
-            if (isAdminNavGroup(item)) {
-              const Icon = item.icon;
-              const isOpenGroup = openGroups[item.label];
-              const hasIcon = Boolean(Icon);
-              const isChildActive = item.children.some(
-                (child) => child.path === location.pathname
-              );
+              return screenNames.includes(item.label.toLowerCase());
+            })
+            .map((item) => {
+              // ============================
+              // Collapsible Group
+              // ============================
+              if (isAdminNavGroup(item)) {
+                const Icon = item.icon;
+                const isOpenGroup = openGroups[item.label];
+                const hasIcon = Boolean(Icon);
+                const isChildActive = item.children.some(
+                  (child) => child.path === location.pathname
+                );
 
-              return (
-                <div key={item.label}>
-                  <button
-                    type="button"
-                    onClick={() => toggleGroup(item.label)}
-                    title={!expanded ? item.label : undefined}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
+                return (
+                  <div key={item.label}>
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(item.label)}
+                      title={!expanded ? item.label : undefined}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
                       justify-start md:justify-center
-                      ${
-                        isChildActive
+                      ${isChildActive
                           ? "bg-blue-50 text-blue-600 font-medium"
                           : "text-gray-600 hover:bg-gray-100"
-                      }`}
-                  >
-                    {hasIcon && <Icon size={18} className="shrink-0" />}
+                        }`}
+                    >
+                      {hasIcon && <Icon size={18} className="shrink-0" />}
 
-                    <span
-                      className={`flex-1 text-left whitespace-nowrap overflow-hidden
+                      <span
+                        className={`flex-1 text-left whitespace-nowrap overflow-hidden
                         opacity-100 max-w-[160px]
                         md:transition-all md:duration-200
                         ${expanded ? "md:opacity-100 md:max-w-[160px]" : "md:opacity-0 md:max-w-0"}`}
-                    >
-                      {item.label}
-                    </span>
+                      >
+                        {item.label}
+                      </span>
 
-                    <ChevronDown
-                      size={16}
-                      className={`shrink-0 transition-transform duration-200
+                      <ChevronDown
+                        size={16}
+                        className={`shrink-0 transition-transform duration-200
                         ${isOpenGroup ? "rotate-180" : "rotate-0"}
                         ${expanded ? "opacity-100 max-w-[16px]" : "md:opacity-0 md:max-w-0 md:overflow-hidden"}`}
-                    />
-                  </button>
+                      />
+                    </button>
 
-                  {/* Group children (dropdown) */}
-                  <div
-                    className={`overflow-hidden transition-all duration-200 ease-in-out
+                    {/* Group children (dropdown) */}
+                    <div
+                      className={`overflow-hidden transition-all duration-200 ease-in-out
                       ${isOpenGroup && expanded ? "max-h-96 opacity-100 mt-1" : "max-h-0 opacity-0"}`}
-                  >
-                    <div className="pl-4 space-y-1">
-                      {item.children.map(({ label, path, icon: ChildIcon }) => (
-                        <NavLink
-                          key={path}
-                          to={path}
-                          onClick={onClose}
-                          className={({ isActive }) =>
-                            `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
-                            ${
-                              isActive
+                    >
+                      <div className="pl-4 space-y-1">
+                        {item.children.map(({ label, path, icon: ChildIcon }) => (
+                          <NavLink
+                            key={path}
+                            to={path}
+                            onClick={onClose}
+                            className={({ isActive }) =>
+                              `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
+                            ${isActive
                                 ? "bg-blue-50 text-blue-600 font-medium"
                                 : "text-gray-600 hover:bg-gray-100"
-                            }`
-                          }
-                        >
-                          <ChildIcon size={16} className="shrink-0" />
-                          <span className="whitespace-nowrap overflow-hidden">
-                            {label}
-                          </span>
-                        </NavLink>
-                      ))}
+                              }`
+                            }
+                          >
+                            <ChildIcon size={16} className="shrink-0" />
+                            <span className="whitespace-nowrap overflow-hidden">
+                              {label}
+                            </span>
+                          </NavLink>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            }
+                );
+              }
 
-            // ============================
-            // Flat Nav Link
-            // ============================
-            const { label, path, icon: Icon } = item;
+              // ============================
+              // Flat Nav Link
+              // ============================
+              const { label, path, icon: Icon } = item;
 
-            return (
-              <NavLink
-                key={path}
-                to={path}
-                onClick={onClose}
-                title={!expanded ? label : undefined}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
-                  justify-start md:justify-center
-                  ${
-                    isActive
+              return (
+                <NavLink
+                  key={path}
+                  to={path}
+                  onClick={onClose}
+                  title={!expanded ? label : undefined}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
+                     justify-start md:justify-center
+                      ${isActive
                       ? "bg-blue-50 text-blue-600 font-medium"
                       : "text-gray-600 hover:bg-gray-100"
-                  }`
-                }
-              >
-                <Icon size={18} className="shrink-0" />
-                <span
-                  className={`whitespace-nowrap overflow-hidden
-                    opacity-100 max-w-[160px]
-                    md:transition-all md:duration-200
-                    ${expanded ? "md:opacity-100 md:max-w-[160px]" : "md:opacity-0 md:max-w-0"}`}
+                    }`
+                  }
                 >
-                  {label}
-                </span>
-              </NavLink>
-            );
-          })}
+                  <Icon size={18} className="shrink-0" />
+                  <span
+                    className={`flex-1 text-left whitespace-nowrap overflow-hidden
+                    opacity-100 max-w-[160px]
+                           md:transition-all md:duration-200
+                         ${expanded ? "md:opacity-100 md:max-w-[160px]" : "md:opacity-0 md:max-w-0"}`}
+                        >
+                    {label}
+                  </span>
+                </NavLink>
+              );
+            })}
         </nav>
       </aside>
     </>
