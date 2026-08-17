@@ -44,7 +44,12 @@ export default function UserUpdateProfileTable({
 
   const columns = [
     {
-      title: "Username",
+      title:"Employee Code",
+      dataIndex:"employeeCode",
+      key:"employeeCode",
+    },
+    {
+      title: "User Name",
       dataIndex: "userName",
       key: "userName",
     },

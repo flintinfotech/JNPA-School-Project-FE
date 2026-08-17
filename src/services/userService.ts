@@ -10,6 +10,8 @@ export interface ScreenDTO {
 
 export interface UserDTO {
   userId: number;
+  employeeDetailsId?: number; 
+  employeeCode?: string; 
   userName: string;
   email: string;
   firstName: string;
@@ -134,6 +136,23 @@ export const getEmployeeDetailsById = async (id: number) => {
     apiEndpoints.getEmployeeDetailsById(id)
   );
 
+  return response.data;
+};
+export const getAllEmployeeDetailsByFilter = async (
+  page: number,
+  size: number,
+  filters?: UserSearchFilters
+): Promise<ApiResponse<GetAllUsersData>> => {
+  const payload = {
+    firstName: filters?.firstName || undefined,
+    lastName: filters?.lastName || undefined,
+    role: filters?.role || undefined,
+  };
+
+  const response = await axiosInstance.post<ApiResponse<GetAllUsersData>>(
+    apiEndpoints.getAllemployeeDetails(page, size),
+    payload
+  );
   return response.data;
 };
 export const updateEmployeeDetails = async (payload: any) => {
