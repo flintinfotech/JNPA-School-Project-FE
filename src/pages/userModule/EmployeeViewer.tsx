@@ -117,6 +117,16 @@ export default function EmployeeViewer({ user }: any) {
                   </Form.Item>
                 </div>
                 <div style={{ flex: "1 1 45%" }}>
+                  <Form.Item label="Email">
+                    <Input value={user.email} disabled styles={{ input: { color: "#000", }, }} />
+                  </Form.Item>
+                </div>
+                <div style={{ flex: "1 1 45%" }}>
+                  <Form.Item label="Mobile No">
+                    <Input value={user.mobileNo} disabled styles={{ input: { color: "#000", }, }} />
+                  </Form.Item>
+                </div>
+                <div style={{ flex: "1 1 45%" }}>
                   <Form.Item label="Specialization">
                     <Input value={user.specialization} disabled styles={{ input: { color: "#000", }, }} />
                   </Form.Item>

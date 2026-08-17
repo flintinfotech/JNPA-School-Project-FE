@@ -49,6 +49,7 @@ export interface StudentDTO {
   religion?: string;
   caste?: string;
   nationality?: string;
+  adharCard?: string;
   status: string;
   profileImg?: string | null; // base64 student photo
   parentEntities: ParentDTO[];

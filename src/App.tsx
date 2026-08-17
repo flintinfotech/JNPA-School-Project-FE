@@ -53,6 +53,7 @@ import AdmissionSecondaryEnglish from "./pages/AdmissionSecondaryEnglish";
 import AdmissionInquiry from "./pages/AdmissionInquiry";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
+import ParentLoginPage from "./pages/ParentLoginPage";
 
 
 
@@ -61,10 +62,20 @@ import Profile from "./pages/Profile";
 
 
 export default function App() {
+
+  const handleParentLogin = async (
+    _mobileNo: string,
+    _aadhaarNo: string,
+    _academicYear: { startDate: string; endDate: string }
+  ): Promise<string | null> => {
+    return "Parent login isn't connected to the backend yet.";
+  };
+
   const { isAuthenticated, login, logout } = useAuth();
   const location = useLocation();
 
   const isLoginPage = location.pathname === "/login";
+  const isParentLoginPage = location.pathname === "/parent-login";
   const isUsersPage = location.pathname === "/users";
   const isStudentPage = location.pathname === "/students";
   const isAcademicAdminPage = location.pathname === "/academics-admin";
@@ -85,8 +96,8 @@ export default function App() {
 
  
   
-  const hideNavbarFooter = isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage||isUpdateUserPage ||isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage;
-  const hideFooter = isHomePage || isLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage||isUpdateUserPage||isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage;
+  const hideNavbarFooter = isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage||isUpdateUserPage ||isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage;
+  const hideFooter = isHomePage || isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage||isUpdateUserPage||isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -106,7 +117,11 @@ export default function App() {
               )
             }
           />
-             
+             <Route
+            path="/parent-login"
+            element={<ParentLoginPage onLogin={handleParentLogin} />}
+          />
+          
           <Route
             element={
               <AdminLayout isAuthenticated={isAuthenticated} onLogout={logout} />
