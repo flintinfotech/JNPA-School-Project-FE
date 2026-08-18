@@ -7,7 +7,6 @@ import {
   Button,
   Upload,
   message,
-  Popconfirm,
 } from "antd";
 import {
   PlusOutlined,
@@ -71,39 +70,20 @@ export default function User({
   };
 
   return (
-    <Form
-      form={form}
-      layout="vertical"
-      onFinish={onFinish}
-      onFinishFailed={({ errorFields }) => {
-        message.error("Please fix the highlighted fields before submitting.");
-        console.log("Validation failed on:", errorFields);
-        // optionally: if any errorField path starts with "documents", switch to tab "2"
-      }}
-      scrollToFirstError
-    >
+   <Form
+  form={form}
+  layout="vertical"
+  onFinish={onFinish}
+  onFinishFailed={({ errorFields }) => {
+    message.error("Please fill the highlighted fields before submitting.");
+    console.log("Validation failed on:", errorFields);
+    // optionally: if any errorField path starts with "documents", switch to tab "2"
+  }}
+  scrollToFirstError
+>
       <Tabs
         activeKey={activeTab}
         onChange={setActiveTab}
-        tabBarExtraContent={
-          isEditing && (
-            <Popconfirm
-              title="Delete Employee Information"
-              description="Are you sure you want to delete this employee information?"
-              onConfirm={onDelete}
-              okText="Yes"
-              cancelText="No"
-            >
-              <Button
-                danger
-                type="text"
-                icon={<DeleteOutlined />}
-              >
-                Delete Details
-              </Button>
-            </Popconfirm>
-          )
-        }
         items={[
           {
             key: "1",
@@ -129,14 +109,20 @@ export default function User({
 
                   rules={[{ required: true }]}
                 >
-                  <Input />
+                  <Input
+                    disabled={isEditing}
+                    styles={{ input: { color: "#000", WebkitTextFillColor: "#000" } }}
+                  />
                 </Form.Item>
                 <Form.Item
                   label="User Name"
                   name="userName"
                   rules={[{ required: true }]}
                 >
-                  <Input />
+                  <Input
+                    disabled={isEditing}
+                    styles={{ input: { color: "#000", WebkitTextFillColor: "#000" } }}
+                  />
                 </Form.Item>
 
                 <Form.Item

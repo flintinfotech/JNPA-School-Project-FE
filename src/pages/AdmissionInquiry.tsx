@@ -45,7 +45,7 @@ const statusStyles: Record<string, string> = {
 
 const StatusBadge = ({ status }: { status: string }) => (
   <span
-    className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusStyles[status] || "bg-gray-200 text-gray-700"
+    className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusStyles[status] || "bg-green-100 text-green-700"
       }`}
   >
     {status}
