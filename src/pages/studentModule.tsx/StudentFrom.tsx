@@ -268,6 +268,7 @@ export default function StudentForm({
                 {
                   pattern: /^\d{4}-\d{4}-\d{4}$/,
                   message: "Aadhar number must be exactly 12 digits",
+                  
                 },
               ]}
             >

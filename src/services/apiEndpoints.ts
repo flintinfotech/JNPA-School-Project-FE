@@ -72,7 +72,7 @@ export const apiEndpoints = {
 
   saveEmployeeDetails: () => `/jnpa-school-project/employeeDetails/saveEmployeeDetails`,
   getEmployeeDetailsById: (id: number) =>
-    `/jnpa-school-project/employeeDetails/getEmployeeDetailsByEmployeeId/${id}`,
+    `/jnpa-school-project/employeeDetails/getEmployeeDetailsByUserId/${id}`,
   updateEmployeeDetails: () => `/jnpa-school-project/employeeDetails/updateEmployeeDetails`,
   deleteEmployeeDetails: (employeeDetailsId: number) =>
     `/jnpa-school-project/employeeDetails/deleteEmployeeDetails/${employeeDetailsId}`,
