@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Button } from "antd";
-import { EyeOutlined, EditOutlined } from "@ant-design/icons";
+import { Button, Popconfirm } from "antd";
+import { EyeOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import CommonTable from "../../components/commonTable";
 import type { UserDTO } from "../../services/userService";
 
@@ -15,7 +15,7 @@ interface UserTableProps {
   };
   onView: (record: UserDTO) => void;
   onEdit: (record: UserDTO) => void;
-  // onDelete: (userId: number) => void;
+  onDelete: (record: UserDTO) => void;
 }
 
 function useIsMobile(breakpoint = 768) {
@@ -38,7 +38,7 @@ export default function UserUpdateProfileTable({
   pagination,
   onView,
   onEdit,
-  // onDelete,
+  onDelete,
 }: UserTableProps) {
   const isMobile = useIsMobile();
 
@@ -97,6 +97,20 @@ export default function UserUpdateProfileTable({
             size="small"
             onClick={() => onEdit(record)}
           />
+
+          <Popconfirm
+            title="Delete Employee"
+            description="Are you sure you want to delete this employee?"
+            okText="Yes"
+            cancelText="No"
+            onConfirm={() => onDelete(record)}
+          >
+            <Button
+              danger
+              icon={<DeleteOutlined />}
+              size="small"
+            />
+          </Popconfirm>
         </div>
       ),
     },
@@ -155,6 +169,19 @@ export default function UserUpdateProfileTable({
                   size="small"
                   onClick={() => onEdit(record)}
                 />
+                <Popconfirm
+                  title="Delete Employee"
+                  description="Are you sure you want to delete this employee?"
+                  okText="Yes"
+                  cancelText="No"
+                  onConfirm={() => onDelete(record)}
+                >
+                  <Button
+                    danger
+                    icon={<DeleteOutlined />}
+                    size="small"
+                  />
+                </Popconfirm>
               </div>
             </div>
           ))}

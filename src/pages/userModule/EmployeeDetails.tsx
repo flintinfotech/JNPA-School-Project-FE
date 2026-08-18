@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Drawer, Form, message, Modal, Popconfirm, Button, Input, Select, Space, Row, Col, } from "antd";
-import { SearchOutlined, ReloadOutlined, PlusOutlined } from "@ant-design/icons";
+import { SearchOutlined, ReloadOutlined, PlusOutlined, CopyOutlined } from "@ant-design/icons";
 import {
   getAllEmployeeDetailsByFilter,
   saveEmployeeDetails,
@@ -31,6 +31,11 @@ export default function UpdateUserProfile() {
   const [form] = Form.useForm();
   const [staticData, setStaticData] = useState<StaticDataResponse | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+
+  // Credentials popup state (shown after a successful save/update
+  // when the backend returns generated login details)
+  const [credsModalOpen, setCredsModalOpen] = useState(false);
+  const [credsData, setCredsData] = useState<{ userName: string; password: string } | null>(null);
 
   // Search bar state
   const [searchFilters, setSearchFilters] = useState<UserSearchFilters>({
@@ -242,6 +247,21 @@ export default function UpdateUserProfile() {
     setEditingUser(null);
   };
 
+  const closeCredsModal = () => {
+    setCredsModalOpen(false);
+    setCredsData(null);
+  };
+
+  const handleCopy = async (value: string | undefined, label: string) => {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      message.success(`${label} copied to clipboard`);
+    } catch (err) {
+      message.error(`Failed to copy ${label.toLowerCase()}`);
+    }
+  };
+
   const handleDelete = async () => {
     if (!editingUser?.employeeDetailsId) {
       message.warning("No employee information found.");
@@ -261,6 +281,47 @@ export default function UpdateUserProfile() {
         message.error(response.message);
       }
     } catch (error: any) {
+      message.error(
+        error?.response?.data?.message ||
+        "Failed to delete employee information"
+      );
+    }
+  };
+
+  // Delete triggered directly from the table's action column.
+  // Works for any role: prefers employeeDetailsId already on the row,
+  // falls back to fetching via userId only if userId is actually present
+  // (some rows may have a null userId, per the employee details payload shape).
+  const handleDeleteFromTable = async (record: UserDTO) => {
+    try {
+      let employeeDetailsId = (record as any).employeeDetailsId;
+
+      if (!employeeDetailsId && record.userId) {
+        const detailsResponse = await getEmployeeDetailsById(record.userId);
+
+        if (detailsResponse.success && detailsResponse.data?.employeeDetailsId) {
+          employeeDetailsId = detailsResponse.data.employeeDetailsId;
+        }
+      }
+
+      if (!employeeDetailsId) {
+        console.error("Could not resolve employeeDetailsId for record:", record);
+        message.error(
+          "Unable to delete this employee — missing employee reference. Check console for details."
+        );
+        return;
+      }
+
+      const deleteResponse = await deleteEmployeeDetails(employeeDetailsId);
+
+      if (deleteResponse.success) {
+        message.success(deleteResponse.message);
+        fetchUsers(page, pageSize, searchFilters);
+      } else {
+        message.error(deleteResponse.message || "Failed to delete employee");
+      }
+    } catch (error: any) {
+      console.error("Delete failed for record:", record, error);
       message.error(
         error?.response?.data?.message ||
         "Failed to delete employee information"
@@ -319,6 +380,17 @@ export default function UpdateUserProfile() {
         message.success(response.message);
         closeDrawer();
         fetchUsers(page, pageSize, searchFilters);
+
+        // If the backend returned generated login credentials (userName + password),
+        // show them in a small popup so they can be shared with the employee.
+        const userDetails = response.data?.["user details"];
+        if (userDetails?.userName && userDetails?.password) {
+          setCredsData({
+            userName: userDetails.userName,
+            password: userDetails.password,
+          });
+          setCredsModalOpen(true);
+        }
       } else {
         message.error(response.message);
       }
@@ -336,7 +408,7 @@ export default function UpdateUserProfile() {
     <div>
       <div className="flex justify-end mb-4">
         <Button type="primary" icon={<PlusOutlined />} onClick={openAddDrawer}>
-          Add User
+          Add Employee
         </Button>
       </div>
       {/* Employee Details Navbar goes here (your existing header/navbar component) */}
@@ -402,6 +474,7 @@ export default function UpdateUserProfile() {
         }}
         onView={openViewDrawer}
         onEdit={openEditDrawer}
+        onDelete={handleDeleteFromTable}
       />
 
       <Drawer
@@ -431,6 +504,50 @@ export default function UpdateUserProfile() {
         destroyOnClose
       >
         <EmployeeViewer user={viewUser} />
+      </Modal>
+
+      {/* Login Credentials popup — shown after a successful save/update
+          when the backend returns a generated userName + password */}
+      <Modal
+        title="Login Credentials"
+        open={credsModalOpen}
+        onCancel={closeCredsModal}
+        footer={[
+          <Button key="ok" type="primary" onClick={closeCredsModal}>
+            OK
+          </Button>,
+        ]}
+        width={400}
+        destroyOnClose
+      >
+        <Form layout="vertical">
+          <Form.Item label="User Name">
+            <Input
+              value={credsData?.userName}
+              disabled
+              styles={{ input: { color: "#000", WebkitTextFillColor: "#000" } }}
+              suffix={
+                <CopyOutlined
+                  style={{ color: "#1677ff", cursor: "pointer" }}
+                  onClick={() => handleCopy(credsData?.userName, "User Name")}
+                />
+              }
+            />
+          </Form.Item>
+          <Form.Item label="Password">
+            <Input
+              value={credsData?.password}
+              disabled
+              styles={{ input: { color: "#000", WebkitTextFillColor: "#000" } }}
+              suffix={
+                <CopyOutlined
+                  style={{ color: "#1677ff", cursor: "pointer" }}
+                  onClick={() => handleCopy(credsData?.password, "Password")}
+                />
+              }
+            />
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   );
