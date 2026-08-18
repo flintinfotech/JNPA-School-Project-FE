@@ -5,6 +5,12 @@ import {  getAllUsers,getUserById, saveUser, updateUser, type UserDTO } from "..
 import UserTable from "./userTable";
 import UserForm from "./userForm";
 import { getAllStaticData, type StaticDataResponse } from "../../services/staticDataService";
+import axiosInstance from "../../lib/axios"; // adjust to whatever you use for calls
+
+type UserFilter = "all" | "employee" | "student";
+
+const EMPLOYEE_ROLES = ["Teacher", "Accountant", "Admin", "Principal"];
+const STUDENT_ROLES = ["Student"];
 
 export default function UserManagement() {
   const [users, setUsers] = useState<UserDTO[]>([]);
@@ -12,6 +18,7 @@ export default function UserManagement() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [tableLoading, setTableLoading] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<UserFilter>("all");
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserDTO | null>(null);
@@ -34,6 +41,7 @@ export default function UserManagement() {
 
     loadStaticData();
   }, []);
+
   const fetchUsers = useCallback(async (pageNum: number, size: number) => {
     setTableLoading(true);
     try {
@@ -51,9 +59,43 @@ export default function UserManagement() {
     }
   }, []);
 
+  const fetchUsersByFilter = useCallback(
+    async (pageNum: number, size: number, roles: string[]) => {
+      setTableLoading(true);
+      try {
+        const response = await axiosInstance.post(
+          `http://flintinfotech-dev.in:8443/jnpa-school-project/user/getAllUsersByFilter?page=${pageNum}&size=${size}&paginate=true`,
+          { role: roles }
+        );
+        if (response.data.success) {
+          setUsers(response.data.data.Data);
+          setTotal(response.data.data.total);
+        } else {
+          message.error(response.data.message || "Failed to load users");
+        }
+      } catch (error: any) {
+        message.error(error?.response?.data?.message || "Failed to load users");
+      } finally {
+        setTableLoading(false);
+      }
+    },
+    []
+  );
+
   useEffect(() => {
-    fetchUsers(page, pageSize);
-  }, [page, pageSize, fetchUsers]);
+    if (activeFilter === "employee") {
+      fetchUsersByFilter(page, pageSize, EMPLOYEE_ROLES);
+    } else if (activeFilter === "student") {
+      fetchUsersByFilter(page, pageSize, STUDENT_ROLES);
+    } else {
+      fetchUsers(page, pageSize);
+    }
+  }, [page, pageSize, activeFilter, fetchUsers, fetchUsersByFilter]);
+
+  const handleFilterClick = (filter: UserFilter) => {
+    setPage(0);
+    setActiveFilter(filter);
+  };
 
   // const openAddDrawer = () => {
   //   setEditingUser(null);
@@ -161,7 +203,22 @@ export default function UserManagement() {
           Add User
         </Button>
       </div> */}
-                 
+
+      <div className="flex gap-2 mb-4">
+        <Button
+          type={activeFilter === "employee" ? "primary" : "default"}
+          onClick={() => handleFilterClick("employee")}
+        >
+          Employee
+        </Button>
+        <Button
+          type={activeFilter === "student" ? "primary" : "default"}
+          onClick={() => handleFilterClick("student")}
+        >
+          Students
+        </Button>
+      </div>
+
       <UserTable
         data={users}
         loading={tableLoading}
