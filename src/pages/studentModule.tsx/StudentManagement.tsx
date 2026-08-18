@@ -112,7 +112,7 @@ export default function StudentManagement() {
     setEditingStudent(null);
     form.resetFields();
     form.setFieldsValue({
-      parentEntities: [{ relation: "Father" }],
+      parentDTO: { relation: "Father" },
       studentDocuments: [{ documentName: "" }],
       academicInformation: [{}],
     });
@@ -130,7 +130,8 @@ export default function StudentManagement() {
       setEditingStudent(s);
       form.setFieldsValue({
         ...s,
-        dob: s.dob ? dayjs(s.dob) : null,
+       dob: s.DOB ? dayjs(s.DOB) : null,
+        parentDTO: s.parentDTO || {},
         studentDocuments: (s.studentDocuments || []).map((d) => ({
           ...d,
           uploadDate: d.uploadDate ? dayjs(d.uploadDate) : null,
