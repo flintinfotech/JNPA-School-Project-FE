@@ -106,6 +106,7 @@ export default function User({
                 <Form.Item
                   label="Employee Code"
                   name="employeeCode"
+
                   rules={[{ required: true }]}
                 >
                   <Input

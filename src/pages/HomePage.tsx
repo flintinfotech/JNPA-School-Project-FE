@@ -478,7 +478,7 @@ export default function HomePage() {
           <span className="hp-admission-Inquiry-icon">📝</span>
           Admission Inquiry
         </Link>
-        <Link to="" className="hp-parent-login">
+        <Link to="/parent-login" className="hp-parent-login">
           <span className="hp-parent-login-icon">🔒</span>
           Parent's Login
         </Link>

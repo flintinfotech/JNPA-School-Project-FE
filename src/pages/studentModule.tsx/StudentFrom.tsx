@@ -110,11 +110,11 @@ export default function StudentForm({
   const profileImgWatch: string | null = Form.useWatch("profileImg", form);
 
   const photoUrl = profileImgWatch
-  ? base64ToBlobUrl(profileImgWatch, detectMimeType(profileImgWatch))
-  : "";
+    ? base64ToBlobUrl(profileImgWatch, detectMimeType(profileImgWatch))
+    : "";
 
-const photoFileList: UploadFile[] = photoUrl
-  ? [
+  const photoFileList: UploadFile[] = photoUrl
+    ? [
       {
         uid: "profile-photo",
         name: "Student Photo",
@@ -122,8 +122,8 @@ const photoFileList: UploadFile[] = photoUrl
         url: photoUrl,
       },
     ]
-  : [];
-  
+    : [];
+
   const fieldsByTab: Record<string, any[]> = {
     details: [
       "firstName",
@@ -259,6 +259,29 @@ const photoFileList: UploadFile[] = photoUrl
             </Form.Item>
             <Form.Item label="Nationality" name="nationality">
               <Input placeholder="Enter nationality" />
+            </Form.Item>
+            <Form.Item
+              label="Aadhar No"
+              name="aadharNo"
+              rules={[
+                { required: true, message: "Aadhar number is required" },
+                {
+                  pattern: /^\d{4}-\d{4}-\d{4}$/,
+                  message: "Aadhar number must be exactly 12 digits",
+                },
+              ]}
+            >
+              <Input
+                placeholder="Aadhar Card (9999-9999-9999)"
+                maxLength={14}
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, "").slice(0, 12);
+                  const formatted = digits
+                    .replace(/(\d{4})(?=\d)/g, "$1-")
+                    .trim();
+                  form.setFieldValue("aadharNo", formatted);
+                }}
+              />
             </Form.Item>
             <Form.Item
               label="Status"
