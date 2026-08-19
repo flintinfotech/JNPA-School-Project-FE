@@ -264,7 +264,7 @@ export default function StudentForm({
               label="Aadhar No"
               name="aadhaarCard"
               rules={[
-                { required: true, message: "Aadhaar number is required", whitespace: true },
+                { required: false, message: "Aadhaar number is required", whitespace: true },
                 {
                   pattern: /^\d{4}-\d{4}-\d{4}$/,
                   message: "Aadhaar number must be exactly 12 digits",
@@ -377,10 +377,11 @@ export default function StudentForm({
                 name={["parentDTO", "phone"]}
                 rules={[
                   { required: true, message: "Phone is required" },
+                 
                   { pattern: /^[0-9]{10}$/, message: "Phone number must contain only 10 digits" },
                 ]}
               >
-                <Input placeholder="Phone number" />
+                <Input placeholder="Phone number"  maxLength={10} />
               </Form.Item>
               <Form.Item label="Email" name={["parentDTO", "email"]}>
                 <Input placeholder="Email" />

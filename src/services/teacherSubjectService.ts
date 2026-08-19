@@ -27,7 +27,7 @@ export const getAllTeachers = async (
   size: number,
   filters?: TeacherSearchFilters
 ) => {
-  return await axiosInstance.post(apiEndpoints.getAllUserInformation(page, size), {
+  return await axiosInstance.post(apiEndpoints.getAllUsers(page, size), {
     role: "Teacher",
     firstName: filters?.firstName || undefined,
     lastName: filters?.lastName || undefined,

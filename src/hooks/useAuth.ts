@@ -5,6 +5,7 @@ interface AuthUser {
   username: string;
   role?: string;
   userId?: number;
+  studentId?: number;
   section?: string | null;
   medium?: string | null;
 }
@@ -34,7 +35,8 @@ export function useAuth() {
   const login = async (
     username: string,
     password: string,
-    academicYear: AcademicYear
+    academicYear: AcademicYear,
+    isParent: boolean = false
   ): Promise<string | null> => {
     try {
       const response = await loginUser({
@@ -57,11 +59,19 @@ export function useAuth() {
         localStorage.setItem(
           "user",
           JSON.stringify(response.data.userDTO)
-        );
-        localStorage.setItem(
-  "screens",
-  JSON.stringify(response.data.userDTO.screens || [])
-     );
+        ); if (isParent) {
+          localStorage.setItem("isParent", "true");
+          localStorage.setItem(
+            "screens",
+            JSON.stringify([{ screenName: "Student Profile" }])
+          );
+        } else {
+          localStorage.setItem("isParent", "false");
+          localStorage.setItem(
+            "screens",
+            JSON.stringify(response.data.userDTO.screens || [])
+          );
+        }
 
         // Optional: Save Academic Year
         localStorage.setItem(
@@ -99,6 +109,7 @@ export function useAuth() {
     localStorage.removeItem("user");
     localStorage.removeItem("academicYear");
     localStorage.removeItem("screens");
+    localStorage.removeItem("isParent");   // 👈 add this
 
     setAuth({
       isAuthenticated: false,

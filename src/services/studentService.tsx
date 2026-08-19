@@ -80,6 +80,11 @@ export const getStudentById = async (studentId: number | string) => {
   return data;
 };
 
+export const getStudentByUserId = async (userId: number | string) => {
+  const { data } = await axiosInstance.get(apiEndpoints.getStudentByUserId(userId));
+  return data;
+};
+
 export const deleteStudent = async (studentId: number | string) => {
   const { data } = await axiosInstance.delete(apiEndpoints.deleteStudent(studentId));
   return data;

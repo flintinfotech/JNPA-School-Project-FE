@@ -1,4 +1,10 @@
-import { Routes, Route, useLocation, Navigate } from "react-router-dom";
+import {
+  Routes,
+  Route,
+  useLocation,
+  Navigate,
+  useNavigate,
+} from "react-router-dom";
 import { useAuth } from "./hooks/useAuth";
 import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/HomePage";
@@ -54,22 +60,9 @@ import AdmissionInquiry from "./pages/AdmissionInquiry";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import ParentLoginPage from "./pages/ParentLoginPage";
-
-
-
-
-
-
+import StudentProfile from "./pages/StudentProfile";
 
 export default function App() {
-
-  const handleParentLogin = async (
-    _mobileNo: string,
-    _aadhaarNo: string,
-    _academicYear: { startDate: string; endDate: string }
-  ): Promise<string | null> => {
-    return "Parent login isn't connected to the backend yet.";
-  };
 
   const { isAuthenticated, login, logout } = useAuth();
   const location = useLocation();
@@ -82,22 +75,21 @@ export default function App() {
   const isEventsAndNewsAdminPage = location.pathname === "/events-and-news";
   const isExamAndResultsAdminPage = location.pathname === "/exam-and-results";
   const isAdmissionAdminPage = location.pathname === "/admissions-admin";
-  const isSubjectsMasterPage = location.pathname === "/subjects-master"; 
-  const isClassMasterPage = location.pathname ==="/class-master";
+  const isSubjectsMasterPage = location.pathname === "/subjects-master";
+  const isClassMasterPage = location.pathname === "/class-master";
 
-   const isUpdateUserPage=location.pathname==="/update-user";
-  const isSubjectAssignmentPage = location.pathname ==="/subject-assignment";
-  const isTeacherSubjectsPage = location.pathname ==="/teacher-subjects";
-  const isAdmissionInquiryPage = location.pathname ==="/admission-inquiry";
-  const isDashboardPage =location.pathname ==="/dashboard";
-  const isProfilePage =location.pathname ==="/profile";
+  const isUpdateUserPage = location.pathname === "/update-user";
+  const isSubjectAssignmentPage = location.pathname === "/subject-assignment";
+  const isTeacherSubjectsPage = location.pathname === "/teacher-subjects";
+  const isAdmissionInquiryPage = location.pathname === "/admission-inquiry";
+  const isDashboardPage = location.pathname === "/dashboard";
+  const isProfilePage = location.pathname === "/profile";
+  const isStudentProfile = location.pathname.startsWith("/student-profile");
 
   const isHomePage = location.pathname === "/";
 
- 
-  
-  const hideNavbarFooter = isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage||isUpdateUserPage ||isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage;
-  const hideFooter = isHomePage || isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage||isUpdateUserPage||isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage;
+  const hideNavbarFooter = isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage || isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage || isStudentProfile;
+  const hideFooter = isHomePage || isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage || isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage || isStudentProfile;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -117,11 +109,17 @@ export default function App() {
               )
             }
           />
-             <Route
+          <Route
             path="/parent-login"
-            element={<ParentLoginPage onLogin={handleParentLogin} />}
+            element={
+              isAuthenticated ? (
+                <Navigate to="/student-profile" replace />
+              ) : (
+                <ParentLoginPage onLogin={login} />
+              )
+            }
           />
-          
+
           <Route
             element={
               <AdminLayout isAuthenticated={isAuthenticated} onLogout={logout} />
@@ -133,19 +131,20 @@ export default function App() {
             <Route path="/events-and-news" element={<EventsAndNewsAdmin />} />
             <Route path="/exam-and-results" element={<ExamAndResultsAdmin />} />
             <Route path="/admissions-admin" element={<AdmissionAdmin />} />
-            <Route path="/subjects-master" element={ <SubjectsMaster />} />
+            <Route path="/subjects-master" element={<SubjectsMaster />} />
             <Route path="/class-master" element={<ClassMaster />} />
             <Route path="/subject-assignment" element={<SubjectAssignment />} />
             <Route path="/teacher-subjects" element={<TeacherSubjects />} />
-            <Route path="/update-user" element={<UpdateUserProfile/>}/>
-            <Route path="/admission-inquiry" element={<AdmissionInquiry/>}/>
-            <Route path="/dashboard" element={<Dashboard/>}/>
-            <Route path="/profile" element={<Profile/>}/>
+            <Route path="/update-user" element={<UpdateUserProfile />} />
+            <Route path="/admission-inquiry" element={<AdmissionInquiry />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/profile" element={<Profile />} />
+           <Route path="/student-profile/:studentId?" element={<StudentProfile/>}/>
           </Route>
 
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
-         
+
           <Route path="/about-us" element={<AboutUs />} />
           <Route path="/alumni" element={<Alumni />} />
           <Route path="/academics" element={<Academics />} />
@@ -177,7 +176,7 @@ export default function App() {
           <Route path="/language-day-celebrations" element={<LanguageDayAndCelebrations />} />
           <Route path="/leadership-series" element={<LeadershipSeries />} />
           <Route path="/visitors" element={<Visitors />} />
-          
+
         </Routes>
       </div>
 

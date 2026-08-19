@@ -135,4 +135,6 @@ export const apiEndpoints = {
 getAllAdmissionInquiryCount: () =>
   "/jnpa-school-project/dashboard/getAllAdmissionInquiryCount",
   
+getStudentByUserId: (userId: number | string) =>          
+    `/jnpa-school-project/student/getStudentByUserId/${userId}`,
 };

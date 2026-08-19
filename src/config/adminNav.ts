@@ -13,6 +13,7 @@ import {
   PiClipboardText,
   PiGraduationCap,
   PiStudent,
+  PiStudentFill,
 } from "react-icons/pi";
 
 
@@ -91,6 +92,9 @@ export const adminNavItems: AdminNavEntry[] = [
   },
   {
     label: "Profile", path:"/profile",icon:ImProfile 
+  },
+  {
+    label:"Student Profile", path:"/student-profile",icon:PiStudentFill
   },
  
 ];
