@@ -42,17 +42,17 @@ export interface StudentDTO {
   firstName: string;
   lastName: string;
   gender: string;
-  dob: string;
+  DOB: string; // 👈 renamed from dob to match backend field name
   address: string;
   bloodGroup?: string;
   category?: string;
   religion?: string;
   caste?: string;
   nationality?: string;
-  adharCard?: string;
+  aadhaarCard?: string;
   status: string;
-  profileImg?: string | null; // base64 student photo
-  parentEntities: ParentDTO[];
+  profileImg?: string | null;
+  parentDTO: ParentDTO;
   studentDocuments: StudentDocumentDTO[];
   academicInformation: AcademicInformationDTO[];
 }

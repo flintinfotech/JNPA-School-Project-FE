@@ -45,7 +45,6 @@ interface StudentFormProps {
   staticData: StaticDataResponse | null;
 }
 
-
 const tabKeys = ["details", "parents", "documents", "academic"];
 
 const fileToBase64 = (file: File): Promise<string> =>
@@ -62,7 +61,6 @@ const base64ToBlobUrl = (
 ): string => {
   if (!base64) return "";
 
-  // Backend sometimes returns Java byte[] as [B@xxxx
   if (base64.startsWith("[B@")) {
     return "";
   }
@@ -137,8 +135,9 @@ export default function StudentForm({
       "caste",
       "nationality",
       "status",
+      "aadhaarCard"
     ],
-    parents: ["parentEntities"],
+    parents: ["parentDTO"],
     documents: ["studentDocuments"],
     academic: ["academicInformation"],
   };
@@ -158,18 +157,19 @@ export default function StudentForm({
     if (idx > 0) setActiveTab(tabKeys[idx - 1]);
   };
 
-
   const handleFinish = async () => {
     try {
       const values = await form.validateFields();
+      const { dob, ...restValues } = values; // 👈 pull dob out of form values
+
       const payload = {
-        ...values,
+        ...restValues,
         status: values.status,
-        dob: values.dob ? dayjs(values.dob).format("YYYY-MM-DD") : null,
-        parentEntities: (values.parentEntities || []).map((p: any) => ({
-          ...p,
-          annualIncome: p.annualIncome ?? 0,
-        })),
+        DOB: dob ? dayjs(dob).format("YYYY-MM-DD") : null, // 👈 send as DOB to match backend
+        parentDTO: {
+          ...values.parentDTO,
+          annualIncome: values.parentDTO?.annualIncome ?? 0,
+        },
         studentDocuments: (values.studentDocuments || []).map((d: any) => {
           const { fileName, mimeType, ...rest } = d;
           return {
@@ -262,25 +262,24 @@ export default function StudentForm({
             </Form.Item>
             <Form.Item
               label="Aadhar No"
-              name="aadharNo"
+              name="aadhaarCard"
               rules={[
-                { required: true, message: "Aadhar number is required" },
+                { required: true, message: "Aadhaar number is required", whitespace: true },
                 {
                   pattern: /^\d{4}-\d{4}-\d{4}$/,
-                  message: "Aadhar number must be exactly 12 digits",
-                  
+                  message: "Aadhaar number must be exactly 12 digits",
                 },
               ]}
             >
               <Input
-                placeholder="Aadhar Card (9999-9999-9999)"
+                placeholder="Aadhaar Card (9999-9999-9999)"
                 maxLength={14}
                 onChange={(e) => {
                   const digits = e.target.value.replace(/\D/g, "").slice(0, 12);
-                  const formatted = digits
-                    .replace(/(\d{4})(?=\d)/g, "$1-")
-                    .trim();
-                  form.setFieldValue("aadharNo", formatted);
+                  const formatted = digits.replace(/(\d{4})(?=\d)/g, "$1-").trim();
+
+                  form.setFieldValue("aadhaarCard", formatted);
+                  form.validateFields(["aadhaarCard"]);
                 }}
               />
             </Form.Item>
@@ -343,104 +342,61 @@ export default function StudentForm({
 
         {/* Parent Details */}
         <Tabs.TabPane tab="Parent Details" key="parents" forceRender>
-          <Form.List name="parentEntities">
-            {(fields, { add, remove }) => (
-              <>
-                {fields.map(({ key, name, ...restField }) => (
-                  <div
-                    key={key}
-                    className="border border-gray-200 rounded-lg p-4 mb-4 relative"
-                  >
-                    <div className="flex justify-end">
-                      <Button
-                        danger
-                        type="text"
-                        htmlType="button"
-                        icon={<DeleteOutlined style={{ fontSize: 18 }} />}
-                        onClick={() => remove(name)}
-                      />
-                    </div>
+          <div className="border border-gray-200 rounded-lg p-4 mb-4">
+            <Form.Item name={["parentDTO", "parentId"]} hidden>
+              <Input />
+            </Form.Item>
+            <Form.Item name={["parentDTO", "studentId"]} hidden>
+              <Input />
+            </Form.Item>
 
-                    <Form.Item {...restField} name={[name, "parentId"]} hidden>
-                      <Input />
-                    </Form.Item>
-                    <Form.Item {...restField} name={[name, "studentId"]} hidden>
-                      <Input />
-                    </Form.Item>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
-                      <Form.Item
-                        {...restField}
-                        label="Name"
-                        name={[name, "name"]}
-                        rules={[{ required: true, message: "Name is required" }]}
-                      >
-                        <Input placeholder="Parent name" />
-                      </Form.Item>
-                      <Form.Item
-                        {...restField}
-                        label="Relation"
-                        name={[name, "relation"]}
-                        rules={[{ required: true, message: "Relation is required" }]}
-                      >
-                        <Select placeholder="Select relation">
-                          <Option value="Father">Father</Option>
-                          <Option value="Mother">Mother</Option>
-                          <Option value="Guardian">Guardian</Option>
-                        </Select>
-                      </Form.Item>
-                      <Form.Item
-                        {...restField}
-                        label="Occupation"
-                        name={[name, "occupation"]}
-                      >
-                        <Input placeholder="Occupation" />
-                      </Form.Item>
-                      <Form.Item
-                        {...restField}
-                        label="Phone"
-                        name={[name, "phone"]}
-                        rules={[
-                          { required: true, message: "Phone is required" },
-                          { len: 10, message: "" },
-                          { pattern: /^[0-9]{10}$/, message: "Phone number must contain only 10 digits" },
-                        ]}
-                      >
-                        <Input placeholder="Phone number" />
-                      </Form.Item>
-                      <Form.Item {...restField} label="Email" name={[name, "email"]}>
-                        <Input placeholder="Email" />
-                      </Form.Item>
-                      <Form.Item
-                        {...restField}
-                        label="Annual Income"
-                        name={[name, "annualIncome"]}
-                      >
-                        <InputNumber style={{ width: "100%" }} placeholder="Annual income" />
-                      </Form.Item>
-                      <Form.Item
-                        {...restField}
-                        label="Address"
-                        name={[name, "address"]}
-                        className="md:col-span-2"
-                      >
-                        <Input.TextArea rows={2} placeholder="Address" />
-                      </Form.Item>
-                    </div>
-                  </div>
-                ))}
-                <Button
-                  htmlType="button"
-                  type="dashed"
-                  icon={<PlusOutlined />}
-                  onClick={() => add()}
-                  block
-                >
-                  Add Parent / Guardian
-                </Button>
-              </>
-            )}
-          </Form.List>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+              <Form.Item
+                label="Name"
+                name={["parentDTO", "name"]}
+                rules={[{ required: true, message: "Name is required" }]}
+              >
+                <Input placeholder="Parent name" />
+              </Form.Item>
+              <Form.Item
+                label="Relation"
+                name={["parentDTO", "relation"]}
+                rules={[{ required: true, message: "Relation is required" }]}
+              >
+                <Select placeholder="Select relation">
+                  <Option value="Father">Father</Option>
+                  <Option value="Mother">Mother</Option>
+                  <Option value="Guardian">Guardian</Option>
+                </Select>
+              </Form.Item>
+              <Form.Item label="Occupation" name={["parentDTO", "occupation"]}>
+                <Input placeholder="Occupation" />
+              </Form.Item>
+              <Form.Item
+                label="Phone"
+                name={["parentDTO", "phone"]}
+                rules={[
+                  { required: true, message: "Phone is required" },
+                  { pattern: /^[0-9]{10}$/, message: "Phone number must contain only 10 digits" },
+                ]}
+              >
+                <Input placeholder="Phone number" />
+              </Form.Item>
+              <Form.Item label="Email" name={["parentDTO", "email"]}>
+                <Input placeholder="Email" />
+              </Form.Item>
+              <Form.Item label="Annual Income" name={["parentDTO", "annualIncome"]}>
+                <InputNumber style={{ width: "100%" }} placeholder="Annual income" />
+              </Form.Item>
+              <Form.Item
+                label="Address"
+                name={["parentDTO", "address"]}
+                className="md:col-span-2"
+              >
+                <Input.TextArea rows={2} placeholder="Address" />
+              </Form.Item>
+            </div>
+          </div>
         </Tabs.TabPane>
 
         {/* Documents */}
@@ -499,7 +455,6 @@ export default function StudentForm({
                           {...restField}
                           label="Document Name"
                           name={[name, "documentName"]}
-                        // rules={[{ required: true, message: "Document name required" }]}
                         >
                           <Input placeholder="e.g. Birth Certificate" />
                         </Form.Item>

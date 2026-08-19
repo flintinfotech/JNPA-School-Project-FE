@@ -40,18 +40,14 @@ export default function StudentTable({
 }: StudentTableProps) {
   const isMobile = useIsMobile();
 
-  // ---- View modal state ----
   const [viewForm] = Form.useForm();
   const [isViewOpen, setIsViewOpen] = useState(false);
 
   const onView = (record: StudentDTO) => {
     viewForm.setFieldsValue({
       ...record,
-      dob: record.dob ? dayjs(record.dob) : null,
-      parentEntities:
-        record.parentEntities && record.parentEntities.length > 0
-          ? record.parentEntities
-          : [{}],
+      dob: record.DOB ? dayjs(record.DOB) : null, // 👈 read from DOB
+      parentDTO: record.parentDTO || {},
       studentDocuments: (record.studentDocuments || []).map((d: any) => ({
         ...d,
         uploadDate: d.uploadDate ? dayjs(d.uploadDate) : null,
@@ -71,7 +67,6 @@ export default function StudentTable({
     setIsViewOpen(false);
     viewForm.resetFields();
   };
-  // ---------------------------
 
   const columns = [
     {
@@ -91,8 +86,8 @@ export default function StudentTable({
     },
     {
       title: "DOB",
-      dataIndex: "dob",
-      key: "dob",
+      dataIndex: "DOB", // 👈 renamed
+      key: "DOB",
       render: (value: string) => {
         if (!value) return "-";
         return dayjs(value).format("DD-MM-YYYY");
@@ -173,7 +168,7 @@ export default function StudentTable({
                       {record.firstName} {record.lastName}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {record.gender} | DOB: {record.dob}
+                      {record.gender} | DOB: {record.DOB}
                     </p>
                   </div>
                   <Tag color={record.status === "ACTIVE" ? "green" : "red"}>
@@ -244,7 +239,6 @@ export default function StudentTable({
         </div>
       )}
 
-      {/* View Modal */}
       <Modal
         title="Student Details"
         open={isViewOpen}
