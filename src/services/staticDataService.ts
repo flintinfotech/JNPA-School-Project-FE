@@ -6,6 +6,9 @@ export interface StaticDataResponse {
   "blood group": string[];
   "student status": string[];
   "class name": string[];
+  standard?: string[];
+  division?: string[];
+  medium?: string[];
 }
 
 export const getAllStaticData = async () => {

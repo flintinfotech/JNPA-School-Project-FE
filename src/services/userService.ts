@@ -20,6 +20,8 @@ export interface UserDTO {
   role: string;
   section?: string;
   medium?: string;
+  standard?: string;
+  division?: string;
 
   screens?: ScreenDTO[];
 }
@@ -34,6 +36,8 @@ export interface SaveUserRequestDTO {
   userName: string;
   section?: string;
   medium?: string;
+  standard?: string;
+  division?: string;
 }
 
 export interface UpdateUserRequestDTO {
@@ -46,8 +50,9 @@ export interface UpdateUserRequestDTO {
   userName: string;
   section?: string;
   medium?: string;
+  standard?: string;
+  division?: string;
 }
-
 export interface ApiResponse<T> {
   success: boolean;
   message: string;

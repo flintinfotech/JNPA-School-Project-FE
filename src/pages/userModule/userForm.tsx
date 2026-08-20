@@ -5,8 +5,6 @@ import type { StaticDataResponse } from "../../services/staticDataService";
 import { Form } from "antd";
 import { apiEndpoints } from "../../services/apiEndpoints"; // adjust path to your actual file
 import axiosInstance from "../../lib/axios"; // adjust to whatever you use for calls
-// import { Select, Checkbox } from "antd";
-
 
 interface UserFormProps {
   form: FormInstance;
@@ -14,6 +12,7 @@ interface UserFormProps {
   isEditing: boolean;
   loading: boolean;
   staticData: StaticDataResponse | null;
+  viewOnly?: boolean;
 }
 
 interface ScreenOption {
@@ -21,7 +20,7 @@ interface ScreenOption {
   screenName: string;
 }
 
-export default function UserForm({ form, onFinish, isEditing, loading, staticData }: UserFormProps) {
+export default function UserForm({ form, onFinish, isEditing, loading, staticData, viewOnly = false }: UserFormProps) {
   const selectedRole = Form.useWatch("role", form);
   const [screens, setScreens] = useState<ScreenOption[]>([]);
 
@@ -36,12 +35,12 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
     };
     fetchScreens();
   }, []);
+
   const handleFinish = (values: any) => {
     const { screenIds, ...rest } = values;
 
     onFinish({
       ...rest,
-
       screens:
         screenIds?.map((id: number) => ({
           screenId: id,
@@ -96,7 +95,6 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
       name: "role",
       label: "Role",
       type: "select" as const,
-
       options:
         staticData?.role.map((role) => ({
           label: role.charAt(0).toUpperCase() + role.slice(1).toLowerCase(),
@@ -142,6 +140,28 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
             },
           ],
         },
+        {
+          name: "standard",
+          label: "Standard",
+          type: "select" as const,
+          required: true,
+          options:
+            staticData?.standard?.map((item) => ({
+              label: item,
+              value: item,
+            })) ?? [],
+        },
+        {
+          name: "division",
+          label: "Division",
+          type: "select" as const,
+          required: true,
+          options:
+            staticData?.division?.map((item) => ({
+              label: item,
+              value: item,
+            })) ?? [],
+        },
       ]
       : []),
   ];
@@ -153,9 +173,7 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
       onFinish={handleFinish}
       submitText={isEditing ? "Update" : "Add"}
       loading={loading}
+      viewOnly={viewOnly}
     />
   );
 }
-
-
-
