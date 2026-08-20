@@ -584,16 +584,15 @@ export default function StudentForm({
                     key={key}
                     className="border border-gray-200 rounded-lg p-4 mb-4 relative"
                   >
-                    {fields.length > 1 && (
+                    <div className="flex justify-end">
                       <Button
                         danger
                         type="text"
                         htmlType="button"
-                        icon={<DeleteOutlined />}
-                        className="absolute top-2 right-2"
+                        icon={<DeleteOutlined style={{ fontSize: 18 }} />}
                         onClick={() => remove(name)}
                       />
-                    )}
+                    </div>
 
                     <Form.Item {...restField} name={[name, "academicInformationId"]} hidden>
                       <Input />
@@ -666,6 +665,20 @@ export default function StudentForm({
                       </Form.Item>
                       <Form.Item
                         {...restField}
+                        label="Medium"
+                        name={[name, "medium"]}
+                        rules={[{ required: true, message: "Medium required" }]}
+                      >
+                        <Select placeholder="Select medium" allowClear>
+                          {staticData?.["medium"]?.map((medium) => (
+                            <Option key={medium} value={medium}>
+                              {medium}
+                            </Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
                         label="Academic Year"
                         name={[name, "academicYear"]}
                         rules={[{ required: true, message: "Academic year required" }]}
@@ -675,17 +688,24 @@ export default function StudentForm({
                     </div>
                   </div>
                 ))}
-                {fields.length === 0 && (
-                  <Button
-                    htmlType="button"
-                    type="dashed"
-                    icon={<PlusOutlined />}
-                    onClick={() => add()}
-                    block
-                  >
-                    Add Academic Info
-                  </Button>
-                )}
+                <Button
+                  htmlType="button"
+                  type="dashed"
+                  icon={<PlusOutlined />}
+                  onClick={() =>
+                    add({
+                      admissionNo: undefined,
+                      admissionDate: null,
+                      standard: undefined,
+                      division: undefined,
+                      rollNo: "",
+                      academicYear: "",
+                    })
+                  }
+                  block
+                >
+                  Add Academic Info
+                </Button>
               </>
             )}
           </Form.List>
