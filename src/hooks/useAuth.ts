@@ -109,7 +109,10 @@ export function useAuth() {
     localStorage.removeItem("user");
     localStorage.removeItem("academicYear");
     localStorage.removeItem("screens");
-    localStorage.removeItem("isParent");   // 👈 add this
+    // NOTE: intentionally NOT removing "isParent" here. It's not sensitive
+    // data, and keeping it lets route guards (see AdminLayout) know to send
+    // a logged-out parent back to /parent-login instead of /login. login()
+    // always overwrites it correctly on the next sign-in regardless of role.
 
     setAuth({
       isAuthenticated: false,

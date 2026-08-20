@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { Building2, ChevronDown } from "lucide-react";
 import { adminNavItems, isAdminNavGroup } from "../../config/adminNav";
+import { getAllowedScreenNames } from "../../services/Screens";
 
 interface Props {
   isOpen: boolean; // mobile off-canvas state
@@ -12,14 +13,7 @@ export default function Sidebar({ isOpen, onClose }: Props) {
   const [expanded, setExpanded] = useState(false);
   const location = useLocation();
 
-
-  const allowedScreens = JSON.parse(
-    localStorage.getItem("screens") || "[]"
-  );
-
-  const screenNames = allowedScreens.map((item: any) =>
-    item.screenName.toLowerCase()
-  );
+  const screenNames = getAllowedScreenNames();
   // Tracks which dropdown groups are open, keyed by group label.
   // A group auto-opens if the current route matches one of its children.
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {

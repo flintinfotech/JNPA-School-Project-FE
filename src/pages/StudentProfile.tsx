@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { Spin, Empty, message } from "antd";
 import {
@@ -7,8 +7,6 @@ import {
     HiXCircle,
     HiPrinter,
     HiDownload,
-    HiPhone,
-    HiMail,
     HiUser,
 } from "react-icons/hi";
 import dayjs from "dayjs";
@@ -89,6 +87,39 @@ function InfoStat({ value, label }: { value: string; label: string }) {
     );
 }
 
+function InfoRow({ label, value }: { label: string; value?: string | number | null }) {
+    return (
+        <div className="flex items-start justify-between gap-4 py-2.5 border-b border-slate-100 last:border-b-0">
+            <span className="text-sm text-slate-500">{label}</span>
+            <span className="text-sm font-medium text-slate-800 text-right">
+                {value !== undefined && value !== null && value !== "" ? value : "-"}
+            </span>
+        </div>
+    );
+}
+
+function Card({
+    title,
+    subtitle,
+    children,
+}: {
+    title: string;
+    subtitle?: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100">
+                <h2 className="text-base font-semibold text-indigo-700">{title}</h2>
+                {subtitle && (
+                    <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>
+                )}
+            </div>
+            <div className="p-5">{children}</div>
+        </div>
+    );
+}
+
 export default function StudentProfile() {
     const { studentId: studentIdFromRoute } = useParams<{ studentId: string }>();
     const navigate = useNavigate();
@@ -139,6 +170,27 @@ export default function StudentProfile() {
         fetchStudent();
     }, [studentIdFromRoute]);
 
+    // Also catch the browser/device back button (not just an in-page click).
+    // Parents landing on this page get an extra history entry pointing to
+    // itself, so the first "back" press is intercepted and redirected to
+    // the parent login screen instead of leaving the app in a weird state.
+    // NOTE: this must run before any early returns below (Rules of Hooks —
+    // hooks can't be called conditionally / after a return).
+    useEffect(() => {
+        if (!isParent) return;
+
+        window.history.pushState(null, "", window.location.pathname);
+
+        const handlePopState = () => {
+            onLogout();
+            navigate("/parent-login", { replace: true });
+        };
+
+        window.addEventListener("popstate", handlePopState);
+        return () => window.removeEventListener("popstate", handlePopState);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isParent]);
+
     if (loading) {
         return (
             <div className="min-h-[60vh] flex items-center justify-center">
@@ -156,6 +208,7 @@ export default function StudentProfile() {
     }
 
     const academic = student.academicInformation?.[0];
+    const academicRecords = student.academicInformation || [];
     const parent = student.parentDTO;
     const documents = student.studentDocuments || [];
 
@@ -165,7 +218,7 @@ export default function StudentProfile() {
 
     const isActive = student.status === "ACTIVE";
 
-    // Section completeness — drives the checklist ticks/crosses
+    // division completeness — drives the checklist ticks/crosses
     const personalInfoComplete = Boolean(
         student.firstName && student.lastName && student.gender && student.DOB
     );
@@ -181,7 +234,7 @@ export default function StudentProfile() {
         academicInfoComplete &&
         documentsComplete;
 
-    const handlePrint = () => window.print();
+    // const handlePrint = () => window.print();
 
     const handleViewDocument = (doc: (typeof documents)[number]) => {
         if (!doc.document) {
@@ -194,18 +247,29 @@ export default function StudentProfile() {
     };
     const handleBack = () => {
         if (isParent) {
-            onLogout();                                  // clears token/user/screens/isParent
-            navigate("/parent-login", { replace: true }); // sends them straight to the login screen
+            onLogout();                                    // clears token/user/screens (keeps isParent so route guards know where to send them)
+            navigate("/parent-login", { replace: true });  // sends them straight to the parent login screen
         } else {
-            navigate(-1);                                // admin table flow — keep existing behavior
+            navigate(-1);                                   // admin table flow — keep existing behavior
         }
     };
+
     return (
         <div className="min-h-screen bg-slate-50 px-4 py-6 sm:px-8">
 
+            <div className="max-w-6xl mx-auto mb-4 print:hidden">
+                <button
+                    onClick={handleBack}
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-indigo-700 cursor-pointer"
+                >
+                    <HiArrowLeft size={16} />
+                    Back
+                </button>
+            </div>
+
             <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-5 items-start">
-                {/* ── Card 1: Student overview ───────────────────── */}
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                {/* ── Left: Student overview (sticky on desktop) ─── */}
+                <div className="md:sticky md:top-6 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div className="px-5 py-4 border-b border-slate-100">
                         <h2 className="text-base font-semibold text-indigo-700">
                             {student.firstName} {student.lastName}
@@ -257,132 +321,138 @@ export default function StudentProfile() {
                                 </p>
                             )}
                         </div>
-                    </div>
-                </div>
 
-                {/* ── Card 2: Information checklist ──────────────── */}
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="px-5 py-4 border-b border-slate-100">
-                        <h2 className="text-base font-semibold text-indigo-700">
-                            {academic?.standard
-                                ? `Std. ${academic.standard}${academic.section ? ` - ${academic.section}` : ""
-                                }`
-                                : "Class Info"}
-                        </h2>
-                        {academic?.academicYear && (
-                            <p className="text-xs text-slate-500 mt-0.5">
-                                Academic Year: {academic.academicYear}
-                            </p>
-                        )}
-                    </div>
-
-                    <div className="p-5">
-                        <ChecklistRow label="Personal Info" complete={personalInfoComplete} />
-                        <ChecklistRow label="Address Info" complete={addressInfoComplete} />
-                        <ChecklistRow label="Parent Info" complete={parentInfoComplete} />
-                        <ChecklistRow label="Academic Info" complete={academicInfoComplete} />
-                        <ChecklistRow
-                            label="Uploaded Documents"
-                            complete={documentsComplete}
-                        />
-
-                        <div className="mt-4 pt-4 border-t border-slate-100">
-                            <p className="text-xs font-medium text-slate-500 mb-1">
-                                Summary
-                            </p>
-                            {allComplete ? (
-                                <p className="text-sm text-green-600 flex items-center gap-1.5">
-                                    <HiCheckCircle size={16} /> All required information is
-                                    filled in.
-                                </p>
-                            ) : (
-                                <p className="text-sm text-amber-600">
-                                    A few sections still need details.
-                                </p>
-                            )}
+                        <div className="w-full border-t border-slate-100 mt-4 pt-4 space-y-2">
+                            <ChecklistRow label="Personal Info" complete={personalInfoComplete} />
+                            <ChecklistRow label="Address Info" complete={addressInfoComplete} />
+                            <ChecklistRow label="Parent Info" complete={parentInfoComplete} />
+                            <ChecklistRow label="Academic Info" complete={academicInfoComplete} />
+                            <ChecklistRow label="Uploaded Documents" complete={documentsComplete} />
                         </div>
 
-                        <button
+                        {/* <button
                             onClick={handlePrint}
-                            className="mt-5 w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition cursor-pointer print:hidden"
+                            className="mt-5 w-full inline-flex items-center justify-center gap-1.5 text-sm font-medium text-indigo-600 border border-indigo-200 rounded-lg py-2 hover:bg-indigo-50 cursor-pointer print:hidden"
                         >
-                            <HiPrinter size={18} />
+                            <HiPrinter size={16} />
                             Print Profile
-                        </button>
+                        </button> */}
                     </div>
                 </div>
 
-                {/* ── Card 3: Parent contact + documents ─────────── */}
-                <div className="flex flex-col gap-5">
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div className="px-5 py-4 border-b border-slate-100">
-                            <h2 className="text-base font-semibold text-indigo-700">
-                                Parent / Guardian
-                            </h2>
-                        </div>
-                        <div className="p-5 space-y-3">
-                            <p className="text-sm font-medium text-slate-800">
-                                {parent?.name || "-"}{" "}
-                                {parent?.relation && (
-                                    <span className="text-slate-400 font-normal">
-                                        ({parent.relation})
-                                    </span>
-                                )}
-                            </p>
-                            <div className="flex items-center gap-2 text-sm text-slate-600">
-                                <HiPhone size={16} className="text-slate-400" />
-                                {parent?.phone || "-"}
-                            </div>
-                            {parent?.email && (
-                                <div className="flex items-center gap-2 text-sm text-slate-600">
-                                    <HiMail size={16} className="text-slate-400" />
-                                    {parent.email}
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                {/* ── Right: all recorded information, in cards ──── */}
+                <div className="md:col-span-2 flex flex-col gap-5">
+                    {/* Personal Information */}
+                    <Card title="Personal Information">
+                        <InfoRow label="First Name" value={student.firstName} />
+                        <InfoRow label="Last Name" value={student.lastName} />
+                        <InfoRow label="Gender" value={student.gender} />
+                        <InfoRow
+                            label="Date of Birth"
+                            value={student.DOB ? dayjs(student.DOB).format("DD-MM-YYYY") : undefined}
+                        />
+                        <InfoRow label="Blood Group" value={student.bloodGroup} />
+                        <InfoRow label="Category" value={student.category} />
+                        <InfoRow label="Religion" value={student.religion} />
+                        <InfoRow label="Caste" value={student.caste} />
+                        <InfoRow label="Nationality" value={student.nationality} />
+                        <InfoRow label="Aadhaar No" value={student.aadhaarCard} />
+                        <InfoRow label="Address" value={student.address} />
+                        <InfoRow label="Status" value={student.status} />
+                    </Card>
 
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div className="px-5 py-4 border-b border-slate-100">
-                            <h2 className="text-base font-semibold text-indigo-700">
-                                Documents
-                            </h2>
-                        </div>
-                        <div className="p-5">
-                            {documents.length === 0 ? (
-                                <p className="text-sm text-slate-400">
-                                    No documents uploaded.
-                                </p>
-                            ) : (
-                                <div className="space-y-2">
-                                    {documents.map((doc, idx) => (
-                                        <div
-                                            key={doc.studentDocumentId ?? idx}
-                                            className="flex items-center justify-between py-2 border-b border-slate-50 last:border-b-0"
-                                        >
-                                            <div>
-                                                <p className="text-sm text-slate-700">
-                                                    {doc.documentName}
+                    {/* Parent / Guardian */}
+                    <Card title="Parent / Guardian">
+                        <InfoRow label="Name" value={parent?.name} />
+                        <InfoRow label="Relation" value={parent?.relation} />
+                        <InfoRow label="Occupation" value={parent?.occupation} />
+                        <InfoRow label="Phone" value={parent?.phone} />
+                        <InfoRow label="Email" value={parent?.email} />
+                        <InfoRow label="Address" value={parent?.address} />
+                        <InfoRow
+                            label="Annual Income"
+                            value={
+                                parent?.annualIncome !== undefined && parent?.annualIncome !== null
+                                    ? `₹ ${parent.annualIncome}`
+                                    : undefined
+                            }
+                        />
+                    </Card>
+
+                    {/* Academic Information — one sub-card per record, since a
+                        student can have multiple years of academic history */}
+                    {academicRecords.length === 0 ? (
+                        <Card title="Academic Information">
+                            <p className="text-sm text-slate-400">
+                                No academic information added yet.
+                            </p>
+                        </Card>
+                    ) : (
+                        academicRecords.map((rec, idx) => (
+                            <Card
+                                key={rec.academicInformationId ?? idx}
+                                title={
+                                    rec.standard
+                                        ? `Std. ${rec.standard}${rec.division ? ` - ${rec.division}` : ""}`
+                                        : `Academic Record ${idx + 1}`
+                                }
+                                subtitle={rec.academicYear ? `Academic Year: ${rec.academicYear}` : undefined}
+                            >
+                                <InfoRow label="Admission No" value={rec.admissionNo} />
+                                <InfoRow
+                                    label="Admission Date"
+                                    value={rec.admissionDate ? dayjs(rec.admissionDate).format("DD-MM-YYYY") : undefined}
+                                />
+                                <InfoRow label="Standard" value={rec.standard} />
+                                <InfoRow label="Division" value={rec.division} />
+                                <InfoRow label="Roll No" value={rec.rollNo} />
+                                <InfoRow label="Academic Year" value={rec.academicYear} />
+                                <InfoRow label="Blood Group" value={rec.bloodGroup} />
+                                <InfoRow label="Category" value={rec.category} />
+                                <InfoRow label="Caste" value={rec.caste} />
+                                <InfoRow
+                                    label="Date of Birth"
+                                    value={rec.dob ? dayjs(rec.dob).format("DD-MM-YYYY") : undefined}
+                                />
+                            </Card>
+                        ))
+                    )}
+
+                    {/* Documents */}
+                    <Card title="Documents">
+                        {documents.length === 0 ? (
+                            <p className="text-sm text-slate-400">
+                                No documents uploaded.
+                            </p>
+                        ) : (
+                            <div className="space-y-2">
+                                {documents.map((doc, idx) => (
+                                    <div
+                                        key={doc.studentDocumentId ?? idx}
+                                        className="flex items-center justify-between py-2 border-b border-slate-50 last:border-b-0"
+                                    >
+                                        <div>
+                                            <p className="text-sm text-slate-700">
+                                                {doc.documentName}
+                                            </p>
+                                            {doc.uploadDate && (
+                                                <p className="text-xs text-slate-400">
+                                                    {dayjs(doc.uploadDate).format("DD-MM-YYYY")}
                                                 </p>
-                                                {doc.uploadDate && (
-                                                    <p className="text-xs text-slate-400">
-                                                        {dayjs(doc.uploadDate).format("DD-MM-YYYY")}
-                                                    </p>
-                                                )}
-                                            </div>
-                                            <button
-                                                onClick={() => handleViewDocument(doc)}
-                                                className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 cursor-pointer print:hidden"
-                                            >
-                                                <HiDownload size={14} />
-                                                View
-                                            </button>
+                                            )}
                                         </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                                        <button
+                                            onClick={() => handleViewDocument(doc)}
+                                            className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 cursor-pointer print:hidden"
+                                        >
+                                            <HiDownload size={14} />
+                                            View
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </Card>
                 </div>
             </div>
         </div>
