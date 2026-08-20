@@ -1,46 +1,71 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { FormEvent } from "react";
 import axiosInstance from "../lib/axios";
 import { apiEndpoints } from "../services/apiEndpoints";
-import { HiUser } from "react-icons/hi";
+import { HiUser, HiEye, HiEyeOff } from "react-icons/hi";
 
-interface ParentLoginPageProps {
-  onLogin: (
-    mobileNo: string,
-    aadhaarCard: string,
-    academicYear: {
-      startDate: string;
-      endDate: string;
-    }
-  ) => Promise<string | null>;
+export interface ParentLoginPayload {
+  username: string;
+  password: string;
+  academicWorkYearDTO: {
+    startDate: string;
+    endDate: string;
+  };
 }
+
+export const parentLogin = (payload: ParentLoginPayload) => {
+  return axiosInstance.post(
+    apiEndpoints.login(),
+    payload
+  );
+};
+
+
 
 interface AcademicYear {
   startDate: string;
   endDate: string;
 }
 
-// Fixed academic year (dropdown removed, not editable)
-const FIXED_ACADEMIC_YEAR: AcademicYear = {
-  startDate: "2026",
-  endDate: "2027",
+// Fixed academic year
+const getCurrentAcademicYear = (): AcademicYear => {
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth() + 1;
+
+  // Academic year starts in April
+  if (currentMonth >= 4) {
+    return {
+      startDate: String(currentYear),
+      endDate: String(currentYear + 1),
+    };
+  }
+
+  return {
+    startDate: String(currentYear - 1),
+    endDate: String(currentYear),
+  };
 };
 
-// Formats raw digits as 9999-9999-9999 for display
-const formatAadhaar = (digits: string) => {
-  return digits.replace(/(\d{4})(?=\d)/g, "$1-");
-};
+interface ParentLoginPageProps {
+  onLogin: (
+    username: string,
+    password: string,
+    academicYear: AcademicYear,
+    isParent?: boolean   
+  ) => Promise<string | null>;
+}
 
-export default function ParentLoginPage({
-  onLogin,
-}: ParentLoginPageProps) {
+export default function ParentLoginPage({ onLogin }: ParentLoginPageProps) {
   const [mobileNo, setMobileNo] = useState("");
-  const [aadhaarNo, setAadhaarNo] = useState(""); // stores raw 12 digits only
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [selectedAcademicYear] = useState<AcademicYear>(FIXED_ACADEMIC_YEAR);
+  const [selectedAcademicYear] =
+    useState<AcademicYear>(getCurrentAcademicYear());
 
   // Login
   const handleSubmit = async (e: FormEvent) => {
@@ -48,25 +73,25 @@ export default function ParentLoginPage({
 
     setError("");
 
-    // Mobile validation
+    // Mobile number validation
     if (mobileNo.length !== 10) {
       setError("Mobile number must be 10 digits.");
       return;
     }
 
-    // Aadhaar validation
-    if (aadhaarNo.length !== 12) {
-      setError("Aadhaar number must be 12 digits.");
+    // Password validation
+    if (password.length === 0) {
+      setError("Please enter your password.");
       return;
     }
 
     setLoading(true);
 
-    const errorMessage = await onLogin(
-      mobileNo,
-      aadhaarNo,
-      selectedAcademicYear
-    );
+    const errorMessage = await onLogin(mobileNo, password, {
+      startDate: "2026-06-15",
+      endDate: "2027-04-30",
+    },true  
+  );
 
     if (errorMessage) {
       setError(errorMessage);
@@ -130,7 +155,10 @@ export default function ParentLoginPage({
                   maxLength={10}
                   value={mobileNo}
                   onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, "");
+                    const value = e.target.value
+                      .replace(/\D/g, "")
+                      .slice(0, 10);
+
                     setMobileNo(value);
                   }}
                   placeholder="Enter 10 digit mobile number"
@@ -143,49 +171,42 @@ export default function ParentLoginPage({
                 />
               </div>
             </div>
-            {/* Aadhaar Number */}
+            {/* Password */}
             <div>
               <label
-                htmlFor="aadhaarNo"
+                htmlFor="password"
                 className="block text-sm font-medium text-slate-700 mb-1.5"
               >
-                Aadhaar No (9999-9999-9999)
+                Password
               </label>
 
-              <input
-                id="aadhaarNo"
-                type="text"
-                inputMode="numeric"
-                autoComplete="off"
-                required
-                maxLength={14} // 12 digits + 2 dashes
-                value={formatAadhaar(aadhaarNo)}
-                onChange={(e) => {
-                  const digits = e.target.value.replace(/\D/g, "").slice(0, 12);
-                  setAadhaarNo(digits);
-                }}
-                placeholder="Enter 12 digit Aadhaar number"
-                className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-slate-800 placeholder-slate-400 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition"
-              />
-            </div>
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                  }}
+                  placeholder="Enter your password"
+                  className="w-full px-3.5 py-2.5 pr-10 rounded-lg border border-slate-300 text-slate-800 placeholder-slate-400 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition"
+                />
 
-            {/* Academic Year (fixed, not editable) */}
-            <div>
-              <label
-                htmlFor="academicYear"
-                className="block text-sm font-medium text-slate-700 mb-1.5"
-              >
-                Academic Year
-              </label>
-
-              <input
-                id="academicYear"
-                type="text"
-                readOnly
-                disabled
-                value={`${selectedAcademicYear.startDate} - ${selectedAcademicYear.endDate}`}
-                className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-slate-800 text-sm outline-none bg-slate-100 cursor-not-allowed"
-              />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <HiEyeOff size={18} />
+                  ) : (
+                    <HiEye size={18} />
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* Error */}
@@ -203,6 +224,7 @@ export default function ParentLoginPage({
             >
               {loading ? "Signing in..." : "Sign in"}
             </button>
+
           </form>
         </div>
       </div>
