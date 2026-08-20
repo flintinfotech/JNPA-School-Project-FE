@@ -100,7 +100,7 @@ export default function User({
                   name="userId"
                   hidden
                 >
-                  <Input />
+                  <Input  />
                 </Form.Item>
 
                 <Form.Item
@@ -110,7 +110,7 @@ export default function User({
                   rules={[{ required: true }]}
                 >
                   <Input
-                    disabled={isEditing}
+                    disabled
                     styles={{ input: { color: "#000", WebkitTextFillColor: "#000" } }}
                   />
                 </Form.Item>

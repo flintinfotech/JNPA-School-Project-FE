@@ -23,6 +23,8 @@ import {
   SearchOutlined,
   ReloadOutlined,
   BookOutlined,
+  SaveOutlined,
+  CloseOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 
@@ -148,7 +150,16 @@ const TeacherSubject: React.FC = () => {
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [viewLoading, setViewLoading] = useState(false);
   const [viewTeacher, setViewTeacher] = useState<TeacherDTO | null>(null);
+  const [viewEmployeeDetailsId, setViewEmployeeDetailsId] = useState<number | null>(null);
   const [viewGroups, setViewGroups] = useState<ParsedClassSubjectGroup[]>([]);
+
+  // Editing (unassign) state for the View modal — only relevant to subjects
+  const [viewEditMode, setViewEditMode] = useState(false);
+  const [viewSaving, setViewSaving] = useState(false);
+  // classMasterId -> currently selected subjectMasterId[]
+  const [viewSelectedSubjects, setViewSelectedSubjects] = useState<
+    Record<string, number[]>
+  >({});
 
   // ===========================
   // Load Static Data
@@ -296,6 +307,8 @@ const TeacherSubject: React.FC = () => {
     setViewModalOpen(true);
     setViewGroups([]);
     setViewLoading(true);
+    setViewEditMode(false);
+    setViewSelectedSubjects({});
 
     try {
       const employeeDetailsId = await resolveEmployeeDetailsId(teacher);
@@ -305,6 +318,8 @@ const TeacherSubject: React.FC = () => {
         setViewLoading(false);
         return;
       }
+
+      setViewEmployeeDetailsId(employeeDetailsId);
 
       const response = await getSubjectsByEmployeeDetailsId(employeeDetailsId);
 
@@ -356,7 +371,99 @@ const TeacherSubject: React.FC = () => {
   const closeViewModal = () => {
     setViewModalOpen(false);
     setViewTeacher(null);
+    setViewEmployeeDetailsId(null);
     setViewGroups([]);
+    setViewEditMode(false);
+    setViewSelectedSubjects({});
+  };
+
+  // ===========================
+  // View Modal — Update / Unassign Subjects
+  // ===========================
+
+  const enterViewEditMode = () => {
+    // Seed the editable selection from what's currently assigned per class
+    const initial: Record<string, number[]> = {};
+    viewGroups.forEach((group) => {
+      initial[group.classMasterId] = group.subjects.map(
+        (s) => s.subjectMasterId
+      );
+    });
+    setViewSelectedSubjects(initial);
+    setViewEditMode(true);
+  };
+
+  const cancelViewEditMode = () => {
+    setViewEditMode(false);
+    setViewSelectedSubjects({});
+  };
+
+  const toggleViewSubject = (classMasterId: string, subjectMasterId: number) => {
+    setViewSelectedSubjects((prev) => {
+      const current = prev[classMasterId] || [];
+      const isSelected = current.includes(subjectMasterId);
+      return {
+        ...prev,
+        [classMasterId]: isSelected
+          ? current.filter((id) => id !== subjectMasterId)
+          : [...current, subjectMasterId],
+      };
+    });
+  };
+
+  const handleSaveViewChanges = async () => {
+    if (!viewEmployeeDetailsId) {
+      message.error("Missing teacher reference, please reopen and try again");
+      return;
+    }
+
+    setViewSaving(true);
+
+    try {
+      // Only push an update for classes whose subject selection actually changed
+      const changedGroups = viewGroups.filter((group) => {
+        const original = group.subjects
+          .map((s) => s.subjectMasterId)
+          .slice()
+          .sort();
+        const updated = (viewSelectedSubjects[group.classMasterId] || [])
+          .slice()
+          .sort();
+        return JSON.stringify(original) !== JSON.stringify(updated);
+      });
+
+      if (changedGroups.length === 0) {
+        message.info("No changes to save");
+        setViewEditMode(false);
+        return;
+      }
+
+      for (const group of changedGroups) {
+        const payload = {
+          employeeDetailsId: viewEmployeeDetailsId,
+          classMasterId: Number(group.classMasterId),
+          subjectIds: viewSelectedSubjects[group.classMasterId] || [],
+        };
+
+        console.log("Updating subjects for class", payload);
+
+        await assignTeacherSubjects(payload);
+      }
+
+      message.success("Subjects updated successfully");
+
+      setViewEditMode(false);
+
+      // Refresh the view with the latest assigned subjects
+      if (viewTeacher) {
+        await handleView(viewTeacher);
+      }
+    } catch (error) {
+      console.error("Failed to update subjects:", error);
+      message.error("Something went wrong while updating subjects");
+    } finally {
+      setViewSaving(false);
+    }
   };
 
   // ===========================
@@ -869,9 +976,42 @@ const TeacherSubject: React.FC = () => {
         }
         open={viewModalOpen}
         onCancel={closeViewModal}
-        footer={null}
         width={isMobile ? "100%" : 950}
         destroyOnClose
+        footer={
+          viewLoading || viewGroups.length === 0
+            ? null
+            : viewEditMode
+            ? [
+                <Button
+                  key="cancel"
+                  icon={<CloseOutlined />}
+                  onClick={cancelViewEditMode}
+                  disabled={viewSaving}
+                >
+                  Cancel
+                </Button>,
+                <Button
+                  key="save"
+                  type="primary"
+                  icon={<SaveOutlined />}
+                  loading={viewSaving}
+                  onClick={handleSaveViewChanges}
+                >
+                  Save Changes
+                </Button>,
+              ]
+            : [
+                <Button
+                  key="update"
+                  type="primary"
+                  icon={<EditOutlined />}
+                  onClick={enterViewEditMode}
+                >
+                  Update
+                </Button>,
+              ]
+        }
       >
         {viewLoading ? (
           <div style={{ textAlign: "center", padding: "40px 0" }}>
@@ -881,6 +1021,13 @@ const TeacherSubject: React.FC = () => {
           <Empty description="No class or subject assigned yet" />
         ) : (
           <Space direction="vertical" style={{ width: "100%" }} size={20}>
+            {viewEditMode && (
+              <Text type="secondary">
+                Uncheck a subject to unassign it, then click{" "}
+                <Text strong>Save Changes</Text>.
+              </Text>
+            )}
+
             {viewGroups.map((group) => (
               <Card
                 key={group.classMasterId}
@@ -922,42 +1069,116 @@ const TeacherSubject: React.FC = () => {
                   Assigned Subjects
                 </Title>
 
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: isMobile
-                      ? "repeat(2, 1fr)"
-                      : "repeat(4, 1fr)",
-                    gap: 12,
-                  }}
-                >
-                  {group.subjects.map((subject) => (
-                    <div
-                      key={subject.subjectMasterId}
-                      style={{
-                        padding: "10px 12px",
-                        borderRadius: 8,
-                        border: "1px solid #d9d9d9",
-                        backgroundColor: "#fafafa",
-                        textAlign: "center",
-                      }}
-                    >
-                      <div style={{ fontWeight: 600, fontSize: 14 }}>
-                        {subject.subjectName}
-                      </div>
+                {viewEditMode ? (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: isMobile
+                        ? "1fr"
+                        : "repeat(2, 1fr)",
+                      gap: 12,
+                    }}
+                  >
+                    {group.subjects.map((subject) => {
+                      const isSelected = (
+                        viewSelectedSubjects[group.classMasterId] || []
+                      ).includes(subject.subjectMasterId);
 
+                      return (
+                        <div
+                          key={subject.subjectMasterId}
+                          onClick={() =>
+                            toggleViewSubject(
+                              group.classMasterId,
+                              subject.subjectMasterId
+                            )
+                          }
+                          style={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: 12,
+                            padding: "10px 12px",
+                            borderRadius: 8,
+                            cursor: "pointer",
+                            border: isSelected
+                              ? "1px solid #1677ff"
+                              : "1px solid #d9d9d9",
+                            backgroundColor: isSelected ? "#e6f4ff" : "#fafafa",
+                            transition: "all 0.2s",
+                          }}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={() =>
+                              toggleViewSubject(
+                                group.classMasterId,
+                                subject.subjectMasterId
+                              )
+                            }
+                          />
+
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 14 }}>
+                              {subject.subjectName}
+                            </div>
+
+                            <div
+                              style={{
+                                fontSize: 12,
+                                color: "#8c8c8c",
+                                marginTop: 2,
+                              }}
+                            >
+                              {subject.subjectCode}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {group.subjects.length === 0 && (
+                      <Text type="secondary">No subjects assigned</Text>
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: isMobile
+                        ? "repeat(2, 1fr)"
+                        : "repeat(4, 1fr)",
+                      gap: 12,
+                    }}
+                  >
+                    {group.subjects.map((subject) => (
                       <div
+                        key={subject.subjectMasterId}
                         style={{
-                          fontSize: 12,
-                          color: "#383232",
-                          marginTop: 2,
+                          padding: "10px 12px",
+                          borderRadius: 8,
+                          border: "1px solid #d9d9d9",
+                          backgroundColor: "#fafafa",
+                          textAlign: "center",
                         }}
                       >
-                        {subject.subjectCode}
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>
+                          {subject.subjectName}
+                        </div>
+
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: "#383232",
+                            marginTop: 2,
+                          }}
+                        >
+                          {subject.subjectCode}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </Card>
             ))}
           </Space>
