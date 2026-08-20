@@ -1,16 +1,21 @@
 import { useState, useEffect, useCallback } from "react";
-import { Button, Drawer, Form, message } from "antd";
-// import { PlusOutlined } from "@ant-design/icons";
-import {  getAllUsers,getUserById, saveUser, updateUser, type UserDTO } from "../../services/userService";
+import { Button, Drawer, Form, message, Input, Row, Col } from "antd";
+import { SearchOutlined, ReloadOutlined } from "@ant-design/icons";
+import { getUserById, saveUser, updateUser, type UserDTO } from "../../services/userService";
 import UserTable from "./userTable";
 import UserForm from "./userForm";
 import { getAllStaticData, type StaticDataResponse } from "../../services/staticDataService";
 import axiosInstance from "../../lib/axios"; // adjust to whatever you use for calls
 
-type UserFilter = "all" | "employee" | "student";
+type UserFilter = "employee" | "student";
 
 const EMPLOYEE_ROLES = ["Teacher", "Accountant", "Admin", "Principal"];
 const STUDENT_ROLES = ["Student"];
+
+interface UserSearchFilters {
+  firstName?: string;
+  lastName?: string;
+}
 
 export default function UserManagement() {
   const [users, setUsers] = useState<UserDTO[]>([]);
@@ -18,13 +23,21 @@ export default function UserManagement() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [tableLoading, setTableLoading] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<UserFilter>("all");
+
+  // Defaults straight to Employee view — no "all" state, no unfiltered fetch on mount
+  const [activeFilter, setActiveFilter] = useState<UserFilter>("employee");
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserDTO | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
   const [staticData, setStaticData] = useState<StaticDataResponse | null>(null);
+
+  // Search bar state
+  const [searchFilters, setSearchFilters] = useState<UserSearchFilters>({
+    firstName: "",
+    lastName: "",
+  });
 
   useEffect(() => {
     const loadStaticData = async () => {
@@ -42,30 +55,22 @@ export default function UserManagement() {
     loadStaticData();
   }, []);
 
-  const fetchUsers = useCallback(async (pageNum: number, size: number) => {
-    setTableLoading(true);
-    try {
-      const response = await getAllUsers(pageNum, size);
-      if (response.success) {
-        setUsers(response.data.Data);
-        setTotal(response.data.total);
-      } else {
-        message.error(response.message || "Failed to load users");
-      }
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || "Failed to load users");
-    } finally {
-      setTableLoading(false);
-    }
-  }, []);
-
   const fetchUsersByFilter = useCallback(
-    async (pageNum: number, size: number, roles: string[]) => {
+    async (
+      pageNum: number,
+      size: number,
+      roles: string[],
+      filters?: UserSearchFilters
+    ) => {
       setTableLoading(true);
       try {
         const response = await axiosInstance.post(
           `http://flintinfotech-dev.in:8443/jnpa-school-project/user/getAllUsersByFilter?page=${pageNum}&size=${size}&paginate=true`,
-          { role: roles }
+          {
+            role: roles,
+            firstName: filters?.firstName || undefined,
+            lastName: filters?.lastName || undefined,
+          }
         );
         if (response.data.success) {
           setUsers(response.data.data.Data);
@@ -82,71 +87,81 @@ export default function UserManagement() {
     []
   );
 
+  const rolesForFilter = (filter: UserFilter) =>
+    filter === "employee" ? EMPLOYEE_ROLES : STUDENT_ROLES;
+
   useEffect(() => {
-    if (activeFilter === "employee") {
-      fetchUsersByFilter(page, pageSize, EMPLOYEE_ROLES);
-    } else if (activeFilter === "student") {
-      fetchUsersByFilter(page, pageSize, STUDENT_ROLES);
-    } else {
-      fetchUsers(page, pageSize);
-    }
-  }, [page, pageSize, activeFilter, fetchUsers, fetchUsersByFilter]);
+    fetchUsersByFilter(page, pageSize, rolesForFilter(activeFilter), searchFilters);
+    // searchFilters intentionally left out of deps — search only fires on button click, not per keystroke
+  }, [page, pageSize, activeFilter, fetchUsersByFilter]);
 
   const handleFilterClick = (filter: UserFilter) => {
     setPage(0);
     setActiveFilter(filter);
+    // Switching between Employee/Student clears any active search
+    setSearchFilters({ firstName: "", lastName: "" });
   };
 
-  // const openAddDrawer = () => {
-  //   setEditingUser(null);
-  //   form.resetFields();
-  //   setDrawerOpen(true);
-  // };
+  const handleFilterChange = (field: keyof UserSearchFilters, value: string) => {
+    setSearchFilters((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSearch = () => {
+    setPage(0);
+    fetchUsersByFilter(0, pageSize, rolesForFilter(activeFilter), searchFilters);
+  };
+
+  const handleResetFilters = () => {
+    const cleared: UserSearchFilters = { firstName: "", lastName: "" };
+    setSearchFilters(cleared);
+    setPage(0);
+    fetchUsersByFilter(0, pageSize, rolesForFilter(activeFilter), cleared);
+  };
 
   const openEditDrawer = async (record: UserDTO) => {
-  try {
-    setTableLoading(true);
+    try {
+      setTableLoading(true);
 
-    const response = await getUserById(record.userId);
+      const response = await getUserById(record.userId);
 
-    console.log("USER DETAILS", response);
+      console.log("USER DETAILS", response);
 
-    if (response.success) {
-      const user = response.data;
+      if (response.success) {
+        const user = response.data;
 
-      setEditingUser(user);
+        setEditingUser(user);
 
-      form.setFieldsValue({
-        userName: user.userName,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        mobileNo: user.mobileNo,
-        role: user.role,
-        section: user.section,
-        medium: user.medium,
+        form.setFieldsValue({
+          userName: user.userName,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          mobileNo: user.mobileNo,
+          role: user.role,
+          section: user.section,
+          medium: user.medium,
 
-        screenIds:
-          user.screens?.map(
-            (screen: any) => screen.screenId
-          ) || [],
-      });
+          screenIds:
+            user.screens?.map(
+              (screen: any) => screen.screenId
+            ) || [],
+        });
 
-      setDrawerOpen(true);
-    } else {
-      message.error(response.message);
+        setDrawerOpen(true);
+      } else {
+        message.error(response.message);
+      }
+    } catch (error: any) {
+      message.error(
+        error?.response?.data?.message ||
+        "Failed to load user"
+      );
+    } finally {
+      setTableLoading(false);
     }
-  } catch (error: any) {
-    message.error(
-      error?.response?.data?.message ||
-      "Failed to load user"
-    );
-  } finally {
-    setTableLoading(false);
-  }
-};
+  };
 
-  const closeDrawer = () => { 
+  const closeDrawer = () => {
     setDrawerOpen(false);
     form.resetFields();
     setEditingUser(null);
@@ -160,7 +175,7 @@ export default function UserManagement() {
         if (response.success) {
           message.success(response.message || "User updated successfully");
           closeDrawer();
-          fetchUsers(page, pageSize);
+          fetchUsersByFilter(page, pageSize, rolesForFilter(activeFilter), searchFilters);
         } else {
           message.error(response.message || "Failed to update user");
         }
@@ -169,7 +184,7 @@ export default function UserManagement() {
         if (response.success) {
           message.success(response.message || "User saved successfully");
           closeDrawer();
-          fetchUsers(page, pageSize);
+          fetchUsersByFilter(page, pageSize, rolesForFilter(activeFilter), searchFilters);
         } else {
           message.error(response.message || "Failed to save user");
         }
@@ -181,29 +196,8 @@ export default function UserManagement() {
     }
   };
 
-  // const handleDelete = async (userId: number) => {
-  //   try {
-  //     const response = await deleteUser(userId);
-  //     if (response.success) {
-  //       message.success(response.message || "User deleted successfully");
-  //       fetchUsers(page, pageSize);
-  //     } else {
-  //       message.error(response.message || "Failed to delete user");
-  //     }
-  //   } catch (error: any) {
-  //     message.error(error?.response?.data?.message || "Failed to delete user");
-  //   }
-  // };
-
   return (
     <div>
-      {/* Add User Button */}
-      {/* <div className="flex justify-end mb-4">
-        <Button type="primary" icon={<PlusOutlined />} onClick={openAddDrawer}>
-          Add User
-        </Button>
-      </div> */}
-
       <div className="flex gap-2 mb-4">
         <Button
           type={activeFilter === "employee" ? "primary" : "default"}
@@ -219,6 +213,40 @@ export default function UserManagement() {
         </Button>
       </div>
 
+      {/* Search Bar */}
+      <Row gutter={[12, 12]} style={{ padding: "0 0 16px" }}>
+        <Col xs={24} sm={12} md={6}>
+          <Input
+            placeholder="First Name"
+            value={searchFilters.firstName}
+            onChange={(e) => handleFilterChange("firstName", e.target.value)}
+            style={{ width: "100%" }}
+            allowClear
+          />
+        </Col>
+
+        <Col xs={24} sm={12} md={6}>
+          <Input
+            placeholder="Last Name"
+            value={searchFilters.lastName}
+            onChange={(e) => handleFilterChange("lastName", e.target.value)}
+            style={{ width: "100%" }}
+            allowClear
+          />
+        </Col>
+
+        <Col xs={24} sm={12} md={6}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
+              Search
+            </Button>
+            <Button icon={<ReloadOutlined />} onClick={handleResetFilters}>
+              Reset
+            </Button>
+          </div>
+        </Col>
+      </Row>
+
       <UserTable
         data={users}
         loading={tableLoading}
@@ -232,9 +260,9 @@ export default function UserManagement() {
           },
         }}
         onEdit={openEditDrawer}
-        // onDelete={handleDelete}
+        filterType={activeFilter}
       />
-      
+
       <Drawer
         title={editingUser ? "Edit User" : "Add New User"}
         open={drawerOpen}

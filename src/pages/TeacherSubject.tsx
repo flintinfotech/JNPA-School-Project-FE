@@ -35,6 +35,7 @@ import {
 
 import { getSubjectsByClassId } from "../services/subjectAssignmentService";
 import { getAllStaticData, type StaticDataResponse } from "../services/staticDataService";
+import { getEmployeeDetailsById } from "../services/userService";
 
 import type {
   TeacherDTO,
@@ -232,11 +233,50 @@ const TeacherSubject: React.FC = () => {
   };
 
   // ===========================
+  // Resolve employeeDetailsId
+  // ===========================
+  // The teacher list comes from the USER endpoint (role=Teacher), whose
+  // records only carry userId — not employeeDetailsId. Assign/View both
+  // need employeeDetailsId, so we resolve it here before using it.
+  const resolveEmployeeDetailsId = async (
+    teacher: TeacherDTO
+  ): Promise<number | null> => {
+    if (teacher.employeeDetailsId) return teacher.employeeDetailsId;
+
+    if (!teacher.userId) {
+      console.error("Teacher record has no userId to resolve from:", teacher);
+      return null;
+    }
+
+    try {
+      const response: any = await getEmployeeDetailsById(teacher.userId);
+      const body = response?.data?.success !== undefined ? response.data : response;
+
+      if (body?.success && body?.data?.employeeDetailsId) {
+        return body.data.employeeDetailsId;
+      }
+
+      console.error("Could not resolve employeeDetailsId for userId:", teacher.userId, body);
+      return null;
+    } catch (error) {
+      console.error("Failed to resolve employeeDetailsId:", error);
+      return null;
+    }
+  };
+
+  // ===========================
   // Edit
   // ===========================
 
-  const handleEdit = (teacher: TeacherDTO) => {
-    setSelectedTeacher(teacher);
+  const handleEdit = async (teacher: TeacherDTO) => {
+    const employeeDetailsId = await resolveEmployeeDetailsId(teacher);
+
+    if (!employeeDetailsId) {
+      message.error("Unable to load this teacher's employee record");
+      return;
+    }
+
+    setSelectedTeacher({ ...teacher, employeeDetailsId });
 
     setDrawerOpen(true);
 
@@ -258,17 +298,44 @@ const TeacherSubject: React.FC = () => {
     setViewLoading(true);
 
     try {
-      const response = await getSubjectsByEmployeeDetailsId(
-        teacher.employeeDetailsId
-      );
+      const employeeDetailsId = await resolveEmployeeDetailsId(teacher);
 
-      console.log("View Subjects Response", response);
+      if (!employeeDetailsId) {
+        message.error("Unable to load this teacher's employee record");
+        setViewLoading(false);
+        return;
+      }
 
-      const data = response.data.data || {};
+      const response = await getSubjectsByEmployeeDetailsId(employeeDetailsId);
+
+      console.log("View Subjects RAW response:", response);
+      console.log("View Subjects response.data:", response.data);
+
+      // Some endpoints return { success, message, data }, others may
+      // return the map directly at the top level — handle both shapes
+      // so we don't silently render an empty state.
+      const body: any = response.data;
+      const data =
+        body?.data && typeof body.data === "object"
+          ? body.data
+          : body && typeof body === "object" && !("success" in body)
+          ? body
+          : {};
+
+      console.log("View Subjects parsed data object:", data);
+      console.log("View Subjects keys:", Object.keys(data));
+
+      if (!data || Object.keys(data).length === 0) {
+        console.warn(
+          "No class/subject data found for employeeDetailsId:",
+          employeeDetailsId
+        );
+      }
 
       const groups: ParsedClassSubjectGroup[] = Object.keys(data).map(
         (key) => {
           const parsed = parseClassMasterKey(key);
+          console.log("Parsed key:", key, "->", parsed);
 
           return {
             ...parsed,
@@ -279,7 +346,7 @@ const TeacherSubject: React.FC = () => {
 
       setViewGroups(groups);
     } catch (error) {
-      console.log(error);
+      console.error("View Subjects error:", error);
       message.error("Unable to load teacher subject details");
     } finally {
       setViewLoading(false);

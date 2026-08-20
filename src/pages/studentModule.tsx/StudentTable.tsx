@@ -45,7 +45,7 @@ export default function StudentTable({
 
   const onView = (record: StudentDTO) => {
     viewForm.setFieldsValue({
-      ...record,
+      ...record, // 👈 includes studentCode automatically
       dob: record.DOB ? dayjs(record.DOB) : null, // 👈 read from DOB
       parentDTO: record.parentDTO || {},
       studentDocuments: (record.studentDocuments || []).map((d: any) => ({
@@ -69,6 +69,12 @@ export default function StudentTable({
   };
 
   const columns = [
+    {
+      title: "Student Code",
+      dataIndex: "studentCode", // 👈 new column
+      key: "studentCode",
+      render: (value: string) => value || "-",
+    },
     {
       title: "First Name",
       dataIndex: "firstName",
@@ -166,6 +172,9 @@ export default function StudentTable({
                   <div>
                     <p className="text-sm font-semibold text-gray-800">
                       {record.firstName} {record.lastName}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Code: {(record as any).studentCode ?? "-"}
                     </p>
                     <p className="text-xs text-gray-500">
                       {record.gender} | DOB: {record.DOB}
