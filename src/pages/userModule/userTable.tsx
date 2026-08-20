@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
-import { Button} from "antd";
-import { EditOutlined, } from "@ant-design/icons";
+import { Button } from "antd";
+import { EditOutlined } from "@ant-design/icons";
 import CommonTable from "../../components/commonTable";
 import type { UserDTO } from "../../services/userService";
+
+type UserFilter = "employee" | "student";
 
 interface UserTableProps {
   data: UserDTO[];
@@ -14,7 +16,7 @@ interface UserTableProps {
     onChange: (page: number, pageSize: number) => void;
   };
   onEdit: (record: UserDTO) => void;
-  onDelete: (userId: number) => void;
+  filterType: UserFilter;
 }
 
 function useIsMobile(breakpoint = 768) {
@@ -31,25 +33,39 @@ function useIsMobile(breakpoint = 768) {
   return isMobile;
 }
 
-
+const getStudentCode = (record: any) => record?.studentCode || record?.StudentCode;
 
 export default function UserTable({
   data,
   loading,
   pagination,
   onEdit,
-  // onDelete,
+  filterType,
 }: UserTableProps) {
   const isMobile = useIsMobile();
-
-  
+  const isStudentView = filterType === "student";
 
   const columns = [
-    {
-      title: "Username",
-      dataIndex: "userName",
-      key: "userName",
-    },
+    // Username only for Employee view; Student Code only for Student view
+    ...(isStudentView
+      ? [
+          // {
+          //   title: "Student Code",
+          //   dataIndex: "studentCode",
+          //   key: "studentCode",
+          //   render: (value: string, record: any) => {
+          //     const studentCode = value || getStudentCode(record);
+          //     return studentCode ?? "-";
+          //   },
+          // },
+        ]
+      : [
+          {
+            title: "Username",
+            dataIndex: "userName",
+            key: "userName",
+          },
+        ]),
     {
       title: "First Name",
       dataIndex: "firstName",
@@ -88,14 +104,6 @@ export default function UserTable({
             size="small"
             onClick={() => onEdit(record)}
           />
-          {/* <Popconfirm
-            title="Are you sure you want to delete this user?"
-            onConfirm={() => onDelete(record.userId)}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Button danger icon={<DeleteOutlined />} size="small" />
-          </Popconfirm> */}
         </div>
       ),
     },
@@ -114,7 +122,7 @@ export default function UserTable({
         )}
 
         {!loading &&
-          data.map((record) => (
+          data.map((record: any) => (
             <div
               key={record.userId}
               className="bg-white rounded-xl shadow-sm border border-gray-100 p-4"
@@ -122,7 +130,9 @@ export default function UserTable({
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <p className="text-sm font-semibold text-gray-800">
-                    {record.userName}
+                    {isStudentView
+                      ? (getStudentCode(record) ?? "-")
+                      : record.userName}
                   </p>
                   <p className="text-xs text-gray-500">
                     {record.firstName} {record.lastName}
@@ -145,14 +155,6 @@ export default function UserTable({
                   size="small"
                   onClick={() => onEdit(record)}
                 />
-                {/* <Popconfirm
-                  title="Are you sure you want to delete this user?"
-                  onConfirm={() => onDelete(record.userId)}
-                  okText="Yes"
-                  cancelText="No"
-                >
-                  <Button danger icon={<DeleteOutlined />} size="small" />
-                </Popconfirm> */}
               </div>
             </div>
           ))}

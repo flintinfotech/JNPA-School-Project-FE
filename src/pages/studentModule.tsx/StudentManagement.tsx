@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { Button, Drawer, Form, message, Input, Select, Space, Row, Col } from "antd";
-import { PlusOutlined, SearchOutlined, ReloadOutlined } from "@ant-design/icons";
+import { Button, Drawer, Form, message, Input, Select, Space, Row, Col, Modal } from "antd";
+import { PlusOutlined, SearchOutlined, ReloadOutlined, CopyOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { deleteStudent, getAllStudents, getStudentById, saveStudent, updateStudent, type StudentDTO } from "../../services/studentService";
 import StudentTable from "./StudentTable";
@@ -29,6 +29,11 @@ export default function StudentManagement() {
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
   const [staticData, setStaticData] = useState<StaticDataResponse | null>(null);
+
+  // Credentials popup state — shown after a successful save
+  // when the backend returns generated login details (userName + password)
+  const [credsModalOpen, setCredsModalOpen] = useState(false);
+  const [credsData, setCredsData] = useState<{ userName: string; password: string } | null>(null);
 
   // Search bar state
   const [searchFilters, setSearchFilters] = useState<StudentSearchFilters>({
@@ -129,8 +134,8 @@ export default function StudentManagement() {
       const s: StudentDTO = response.data;
       setEditingStudent(s);
       form.setFieldsValue({
-        ...s,
-       dob: s.DOB ? dayjs(s.DOB) : null,
+        ...s, // 👈 studentCode (and every other field) comes along automatically
+        dob: s.DOB ? dayjs(s.DOB) : null,
         parentDTO: s.parentDTO || {},
         studentDocuments: (s.studentDocuments || []).map((d) => ({
           ...d,
@@ -151,6 +156,21 @@ export default function StudentManagement() {
     setDrawerOpen(false);
     form.resetFields();
     setEditingStudent(null);
+  };
+
+  const closeCredsModal = () => {
+    setCredsModalOpen(false);
+    setCredsData(null);
+  };
+
+  const handleCopy = async (value: string | undefined, label: string) => {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      message.success(`${label} copied to clipboard`);
+    } catch (err) {
+      message.error(`Failed to copy ${label.toLowerCase()}`);
+    }
   };
 
   const handleFormSubmit = async (values: any) => {
@@ -174,6 +194,17 @@ export default function StudentManagement() {
           message.success(response.message || "Student saved successfully");
           closeDrawer();
           fetchStudents(page, pageSize, searchFilters);
+
+          // If the backend returned generated login credentials
+          // (userName + password), show them in a small popup.
+          const userDto = response.data?.["User DTO"];
+          if (userDto?.userName && userDto?.password) {
+            setCredsData({
+              userName: userDto.userName,
+              password: userDto.password,
+            });
+            setCredsModalOpen(true);
+          }
         } else {
           message.error(response.message || "Failed to save student");
         }
@@ -314,6 +345,50 @@ export default function StudentManagement() {
           staticData={staticData}
         />
       </Drawer>
+
+      {/* Login Credentials popup — shown after a successful save
+          when the backend returns a generated userName + password */}
+      <Modal
+        title="Login Credentials"
+        open={credsModalOpen}
+        onCancel={closeCredsModal}
+        footer={[
+          <Button key="ok" type="primary" onClick={closeCredsModal}>
+            OK
+          </Button>,
+        ]}
+        width={400}
+        destroyOnClose
+      >
+        <Form layout="vertical">
+          <Form.Item label="User Name">
+            <Input
+              value={credsData?.userName}
+              disabled
+              styles={{ input: { color: "#000", WebkitTextFillColor: "#000" } }}
+              suffix={
+                <CopyOutlined
+                  style={{ color: "#1677ff", cursor: "pointer" }}
+                  onClick={() => handleCopy(credsData?.userName, "User Name")}
+                />
+              }
+            />
+          </Form.Item>
+          <Form.Item label="Password">
+            <Input
+              value={credsData?.password}
+              disabled
+              styles={{ input: { color: "#000", WebkitTextFillColor: "#000" } }}
+              suffix={
+                <CopyOutlined
+                  style={{ color: "#1677ff", cursor: "pointer" }}
+                  onClick={() => handleCopy(credsData?.password, "Password")}
+                />
+              }
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }
