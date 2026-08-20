@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "antd";
-import { EditOutlined } from "@ant-design/icons";
+import { EditOutlined, EyeOutlined } from "@ant-design/icons";
 import CommonTable from "../../components/commonTable";
 import type { UserDTO } from "../../services/userService";
 
@@ -16,6 +16,7 @@ interface UserTableProps {
     onChange: (page: number, pageSize: number) => void;
   };
   onEdit: (record: UserDTO) => void;
+  onView: (record: UserDTO) => void;
   filterType: UserFilter;
 }
 
@@ -40,6 +41,7 @@ export default function UserTable({
   loading,
   pagination,
   onEdit,
+  onView,
   filterType,
 }: UserTableProps) {
   const isMobile = useIsMobile();
@@ -48,17 +50,7 @@ export default function UserTable({
   const columns = [
     // Username only for Employee view; Student Code only for Student view
     ...(isStudentView
-      ? [
-          // {
-          //   title: "Student Code",
-          //   dataIndex: "studentCode",
-          //   key: "studentCode",
-          //   render: (value: string, record: any) => {
-          //     const studentCode = value || getStudentCode(record);
-          //     return studentCode ?? "-";
-          //   },
-          // },
-        ]
+      ? []
       : [
           {
             title: "Username",
@@ -98,12 +90,20 @@ export default function UserTable({
       align: "center" as const,
       render: (_: any, record: UserDTO) => (
         <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-          <Button
-            type="primary"
-            icon={<EditOutlined />}
-            size="small"
-            onClick={() => onEdit(record)}
-          />
+          {isStudentView ? (
+            <Button
+              icon={<EyeOutlined />}
+              size="small"
+              onClick={() => onView(record)}
+            />
+          ) : (
+            <Button
+              type="primary"
+              icon={<EditOutlined />}
+              size="small"
+              onClick={() => onEdit(record)}
+            />
+          )}
         </div>
       ),
     },
@@ -149,12 +149,20 @@ export default function UserTable({
               </div>
 
               <div className="flex gap-2 justify-end pt-2 border-t border-gray-50">
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  size="small"
-                  onClick={() => onEdit(record)}
-                />
+                {isStudentView ? (
+                  <Button
+                    icon={<EyeOutlined />}
+                    size="small"
+                    onClick={() => onView(record)}
+                  />
+                ) : (
+                  <Button
+                    type="primary"
+                    icon={<EditOutlined />}
+                    size="small"
+                    onClick={() => onEdit(record)}
+                  />
+                )}
               </div>
             </div>
           ))}

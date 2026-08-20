@@ -18,6 +18,7 @@ interface CommonFormProps {
   onFinish: (values: any) => void;
   submitText?: string;
   loading?: boolean;
+  viewOnly?: boolean;
 }
 
 export default function CommonForm({
@@ -26,9 +27,10 @@ export default function CommonForm({
   onFinish,
   submitText = "Submit",
   loading,
+  viewOnly = false,
 }: CommonFormProps) {
   return (
-    <Form form={form} layout="vertical" onFinish={onFinish}>
+    <Form form={form} layout="vertical" onFinish={onFinish} disabled={viewOnly}>
       {fields.map((field) => (
         <Form.Item
           key={field.name}
@@ -50,7 +52,6 @@ export default function CommonForm({
                 field.mode === "multiple"
                   ? (option) => (
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        {/* <Checkbox checked={option.data.selected ?? false} /> */}
                         {option.label}
                       </div>
                     )
@@ -62,11 +63,13 @@ export default function CommonForm({
           )}
         </Form.Item>
       ))}
-      <Form.Item>
-        <Button type="primary" htmlType="submit" loading={loading} block>
-          {submitText}
-        </Button>
-      </Form.Item>
+      {!viewOnly && (
+        <Form.Item>
+          <Button type="primary" htmlType="submit" loading={loading} block>
+            {submitText}
+          </Button>
+        </Form.Item>
+      )}
     </Form>
   );
-}   
+}

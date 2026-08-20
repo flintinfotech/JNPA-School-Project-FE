@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import { Button, Drawer, Form, message, Input, Row, Col } from "antd";
+import { Button, Drawer, Form, message, Input, Row, Col, Modal } from "antd";
 import { SearchOutlined, ReloadOutlined } from "@ant-design/icons";
 import { getUserById, saveUser, updateUser, type UserDTO } from "../../services/userService";
 import UserTable from "./userTable";
 import UserForm from "./userForm";
+import UserViewer from "./UserViewer";
 import { getAllStaticData, type StaticDataResponse } from "../../services/staticDataService";
 import axiosInstance from "../../lib/axios"; // adjust to whatever you use for calls
 
@@ -32,6 +33,10 @@ export default function UserManagement() {
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
   const [staticData, setStaticData] = useState<StaticDataResponse | null>(null);
+
+  // Popup view (read-only) state — used for the Students "view" action
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [viewUser, setViewUser] = useState<UserDTO | null>(null);
 
   // Search bar state
   const [searchFilters, setSearchFilters] = useState<UserSearchFilters>({
@@ -140,6 +145,8 @@ export default function UserManagement() {
           role: user.role,
           section: user.section,
           medium: user.medium,
+          standard: user.standard,
+          division: user.division,
 
           screenIds:
             user.screens?.map(
@@ -159,6 +166,33 @@ export default function UserManagement() {
     } finally {
       setTableLoading(false);
     }
+  };
+
+  const openViewModal = async (record: UserDTO) => {
+    try {
+      setTableLoading(true);
+
+      const response = await getUserById(record.userId);
+
+      if (response.success) {
+        setViewUser(response.data);
+        setViewModalOpen(true);
+      } else {
+        message.error(response.message);
+      }
+    } catch (error: any) {
+      message.error(
+        error?.response?.data?.message ||
+        "Failed to load user"
+      );
+    } finally {
+      setTableLoading(false);
+    }
+  };
+
+  const closeViewModal = () => {
+    setViewModalOpen(false);
+    setViewUser(null);
   };
 
   const closeDrawer = () => {
@@ -260,6 +294,7 @@ export default function UserManagement() {
           },
         }}
         onEdit={openEditDrawer}
+        onView={openViewModal}
         filterType={activeFilter}
       />
 
@@ -278,6 +313,17 @@ export default function UserManagement() {
           staticData={staticData}
         />
       </Drawer>
+
+      <Modal
+        title="Student Details"
+        open={viewModalOpen}
+        onCancel={closeViewModal}
+        footer={null}
+        width={800}
+        destroyOnClose
+      >
+        <UserViewer user={viewUser} />
+      </Modal>
     </div>
   );
 }
