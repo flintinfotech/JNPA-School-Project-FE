@@ -98,6 +98,7 @@ export default function Sidebar({ isOpen, onClose }: Props) {
               if (isAdminNavGroup(item)) {
                 return item.children.length > 0;
               }
+              if (item.hideInSidebar) return false;
 
               return screenNames.includes(item.label.toLowerCase());
             })

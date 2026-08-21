@@ -26,6 +26,7 @@ export interface AdminNavLink {
   label: string; // shown in sidebar AND as header title
   path: string; // flat route, e.g. "/users"
   icon: any;
+  hideInSidebar?: boolean;
 }
 
 // A collapsible group of nav links (e.g. "Administrator" -> Users, Employee Details)
@@ -90,9 +91,12 @@ export const adminNavItems: AdminNavEntry[] = [
        {label: "Teacher Subjects",path: "/teacher-subjects",icon: FaChalkboardTeacher,},
     ],
   },
-  // {
-  //   label: "Profile", path:"/profile",icon:ImProfile 
-  // },
+  {
+  label: "Profile",
+  path: "/profile",
+  icon: ImProfile,
+  hideInSidebar: true,
+},
   {
     label:"Student Profile", path:"/student-profile",icon:PiStudentFill
   },
