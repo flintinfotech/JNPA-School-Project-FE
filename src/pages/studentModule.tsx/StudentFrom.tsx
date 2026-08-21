@@ -93,6 +93,18 @@ const detectMimeType = (base64: string): string => {
   if (base64.startsWith("R0lGODlh") || base64.startsWith("R0lGODdh")) return "image/gif";
   return "application/octet-stream";
 };
+const getCurrentAcademicYear = (): string => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth() + 1; // Jan = 1
+
+  // April (4) is start of new academic year in India
+  if (month >= 4) {
+    return `${year}-${year + 1}`;
+  } else {
+    return `${year - 1}-${year}`;
+  }
+};
 
 export default function StudentForm({
   form,
@@ -584,16 +596,15 @@ export default function StudentForm({
                     key={key}
                     className="border border-gray-200 rounded-lg p-4 mb-4 relative"
                   >
-                    {fields.length > 1 && (
+                    <div className="flex justify-end">
                       <Button
                         danger
                         type="text"
                         htmlType="button"
-                        icon={<DeleteOutlined />}
-                        className="absolute top-2 right-2"
+                        icon={<DeleteOutlined style={{ fontSize: 18 }} />}
                         onClick={() => remove(name)}
                       />
-                    )}
+                    </div>
 
                     <Form.Item {...restField} name={[name, "academicInformationId"]} hidden>
                       <Input />
@@ -666,26 +677,48 @@ export default function StudentForm({
                       </Form.Item>
                       <Form.Item
                         {...restField}
+                        label="Medium"
+                        name={[name, "medium"]}
+                        rules={[{ required: true, message: "Medium required" }]}
+                      >
+                        <Select placeholder="Select medium" allowClear>
+                          {staticData?.["medium"]?.map((medium) => (
+                            <Option key={medium} value={medium}>
+                              {medium}
+                            </Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
                         label="Academic Year"
                         name={[name, "academicYear"]}
-                        rules={[{ required: true, message: "Academic year required" }]}
+                        // rules={[{ required: true, message: "Academic year required" }]}
+                        initialValue={getCurrentAcademicYear()}
                       >
-                        <Input placeholder="e.g. 2025-2026" />
+                        <Input disabled className="bg-gray-100" />
                       </Form.Item>
                     </div>
                   </div>
                 ))}
-                {fields.length === 0 && (
-                  <Button
-                    htmlType="button"
-                    type="dashed"
-                    icon={<PlusOutlined />}
-                    onClick={() => add()}
-                    block
-                  >
-                    Add Academic Info
-                  </Button>
-                )}
+                <Button
+                  htmlType="button"
+                  type="dashed"
+                  icon={<PlusOutlined />}
+                  onClick={() =>
+                    add({
+                      admissionNo: undefined,
+                      admissionDate: null,
+                      standard: undefined,
+                      division: undefined,
+                      rollNo: "",
+                      academicYear: getCurrentAcademicYear(),
+                    })
+                  }
+                  block
+                >
+                  Add Academic Info
+                </Button>
               </>
             )}
           </Form.List>

@@ -2,15 +2,18 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { Spin, Empty, message } from "antd";
 import {
-    HiArrowLeft,
     HiCheckCircle,
     HiXCircle,
-    HiPrinter,
     HiDownload,
     HiUser,
 } from "react-icons/hi";
 import dayjs from "dayjs";
-import { getStudentById, getStudentByUserId, type StudentDTO } from "../services/studentService";
+import {
+    getStudentById,
+    getStudentByUserId,
+    getStudentResults, // 👈 add this export in studentService.ts
+    type StudentDTO,
+} from "../services/studentService";
 
 // ===========================
 // Base64 -> file helpers (same approach used in StudentForm.tsx)
@@ -50,6 +53,35 @@ const detectMimeType = (base64: string): string => {
         return "image/gif";
     return "application/octet-stream";
 };
+
+// ===========================
+// Result types (matches your API response shape)
+// ===========================
+interface ExamSubjectDTO {
+    ExamSubjectsId: number;
+    maximumMarks: number;
+    obtainedMarks: number;
+    resultId: number;
+    status: string;
+    subjectName: string;
+}
+
+interface StudentResultDTO {
+    academicYear: string;
+    division: string;
+    startDate: string;
+    endDate: string;
+    examSubjectsDTOS: ExamSubjectDTO[];
+    examType: string;
+    grade: string;
+    obtainedMarks: number;
+    percentage: number;
+    resultId: number;
+    resultStatus: string;
+    standard: string;
+    studentId: number;
+    totalMarks: number;
+}
 
 // ===========================
 // Small building blocks
@@ -120,6 +152,89 @@ function Card({
     );
 }
 
+function ResultCard({ result }: { result: StudentResultDTO }) {
+    const isPass = result.resultStatus === "PASS";
+
+    return (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                    <h2 className="text-base font-semibold text-indigo-700">
+                        {result.examType.replace(/_/g, " ")} Result
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                        {result.standard} - {result.division} &bull; {result.academicYear}
+                    </p>
+                </div>
+                <span
+                    className={`text-xs font-semibold px-3 py-1 rounded-full ${isPass
+                        ? "bg-green-50 text-green-600 border border-green-200"
+                        : "bg-red-50 text-red-500 border border-red-200"
+                        }`}
+                >
+                    {result.resultStatus}
+                </span>
+            </div>
+
+            <div className="p-5">
+                <div className="grid grid-cols-4 gap-4 mb-5 pb-5 border-b border-slate-100">
+                    <InfoStat value={`${result.obtainedMarks}/${result.totalMarks}`} label="Marks" />
+                    <InfoStat value={`${result.percentage}%`} label="Percentage" />
+                    <InfoStat value={result.grade} label="Grade" />
+                    <InfoStat
+                        value={dayjs(result.startDate).format("DD-MM-YYYY")}
+                        label="Exam Start"
+                    />
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="text-left text-slate-500 border-b border-slate-100">
+                                <th className="py-2 font-medium">Subject</th>
+                                <th className="py-2 font-medium text-center">Obtained</th>
+                                <th className="py-2 font-medium text-center">Maximum</th>
+                                <th className="py-2 font-medium text-right">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {result.examSubjectsDTOS.map((sub) => (
+                                <tr
+                                    key={sub.ExamSubjectsId}
+                                    className="border-b border-slate-50 last:border-b-0"
+                                >
+                                    <td className="py-2.5 text-slate-700">{sub.subjectName}</td>
+                                    <td className="py-2.5 text-center text-slate-700">
+                                        {sub.obtainedMarks}
+                                    </td>
+                                    <td className="py-2.5 text-center text-slate-500">
+                                        {sub.maximumMarks}
+                                    </td>
+                                    <td className="py-2.5 text-right">
+                                        <span
+                                            className={`text-xs font-semibold px-2 py-0.5 rounded-full ${sub.status === "PASS"
+                                                ? "bg-green-50 text-green-600"
+                                                : "bg-red-50 text-red-500"
+                                                }`}
+                                        >
+                                            {sub.status}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                <p className="text-xs text-slate-400 mt-4">
+                    Exam period: {dayjs(result.startDate).format("DD-MM-YYYY")} to{" "}
+                    {dayjs(result.endDate).format("DD-MM-YYYY")}
+                </p>
+            </div>
+        </div>
+    );
+}
+
 export default function StudentProfile() {
     const { studentId: studentIdFromRoute } = useParams<{ studentId: string }>();
     const navigate = useNavigate();
@@ -129,6 +244,7 @@ export default function StudentProfile() {
 
     const [student, setStudent] = useState<StudentDTO | null>(null);
     const [loading, setLoading] = useState(true);
+    const [results, setResults] = useState<StudentResultDTO[]>([]);
 
     useEffect(() => {
         const fetchStudent = async () => {
@@ -137,10 +253,8 @@ export default function StudentProfile() {
                 let response;
 
                 if (studentIdFromRoute) {
-                    // Admin flow — opened from the Students table with an explicit ID
                     response = await getStudentById(studentIdFromRoute);
                 } else {
-                    // Parent flow — plain /student-profile, fetch by the logged-in userId
                     const storedUser = localStorage.getItem("user");
                     const parsedUser = storedUser ? JSON.parse(storedUser) : null;
                     const userId = parsedUser?.userId;
@@ -170,12 +284,23 @@ export default function StudentProfile() {
         fetchStudent();
     }, [studentIdFromRoute]);
 
-    // Also catch the browser/device back button (not just an in-page click).
-    // Parents landing on this page get an extra history entry pointing to
-    // itself, so the first "back" press is intercepted and redirected to
-    // the parent login screen instead of leaving the app in a weird state.
-    // NOTE: this must run before any early returns below (Rules of Hooks —
-    // hooks can't be called conditionally / after a return).
+    useEffect(() => {
+        if (!student?.studentId) return;
+
+        const fetchResults = async () => {
+            try {
+                const response = await getStudentResults(student.studentId);
+                if (response?.success) {
+                    setResults([response.data]); // API returns a single result object
+                }
+            } catch (error) {
+                console.error("Failed to load results:", error);
+            }
+        };
+
+        fetchResults();
+    }, [student?.studentId]);
+
     useEffect(() => {
         if (!isParent) return;
 
@@ -218,7 +343,6 @@ export default function StudentProfile() {
 
     const isActive = student.status === "ACTIVE";
 
-    // division completeness — drives the checklist ticks/crosses
     const personalInfoComplete = Boolean(
         student.firstName && student.lastName && student.gender && student.DOB
     );
@@ -234,8 +358,6 @@ export default function StudentProfile() {
         academicInfoComplete &&
         documentsComplete;
 
-    // const handlePrint = () => window.print();
-
     const handleViewDocument = (doc: (typeof documents)[number]) => {
         if (!doc.document) {
             message.warning("No file attached for this document.");
@@ -245,31 +367,20 @@ export default function StudentProfile() {
         if (url) window.open(url, "_blank");
         else message.error("Could not open this document.");
     };
+
     const handleBack = () => {
         if (isParent) {
-            onLogout();                                    // clears token/user/screens (keeps isParent so route guards know where to send them)
-            navigate("/parent-login", { replace: true });  // sends them straight to the parent login screen
+            onLogout();
+            navigate("/parent-login", { replace: true });
         } else {
-            navigate(-1);                                   // admin table flow — keep existing behavior
+            navigate(-1);
         }
     };
 
     return (
         <div className="min-h-screen bg-slate-50 px-4 py-6 sm:px-8">
-
-            <div className="max-w-6xl mx-auto mb-4 print:hidden">
-                <button
-                    onClick={handleBack}
-                    className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-indigo-700 cursor-pointer"
-                >
-                    <HiArrowLeft size={16} />
-                    Back
-                </button>
-            </div>
-
             <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-5 items-start">
-                {/* ── Left: Student overview (sticky on desktop) ─── */}
-                <div className="md:sticky md:top-6 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="sticky top-6 self-start bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div className="px-5 py-4 border-b border-slate-100">
                         <h2 className="text-base font-semibold text-indigo-700">
                             {student.firstName} {student.lastName}
@@ -295,10 +406,7 @@ export default function StudentProfile() {
                                 label="Admission No"
                             />
                             <InfoStat value={student.gender || "-"} label="Gender" />
-                            <InfoStat
-                                value={academic?.rollNo || "-"}
-                                label="Roll No"
-                            />
+                            <InfoStat value={academic?.rollNo || "-"} label="Roll No" />
                             <div className="text-center">
                                 <p
                                     className={`text-base font-semibold ${isActive ? "text-green-600" : "text-red-500"
@@ -329,20 +437,11 @@ export default function StudentProfile() {
                             <ChecklistRow label="Academic Info" complete={academicInfoComplete} />
                             <ChecklistRow label="Uploaded Documents" complete={documentsComplete} />
                         </div>
-
-                        {/* <button
-                            onClick={handlePrint}
-                            className="mt-5 w-full inline-flex items-center justify-center gap-1.5 text-sm font-medium text-indigo-600 border border-indigo-200 rounded-lg py-2 hover:bg-indigo-50 cursor-pointer print:hidden"
-                        >
-                            <HiPrinter size={16} />
-                            Print Profile
-                        </button> */}
                     </div>
                 </div>
 
-                {/* ── Right: all recorded information, in cards ──── */}
+                {/* ── Right: all recorded information — SCROLLABLE ──── */}
                 <div className="md:col-span-2 flex flex-col gap-5">
-                    {/* Personal Information */}
                     <Card title="Personal Information">
                         <InfoRow label="First Name" value={student.firstName} />
                         <InfoRow label="Last Name" value={student.lastName} />
@@ -361,7 +460,6 @@ export default function StudentProfile() {
                         <InfoRow label="Status" value={student.status} />
                     </Card>
 
-                    {/* Parent / Guardian */}
                     <Card title="Parent / Guardian">
                         <InfoRow label="Name" value={parent?.name} />
                         <InfoRow label="Relation" value={parent?.relation} />
@@ -379,8 +477,6 @@ export default function StudentProfile() {
                         />
                     </Card>
 
-                    {/* Academic Information — one sub-card per record, since a
-                        student can have multiple years of academic history */}
                     {academicRecords.length === 0 ? (
                         <Card title="Academic Information">
                             <p className="text-sm text-slate-400">
@@ -418,12 +514,9 @@ export default function StudentProfile() {
                         ))
                     )}
 
-                    {/* Documents */}
                     <Card title="Documents">
                         {documents.length === 0 ? (
-                            <p className="text-sm text-slate-400">
-                                No documents uploaded.
-                            </p>
+                            <p className="text-sm text-slate-400">No documents uploaded.</p>
                         ) : (
                             <div className="space-y-2">
                                 {documents.map((doc, idx) => (
@@ -432,9 +525,7 @@ export default function StudentProfile() {
                                         className="flex items-center justify-between py-2 border-b border-slate-50 last:border-b-0"
                                     >
                                         <div>
-                                            <p className="text-sm text-slate-700">
-                                                {doc.documentName}
-                                            </p>
+                                            <p className="text-sm text-slate-700">{doc.documentName}</p>
                                             {doc.uploadDate && (
                                                 <p className="text-xs text-slate-400">
                                                     {dayjs(doc.uploadDate).format("DD-MM-YYYY")}
@@ -453,6 +544,11 @@ export default function StudentProfile() {
                             </div>
                         )}
                     </Card>
+
+                    {/* Results */}
+                    {results.map((res) => (
+                        <ResultCard key={res.resultId} result={res} />
+                    ))}
                 </div>
             </div>
         </div>
