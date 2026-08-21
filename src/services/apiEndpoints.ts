@@ -137,4 +137,7 @@ getAllAdmissionInquiryCount: () =>
   
 getStudentByUserId: (userId: number | string) =>          
     `/jnpa-school-project/student/getStudentByUserId/${userId}`,
+
+getAllCurrentYearStudentsData: (page: number, size: number) =>
+  `/jnpa-school-project/student/getAllCurrentYearStudentsData?page=${page}&size=${size}&sort=studentId,desc&paginate=true`,
 };

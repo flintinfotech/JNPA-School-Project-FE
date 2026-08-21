@@ -1,71 +1,56 @@
 import axiosInstance from "../lib/axios";
 import { apiEndpoints } from "./apiEndpoints";
 
-export interface ResultStudentDTO {
+export interface AcademicInformationDTO {
+  academicInformationId: number;
+  academicYear: string;
+  admissionDate: string;
+  admissionNo: number;
+  division: string;
+  medium: string;
+  rollNo: string;
+  standard: string;
   studentId: number;
-  studentCode?: string;
-  firstName: string;
-  lastName: string;
-  gender?: string;
-  DOB?: string;
-  address?: string;
-  bloodGroup?: string;
-  category?: string;
-  status?: string;
-  medium?: string;
-  academicInformation?: {
-    standard?: string;
-    section?: string;
-    rollNo?: string;
-    academicYear?: string;
-    medium?: string;
-  }[];
-  [key: string]: any;
 }
 
+export interface ResultStudentDTO {
+  studentId: number;
+  studentCode: string;
+  firstName: string;
+  lastName: string;
+  gender: string;
+  status: string;
+  academicInformation?: AcademicInformationDTO[];
+}
+
+// Payload the API expects — only these 3 fields
 export interface ResultFilters {
-  rollNo?: string;
-  firstName?: string;
-  lastName?: string;
   standard?: string;
   division?: string;
   medium?: string;
 }
 
-export interface GetAllStudentsResponse {
+export interface CurrentYearStudentsResponse {
   success: boolean;
-  message?: string;
+  message: string;
   data: {
-    Data: ResultStudentDTO[];
-    Total: number;
+    data: ResultStudentDTO[];
+    totalPages: number;
+    pageSize: number;
+    currentPage: number;
+    totalElements: number;
   };
+  timestamp: string;
 }
 
-/**
- * Fetch students filtered by roll no / first name / last name, optionally
- * scoped to a class (standard / section / medium) — used to restrict a
- * teacher's Results screen to only their assigned class.
- * The filter object is sent as the POST body, page & size as query params
- * (matching how getAllStudentsByFilter is called elsewhere in the app).
- */
-export const getStudentsByClassFilter = async (
+export const getAllCurrentYearStudentsData = async (
   page: number,
   size: number,
   filters: ResultFilters
-): Promise<GetAllStudentsResponse> => {
-  const payload = {
-    rollNo: filters.rollNo || undefined,
-    firstName: filters.firstName || undefined,
-    lastName: filters.lastName || undefined,
-    standard: filters.standard || undefined,
-    division: filters.division || undefined,
-    medium: filters.medium || undefined,
-  };
-
-  const response = await axiosInstance.post(
-    apiEndpoints.getAllStudents(page, size),
-    payload
+): Promise<CurrentYearStudentsResponse> => {
+  const response = await axiosInstance.post<CurrentYearStudentsResponse>(
+    apiEndpoints.getAllCurrentYearStudentsData(page, size),
+    filters
   );
-
   return response.data;
 };

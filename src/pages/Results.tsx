@@ -1,20 +1,16 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   Card,
-  Row,
-  Col,
-  Input,
   Button,
   Table,
   Tag,
   Grid,
   message,
 } from "antd";
-import { SearchOutlined, ReloadOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 
 import {
-  getStudentsByClassFilter,
+  getAllCurrentYearStudentsData,
   type ResultStudentDTO,
   type ResultFilters,
 } from "../services/Resultservice"; // 👈 adjust path to match where you place resultService.ts
@@ -29,13 +25,13 @@ const getStandard = (record: ResultStudentDTO) =>
   record.academicInformation?.[0]?.standard || "-";
 
 const getDivision = (record: ResultStudentDTO) =>
-  record.academicInformation?.[0]?.section || "-";
+  record.academicInformation?.[0]?.division || "-";
 
 const getRollNo = (record: ResultStudentDTO) =>
   record.academicInformation?.[0]?.rollNo || "-";
 
 const getMedium = (record: ResultStudentDTO) =>
-  record.medium || record.academicInformation?.[0]?.medium || "-";
+  record.academicInformation?.[0]?.medium || "-";
 
 export default function Results() {
   const screens = useBreakpoint();
@@ -63,9 +59,6 @@ export default function Results() {
   });
 
   const [filters, setFilters] = useState<ResultFilters>({
-    rollNo: "",
-    firstName: "",
-    lastName: "",
     ...classScope,
   });
 
@@ -77,14 +70,18 @@ export default function Results() {
     ) => {
       setLoading(true);
       try {
-        const response = await getStudentsByClassFilter(page - 1, pageSize, appliedFilters);
+        const response = await getAllCurrentYearStudentsData(
+          page - 1,
+          pageSize,
+          appliedFilters
+        );
 
         if (response.success) {
-          setStudents(response.data?.Data || []);
+          setStudents(response.data?.data || []);
           setPagination({
             current: page,
             pageSize,
-            total: response.data?.Total || 0,
+            total: response.data?.totalElements || 0,
           });
         } else {
           message.error(response.message || "Failed to load results");
@@ -104,24 +101,10 @@ export default function Results() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleFilterChange = (field: keyof ResultFilters, value: string) => {
-    setFilters((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSearch = () => {
-    loadResults(1, pagination.pageSize, filters);
-  };
-
   const handleReset = () => {
-    // Only the free-text search fields get cleared. A teacher's class scope
-    // (standard/section/medium) stays pinned so Reset can't be used to
-    // escape their assigned class.
-    const cleared: ResultFilters = {
-      rollNo: "",
-      firstName: "",
-      lastName: "",
-      ...classScope,
-    };
+    // Class scope (standard/division/medium) stays pinned for a teacher so
+    // Reset can't be used to escape their assigned class.
+    const cleared: ResultFilters = { ...classScope };
     setFilters(cleared);
     loadResults(1, pagination.pageSize, cleared);
   };
