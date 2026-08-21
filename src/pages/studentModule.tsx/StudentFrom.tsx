@@ -93,6 +93,18 @@ const detectMimeType = (base64: string): string => {
   if (base64.startsWith("R0lGODlh") || base64.startsWith("R0lGODdh")) return "image/gif";
   return "application/octet-stream";
 };
+const getCurrentAcademicYear = (): string => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth() + 1; // Jan = 1
+
+  // April (4) is start of new academic year in India
+  if (month >= 4) {
+    return `${year}-${year + 1}`;
+  } else {
+    return `${year - 1}-${year}`;
+  }
+};
 
 export default function StudentForm({
   form,
@@ -271,7 +283,7 @@ export default function StudentForm({
               label="Aadhar No"
               name="aadhaarCard"
               rules={[
-                { required: false, message: "Aadhaar number is required", whitespace: true },
+                {  whitespace: true },
                 {
                   pattern: /^\d{4}-\d{4}-\d{4}$/,
                   message: "Aadhaar number must be exactly 12 digits",
@@ -681,9 +693,10 @@ export default function StudentForm({
                         {...restField}
                         label="Academic Year"
                         name={[name, "academicYear"]}
-                        rules={[{ required: true, message: "Academic year required" }]}
+                        // rules={[{ required: true, message: "Academic year required" }]}
+                        initialValue={getCurrentAcademicYear()}
                       >
-                        <Input placeholder="e.g. 2025-2026" />
+                        <Input disabled className="bg-gray-100" />
                       </Form.Item>
                     </div>
                   </div>
@@ -699,7 +712,7 @@ export default function StudentForm({
                       standard: undefined,
                       division: undefined,
                       rollNo: "",
-                      academicYear: "",
+                      academicYear: getCurrentAcademicYear(),
                     })
                   }
                   block
