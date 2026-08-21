@@ -107,7 +107,7 @@ export default function User({
                   label="Employee Code"
                   name="employeeCode"
 
-                  rules={[{ required: true }]}
+                  // rules={[{ required: true }]}
                 >
                   <Input
                     disabled

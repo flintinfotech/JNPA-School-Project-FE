@@ -26,6 +26,7 @@ export interface UserDTO {
   userId: number;
   userName: string;
   studentId?: number;
+  division?: string | null;
 }
 
 

@@ -61,6 +61,7 @@ import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import ParentLoginPage from "./pages/ParentLoginPage";
 import StudentProfile from "./pages/StudentProfile";
+import Results from "./pages/Results";
 
 export default function App() {
 
@@ -85,11 +86,12 @@ export default function App() {
   const isDashboardPage = location.pathname === "/dashboard";
   const isProfilePage = location.pathname === "/profile";
   const isStudentProfile = location.pathname.startsWith("/student-profile");
+  const isResultsPage = location.pathname === "/results";
 
   const isHomePage = location.pathname === "/";
 
-  const hideNavbarFooter = isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage || isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage || isStudentProfile;
-  const hideFooter = isHomePage || isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage || isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage || isStudentProfile;
+  const hideNavbarFooter = isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage || isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage || isStudentProfile|| isResultsPage;
+  const hideFooter = isHomePage || isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage || isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage || isStudentProfile|| isResultsPage;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -140,6 +142,7 @@ export default function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<Profile />} />
            <Route path="/student-profile/:studentId?" element={<StudentProfile/>}/>
+            <Route path="/results" element={<Results />} />
           </Route>
 
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />

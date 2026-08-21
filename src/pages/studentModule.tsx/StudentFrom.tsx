@@ -283,7 +283,7 @@ export default function StudentForm({
               label="Aadhar No"
               name="aadhaarCard"
               rules={[
-                {  whitespace: true },
+                // { required: false, message: "Aadhaar number is required", whitespace: true },
                 {
                   pattern: /^\d{4}-\d{4}-\d{4}$/,
                   message: "Aadhaar number must be exactly 12 digits",
