@@ -90,11 +90,14 @@ export const adminNavItems: AdminNavEntry[] = [
        {label: "Teacher Subjects",path: "/teacher-subjects",icon: FaChalkboardTeacher,},
     ],
   },
-  {
-    label: "Profile", path:"/profile",icon:ImProfile 
-  },
+  // {
+  //   label: "Profile", path:"/profile",icon:ImProfile 
+  // },
   {
     label:"Student Profile", path:"/student-profile",icon:PiStudentFill
+  },
+  {
+    label:"Results", path:"/results",icon:PiClipboardText
   },
  
 ];

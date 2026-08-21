@@ -2,12 +2,16 @@ import { useState } from "react";
 import { loginUser } from "../services/authService";
 
 interface AuthUser {
-  username: string;
-  role?: string;
   userId?: number;
+  userName: string;
+  role?: string;
   studentId?: number;
+  standard?: string | null;
   section?: string | null;
   medium?: string | null;
+  division?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
 }
 
 interface AuthState {
@@ -59,7 +63,9 @@ export function useAuth() {
         localStorage.setItem(
           "user",
           JSON.stringify(response.data.userDTO)
-        ); if (isParent) {
+        );
+
+        if (isParent) {
           localStorage.setItem("isParent", "true");
           localStorage.setItem(
             "screens",
@@ -81,13 +87,7 @@ export function useAuth() {
 
         setAuth({
           isAuthenticated: true,
-          user: {
-            username: response.data.userDTO?.userName || username,
-            role: response.data.userDTO?.role,
-            userId: response.data.userDTO?.userId,
-            section: response.data.userDTO?.section,
-            medium: response.data.userDTO?.medium,
-          },
+          user: response.data.userDTO,
         });
 
         return null;

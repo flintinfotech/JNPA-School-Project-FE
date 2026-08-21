@@ -4,6 +4,7 @@ import { PaperClipOutlined } from "@ant-design/icons";
 import { getEmployeeDetailsById } from "../services/userService";
 import { getSubjectsByEmployeeDetailsId } from "../services/teacherSubjectService";
 
+
 // ===========================
 // Types (matches actual API response)
 // ===========================
@@ -12,6 +13,10 @@ interface LoggedInUser {
   userId: number;
   userName: string;
   role: string;
+  medium?: string | null;
+  standard?: string | null;
+  section?: string | null;
+  division?: string | null;
 }
 
 interface UserDocumentDTO {
@@ -254,6 +259,9 @@ export default function Profile() {
       <InfoRow label="Name" value={fullName || loggedInUser.userName} />
       <InfoRow label="Username" value={loggedInUser.userName} />
       <InfoRow label="Role" value={loggedInUser.role} />
+       <InfoRow label="Medium" value={loggedInUser.medium} />
+        <InfoRow label="Standard" value={loggedInUser.standard} />
+      <InfoRow label="Division" value={loggedInUser.division} />
     </TabPanel>
   );
 
