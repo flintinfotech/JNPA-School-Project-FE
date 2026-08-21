@@ -391,7 +391,7 @@ export default function StudentProfile() {
                                 key={rec.academicInformationId ?? idx}
                                 title={
                                     rec.standard
-                                        ? `Std. ${rec.standard}${rec.division ? ` - ${rec.division}` : ""}`
+                                        ? `Std.${rec.standard.replace(" Standard", "")}${rec.division ? ` Division-${rec.division}` : ""}`
                                         : `Academic Record ${idx + 1}`
                                 }
                                 subtitle={rec.academicYear ? `Academic Year: ${rec.academicYear}` : undefined}
