@@ -6,7 +6,10 @@ import {
   Tag,
   Grid,
   message,
+  Space,
+  Tooltip,
 } from "antd";
+import { EyeOutlined, EditOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 
 import {
@@ -15,6 +18,7 @@ import {
   type ResultFilters,
 } from "../services/Resultservice"; // 👈 adjust path to match where you place resultService.ts
 import { useAuth } from "../hooks/useAuth"; // 👈 adjust path to match your project
+import ResultDrawer from "./ResultDrawer"; // 👈 adjust path to wherever you place ResultDrawer.tsx
 
 const { useBreakpoint } = Grid;
 
@@ -32,6 +36,9 @@ const getRollNo = (record: ResultStudentDTO) =>
 
 const getMedium = (record: ResultStudentDTO) =>
   record.academicInformation?.[0]?.medium || "-";
+
+const getAcademicYear = (record: ResultStudentDTO) =>
+  record.academicInformation?.[0]?.academicYear || "-";
 
 export default function Results() {
   const screens = useBreakpoint();
@@ -61,6 +68,13 @@ export default function Results() {
   const [filters, setFilters] = useState<ResultFilters>({
     ...classScope,
   });
+
+  // --- Drawer state (View / Edit) ---
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerMode, setDrawerMode] = useState<"view" | "edit">("view");
+  const [selectedStudent, setSelectedStudent] = useState<ResultStudentDTO | null>(
+    null
+  );
 
   const loadResults = useCallback(
     async (
@@ -107,6 +121,22 @@ export default function Results() {
     const cleared: ResultFilters = { ...classScope };
     setFilters(cleared);
     loadResults(1, pagination.pageSize, cleared);
+  };
+
+  const openDrawer = (record: ResultStudentDTO, mode: "view" | "edit") => {
+    setSelectedStudent(record);
+    setDrawerMode(mode);
+    setDrawerOpen(true);
+  };
+
+  const closeDrawer = () => {
+    setDrawerOpen(false);
+    setSelectedStudent(null);
+  };
+
+  const handleSaved = () => {
+    closeDrawer();
+    loadResults(pagination.current, pagination.pageSize, filters);
   };
 
   const columns: ColumnsType<ResultStudentDTO> = [
@@ -169,6 +199,29 @@ export default function Results() {
         ) : (
           "-"
         ),
+    },
+    {
+      title: "Actions",
+      align: "center",
+      width: 100,
+      render: (_, record) => (
+        <Space>
+          <Tooltip title="View Result">
+            <Button
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => openDrawer(record, "view")}
+            />
+          </Tooltip>
+          <Tooltip title="Edit Result">
+            <Button
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => openDrawer(record, "edit")}
+            />
+          </Tooltip>
+        </Space>
+      ),
     },
   ];
 
@@ -255,6 +308,23 @@ export default function Results() {
                   <p>Gender: {record.gender || "-"}</p>
                   <p>Medium: {getMedium(record)}</p>
                 </div>
+
+                <div className="flex justify-end gap-2 mt-3">
+                  <Button
+                    size="small"
+                    icon={<EyeOutlined />}
+                    onClick={() => openDrawer(record, "view")}
+                  >
+                    View
+                  </Button>
+                  <Button
+                    size="small"
+                    icon={<EditOutlined />}
+                    onClick={() => openDrawer(record, "edit")}
+                  >
+                    Edit
+                  </Button>
+                </div>
               </div>
             ))}
 
@@ -300,6 +370,19 @@ export default function Results() {
           }}
         />
       )}
+
+      <ResultDrawer
+        open={drawerOpen}
+        mode={drawerMode}
+        studentId={selectedStudent?.studentId ?? null}
+        studentInfo={{
+          standard: selectedStudent ? getStandard(selectedStudent) : undefined,
+          division: selectedStudent ? getDivision(selectedStudent) : undefined,
+          academicYear: selectedStudent ? getAcademicYear(selectedStudent) : undefined,
+        }}
+        onClose={closeDrawer}
+        onSaved={handleSaved}
+      />
     </Card>
   );
 }
