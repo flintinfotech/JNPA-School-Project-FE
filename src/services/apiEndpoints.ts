@@ -140,4 +140,12 @@ getStudentByUserId: (userId: number | string) =>
 
 getAllCurrentYearStudentsData: (page: number, size: number) =>
   `/jnpa-school-project/student/getAllCurrentYearStudentsData?page=${page}&size=${size}&sort=studentId,desc&paginate=true`,
+
+  // ===============================
+  // Student Result
+  // ===============================
+  saveStudentResult: () => `/jnpa-school-project/studentResult/saveStudentResult`,
+  updateStudentResult: () => `/jnpa-school-project/studentResult/updateStudentResult`,
+  deleteStudentResult: (resultId: number | string) =>
+    `/jnpa-school-project/studentResult/deleteStudentResult/${resultId}`,
 };

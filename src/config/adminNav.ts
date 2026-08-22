@@ -89,6 +89,7 @@ export const adminNavItems: AdminNavEntry[] = [
     children: [
        { label: "Subject Assignment", path: "/subject-assignment", icon: MdAssignment },
        {label: "Teacher Subjects",path: "/teacher-subjects",icon: FaChalkboardTeacher,},
+        {label:"Results", path:"/results",icon:PiClipboardText},
     ],
   },
   {
@@ -100,8 +101,6 @@ export const adminNavItems: AdminNavEntry[] = [
   {
     label:"Student Profile", path:"/student-profile",icon:PiStudentFill
   },
-  {
-    label:"Results", path:"/results",icon:PiClipboardText
-  },
+ 
  
 ];
