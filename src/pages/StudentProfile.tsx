@@ -8,7 +8,12 @@ import {
     HiUser,
 } from "react-icons/hi";
 import dayjs from "dayjs";
-import { getStudentById, getStudentByUserId, type StudentDTO } from "../services/studentService";
+import {
+    getStudentById,
+    getStudentByUserId,
+    type StudentDTO,
+    type StudentResultDTO,
+} from "../services/studentService";
 
 // ===========================
 // Base64 -> file helpers (same approach used in StudentForm.tsx)
@@ -100,20 +105,127 @@ function Card({
     title,
     subtitle,
     children,
+    className = "",
 }: {
     title: string;
     subtitle?: string;
     children: React.ReactNode;
+    className?: string;
 }) {
     return (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className={`bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full ${className}`}>
             <div className="px-5 py-4 border-b border-slate-100">
                 <h2 className="text-base font-semibold text-indigo-700">{title}</h2>
                 {subtitle && (
                     <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>
                 )}
             </div>
-            <div className="p-5">{children}</div>
+            <div className="p-5 flex-1">{children}</div>
+        </div>
+    );
+}
+
+function ResultCard({ results }: { results: StudentResultDTO[] }) {
+    if (!results || results.length === 0) {
+        return (
+            <Card title="Result">
+                <p className="text-sm text-slate-400">No result published yet.</p>
+            </Card>
+        );
+    }
+
+    return (
+        <div className="flex flex-col gap-5">
+            {results.map((res, idx) => {
+                const isPass = res.resultStatus === "PASS";
+                const examLabel = res.examType?.replace(/_/g, " ") || `Result ${idx + 1}`;
+                return (
+                    <Card
+                        key={res.resultId ?? idx}
+                        title={examLabel}
+                        subtitle={res.academicYear ? `Academic Year: ${res.academicYear}` : undefined}
+                    >
+                        <div className="flex items-start justify-between gap-3 mb-4">
+                            <p className="text-sm text-slate-600">
+                                {res.standard ? `Std.${res.standard.replace(" Standard", "")}` : ""}
+                                {res.division ? ` (${res.division})` : ""}
+                            </p>
+                            <span
+                                className={`text-xs font-semibold px-2.5 py-1 rounded-full ${isPass
+                                    ? "bg-green-50 text-green-600"
+                                    : "bg-red-50 text-red-500"
+                                    }`}
+                            >
+                                {res.resultStatus}
+                            </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                            <InfoRow
+                                label="Start Date"
+                                value={res.startDate ? dayjs(res.startDate).format("DD-MM-YYYY") : undefined}
+                            />
+                            <InfoRow
+                                label="End Date"
+                                value={res.endDate ? dayjs(res.endDate).format("DD-MM-YYYY") : undefined}
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-3 mb-4">
+                            <InfoStat
+                                value={`${res.obtainedMarks ?? "-"}/${res.totalMarks ?? "-"}`}
+                                label="Marks"
+                            />
+                            <InfoStat
+                                value={res.percentage !== undefined ? `${res.percentage}%` : "-"}
+                                label="Percentage"
+                            />
+                            <InfoStat value={res.grade || "-"} label="Grade" />
+                        </div>
+
+                        {res.examSubjectsDTOS && res.examSubjectsDTOS.length > 0 && (
+                            <div className="overflow-hidden rounded-lg border border-slate-100">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="bg-slate-50 text-slate-500 text-xs">
+                                            <th className="text-left font-medium px-3 py-2">Subject</th>
+                                            <th className="text-right font-medium px-3 py-2">Obtained</th>
+                                            <th className="text-right font-medium px-3 py-2">Max</th>
+                                            <th className="text-right font-medium px-3 py-2">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {res.examSubjectsDTOS.map((subj, sIdx) => (
+                                            <tr
+                                                key={subj.ExamSubjectsId ?? sIdx}
+                                                className="border-t border-slate-100"
+                                            >
+                                                <td className="px-3 py-2 text-slate-700">{subj.subjectName}</td>
+                                                <td className="px-3 py-2 text-right text-slate-800 font-medium">
+                                                    {subj.obtainedMarks}
+                                                </td>
+                                                <td className="px-3 py-2 text-right text-slate-500">
+                                                    {subj.maximumMarks}
+                                                </td>
+                                                <td className="px-3 py-2 text-right">
+                                                    <span
+                                                        className={`text-xs font-semibold ${subj.status === "PASS"
+                                                            ? "text-green-600"
+                                                            : "text-red-500"
+                                                            }`}
+                                                    >
+                                                        {subj.status}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </Card>
+                );
+            })}
         </div>
     );
 }
@@ -209,6 +321,7 @@ export default function StudentProfile() {
     const academicRecords = student.academicInformation || [];
     const parent = student.parentDTO;
     const documents = student.studentDocuments || [];
+    const results = student.studentResultDTOS || [];
 
     const photoUrl = student.profileImg
         ? base64ToBlobUrl(student.profileImg, detectMimeType(student.profileImg))
@@ -328,129 +441,133 @@ export default function StudentProfile() {
                             <ChecklistRow label="Uploaded Documents" complete={documentsComplete} />
                         </div>
 
-                        {/* <button
-                            onClick={handlePrint}
-                            className="mt-5 w-full inline-flex items-center justify-center gap-1.5 text-sm font-medium text-indigo-600 border border-indigo-200 rounded-lg py-2 hover:bg-indigo-50 cursor-pointer print:hidden"
-                        >
-                            <HiPrinter size={16} />
-                            Print Profile
-                        </button> */}
+
                     </div>
                 </div>
 
                 {/* ── Right: all recorded information, in cards ──── */}
-                <div className="md:col-span-2 flex flex-col gap-5">
-                    {/* Personal Information */}
-                    <Card title="Personal Information">
-                        <InfoRow label="First Name" value={student.firstName} />
-                        <InfoRow label="Last Name" value={student.lastName} />
-                        <InfoRow label="Gender" value={student.gender} />
-                        <InfoRow
-                            label="Date of Birth"
-                            value={student.DOB ? dayjs(student.DOB).format("DD-MM-YYYY") : undefined}
-                        />
-                        <InfoRow label="Blood Group" value={student.bloodGroup} />
-                        <InfoRow label="Category" value={student.category} />
-                        <InfoRow label="Religion" value={student.religion} />
-                        <InfoRow label="Caste" value={student.caste} />
-                        <InfoRow label="Nationality" value={student.nationality} />
-                        <InfoRow label="Aadhaar No" value={student.aadhaarCard} />
-                        <InfoRow label="Address" value={student.address} />
-                        <InfoRow label="Status" value={student.status} />
-                    </Card>
-
-                    {/* Parent / Guardian */}
-                    <Card title="Parent / Guardian">
-                        <InfoRow label="Name" value={parent?.name} />
-                        <InfoRow label="Relation" value={parent?.relation} />
-                        <InfoRow label="Occupation" value={parent?.occupation} />
-                        <InfoRow label="Phone" value={parent?.phone} />
-                        <InfoRow label="Email" value={parent?.email} />
-                        <InfoRow label="Address" value={parent?.address} />
-                        <InfoRow
-                            label="Annual Income"
-                            value={
-                                parent?.annualIncome !== undefined && parent?.annualIncome !== null
-                                    ? `₹ ${parent.annualIncome}`
-                                    : undefined
-                            }
-                        />
-                    </Card>
-
-                    {/* Academic Information — one sub-card per record, since a
-                        student can have multiple years of academic history */}
-                    {academicRecords.length === 0 ? (
-                        <Card title="Academic Information">
-                            <p className="text-sm text-slate-400">
-                                No academic information added yet.
-                            </p>
+                <div className="md:col-span-2 grid grid-cols-1 lg:grid-cols-7 gap-5 items-start">
+                    {/* Left sub-column: Personal Info, Parent/Guardian, Academic, Documents
+                        — flows independently of the Result card so its height never
+                        pushes these cards down. */}
+                    <div className="lg:col-span-3 flex flex-col gap-5">
+                        <Card title="Personal Information">
+                            <InfoRow label="First Name" value={student.firstName} />
+                            <InfoRow label="Last Name" value={student.lastName} />
+                            <InfoRow label="Gender" value={student.gender} />
+                            <InfoRow
+                                label="Date of Birth"
+                                value={student.DOB ? dayjs(student.DOB).format("DD-MM-YYYY") : undefined}
+                            />
+                            <InfoRow label="Blood Group" value={student.bloodGroup} />
+                            <InfoRow label="Category" value={student.category} />
+                            <InfoRow label="Religion" value={student.religion} />
+                            <InfoRow label="Caste" value={student.caste} />
+                            <InfoRow label="Nationality" value={student.nationality} />
+                            <InfoRow label="Aadhaar No" value={student.aadhaarCard} />
+                            <InfoRow label="Address" value={student.address} />
+                            <InfoRow label="Status" value={student.status} />
                         </Card>
-                    ) : (
-                        academicRecords.map((rec, idx) => (
-                            <Card
-                                key={rec.academicInformationId ?? idx}
-                                title={
-                                    rec.standard
-                                        ? `Std.${rec.standard.replace(" Standard", "")}${rec.division ? ` Division-${rec.division}` : ""}`
-                                        : `Academic Record ${idx + 1}`
-                                }
-                                subtitle={rec.academicYear ? `Academic Year: ${rec.academicYear}` : undefined}
-                            >
-                                <InfoRow label="Admission No" value={rec.admissionNo} />
-                                <InfoRow
-                                    label="Admission Date"
-                                    value={rec.admissionDate ? dayjs(rec.admissionDate).format("DD-MM-YYYY") : undefined}
-                                />
-                                <InfoRow label="Standard" value={rec.standard} />
-                                <InfoRow label="Division" value={rec.division} />
-                                <InfoRow label="Roll No" value={rec.rollNo} />
-                                <InfoRow label="Academic Year" value={rec.academicYear} />
-                                <InfoRow label="Blood Group" value={rec.bloodGroup} />
-                                <InfoRow label="Category" value={rec.category} />
-                                <InfoRow label="Caste" value={rec.caste} />
-                                <InfoRow
-                                    label="Date of Birth"
-                                    value={rec.dob ? dayjs(rec.dob).format("DD-MM-YYYY") : undefined}
-                                />
-                            </Card>
-                        ))
-                    )}
 
-                    {/* Documents */}
-                    <Card title="Documents">
-                        {documents.length === 0 ? (
-                            <p className="text-sm text-slate-400">
-                                No documents uploaded.
-                            </p>
+                        {/* Parent / Guardian */}
+                        <Card title="Parent / Guardian">
+                            <InfoRow label="Name" value={parent?.name} />
+                            <InfoRow label="Relation" value={parent?.relation} />
+                            <InfoRow label="Occupation" value={parent?.occupation} />
+                            <InfoRow label="Phone" value={parent?.phone} />
+                            <InfoRow label="Email" value={parent?.email} />
+                            <InfoRow label="Address" value={parent?.address} />
+                            <InfoRow
+                                label="Annual Income"
+                                value={
+                                    parent?.annualIncome !== undefined && parent?.annualIncome !== null
+                                        ? `₹ ${parent.annualIncome}`
+                                        : undefined
+                                }
+                            />
+                        </Card>
+
+                        {/* Academic Information — one sub-card per record, since a
+                            student can have multiple years of academic history */}
+                        {academicRecords.length === 0 ? (
+                            <Card title="Academic Information">
+                                <p className="text-sm text-slate-400">
+                                    No academic information added yet.
+                                </p>
+                            </Card>
                         ) : (
-                            <div className="space-y-2">
-                                {documents.map((doc, idx) => (
-                                    <div
-                                        key={doc.studentDocumentId ?? idx}
-                                        className="flex items-center justify-between py-2 border-b border-slate-50 last:border-b-0"
-                                    >
-                                        <div>
-                                            <p className="text-sm text-slate-700">
-                                                {doc.documentName}
-                                            </p>
-                                            {doc.uploadDate && (
-                                                <p className="text-xs text-slate-400">
-                                                    {dayjs(doc.uploadDate).format("DD-MM-YYYY")}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <button
-                                            onClick={() => handleViewDocument(doc)}
-                                            className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 cursor-pointer print:hidden"
-                                        >
-                                            <HiDownload size={14} />
-                                            View
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
+                            academicRecords.map((rec, idx) => (
+                                <Card
+                                    key={rec.academicInformationId ?? idx}
+                                    title={
+                                        rec.standard
+                                            ? `Std.${rec.standard.replace(" Standard", "")}${rec.division ? ` Division-${rec.division}` : ""}`
+                                            : `Academic Record ${idx + 1}`
+                                    }
+                                    subtitle={rec.academicYear ? `Academic Year: ${rec.academicYear}` : undefined}
+                                >
+                                    <InfoRow label="Admission No" value={rec.admissionNo} />
+                                    <InfoRow
+                                        label="Admission Date"
+                                        value={rec.admissionDate ? dayjs(rec.admissionDate).format("DD-MM-YYYY") : undefined}
+                                    />
+                                    <InfoRow label="Standard" value={rec.standard} />
+                                    <InfoRow label="Division" value={rec.division} />
+                                    <InfoRow label="Roll No" value={rec.rollNo} />
+                                    <InfoRow label="Academic Year" value={rec.academicYear} />
+                                    <InfoRow label="Blood Group" value={rec.bloodGroup} />
+                                    <InfoRow label="Category" value={rec.category} />
+                                    <InfoRow label="Caste" value={rec.caste} />
+                                    <InfoRow
+                                        label="Date of Birth"
+                                        value={rec.dob ? dayjs(rec.dob).format("DD-MM-YYYY") : undefined}
+                                    />
+                                </Card>
+                            ))
                         )}
-                    </Card>
+
+                        {/* Documents */}
+                        <Card title="Documents">
+                            {documents.length === 0 ? (
+                                <p className="text-sm text-slate-400">
+                                    No documents uploaded.
+                                </p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {documents.map((doc, idx) => (
+                                        <div
+                                            key={doc.studentDocumentId ?? idx}
+                                            className="flex items-center justify-between py-2 border-b border-slate-50 last:border-b-0"
+                                        >
+                                            <div>
+                                                <p className="text-sm text-slate-700">
+                                                    {doc.documentName}
+                                                </p>
+                                                {doc.uploadDate && (
+                                                    <p className="text-xs text-slate-400">
+                                                        {dayjs(doc.uploadDate).format("DD-MM-YYYY")}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <button
+                                                onClick={() => handleViewDocument(doc)}
+                                                className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 cursor-pointer print:hidden"
+                                            >
+                                                <HiDownload size={14} />
+                                                View
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </Card>
+                    </div>
+
+                    {/* Right sub-column: Result — sticky so it stays in view
+                        alongside the (taller) left sub-column as the page scrolls. */}
+                    <div className="lg:col-span-4 lg:sticky lg:top-6">
+                        <ResultCard results={results} />
+                    </div>
                 </div>
             </div>
         </div>

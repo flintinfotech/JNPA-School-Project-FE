@@ -43,9 +43,10 @@ interface StudentFormProps {
   loading: boolean;
   viewOnly?: boolean;
   staticData: StaticDataResponse | null;
+    results?: any[];
 }
 
-const tabKeys = ["details", "parents", "documents", "academic"];
+const BASE_TAB_KEYS = ["details", "parents", "documents", "academic"];
 
 const fileToBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -112,12 +113,23 @@ export default function StudentForm({
   isEditing,
   loading,
   viewOnly = false,
-  staticData
+  staticData,
+  results: resultsProp,
 }: StudentFormProps) {
   const [activeTab, setActiveTab] = useState("details");
 
+  // Result tab is read-only info, so only show it in the view-only modal
+  const tabKeys = viewOnly ? [...BASE_TAB_KEYS, "result"] : BASE_TAB_KEYS;
+
   const documentsWatch: any[] = Form.useWatch("studentDocuments", form) || [];
   const profileImgWatch: string | null = Form.useWatch("profileImg", form);
+  // Form.useWatch("studentResultDTOS", ...) was unreliable right after the
+  // view modal opens (destroyOnClose remounts the form before the watch
+  // picks up the freshly-set value), so prefer the results passed in
+  // directly as a prop (StudentTable already fetches and passes these),
+  // falling back to the form value only if the prop wasn't supplied.
+  const formResultsWatch: any[] = Form.useWatch("studentResultDTOS", form) || [];
+  const resultsWatch: any[] = resultsProp && resultsProp.length > 0 ? resultsProp : formResultsWatch;
 
   const photoUrl = profileImgWatch
     ? base64ToBlobUrl(profileImgWatch, detectMimeType(profileImgWatch))
@@ -152,6 +164,7 @@ export default function StudentForm({
     parents: ["parentDTO"],
     documents: ["studentDocuments"],
     academic: ["academicInformation"],
+    result: [],
   };
 
   const goNext = async () => {
@@ -723,6 +736,114 @@ export default function StudentForm({
             )}
           </Form.List>
         </Tabs.TabPane>
+
+        {/* Result (view-only) */}
+        {viewOnly && (
+          <Tabs.TabPane tab="Result" key="result" forceRender>
+            {resultsWatch.length === 0 ? (
+              <p className="text-sm text-gray-400">No result published yet.</p>
+            ) : (
+              <div className="space-y-4">
+                {resultsWatch.map((res: any, idx: number) => {
+                  const isPass = res.resultStatus === "PASS";
+                  return (
+                    <div
+                      key={res.resultId ?? idx}
+                      className="border border-gray-200 rounded-lg p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-800">
+                            {res.examType?.replace(/_/g, " ")}
+                            {res.standard ? ` — Std.${String(res.standard).replace(" Standard", "")}` : ""}
+                            {res.division ? ` (${res.division})` : ""}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Academic Year: {res.academicYear || "-"}
+                          </p>
+                        </div>
+                        <span
+                          className={`text-xs font-semibold px-2.5 py-1 rounded-full ${isPass
+                            ? "bg-green-50 text-green-600"
+                            : "bg-red-50 text-red-500"
+                            }`}
+                        >
+                          {res.resultStatus}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
+                        <div>
+                          <p className="text-xs text-gray-400">Start Date</p>
+                          <p className="font-medium text-gray-700">
+                            {res.startDate ? dayjs(res.startDate).format("DD-MM-YYYY") : "-"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400">End Date</p>
+                          <p className="font-medium text-gray-700">
+                            {res.endDate ? dayjs(res.endDate).format("DD-MM-YYYY") : "-"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400">Marks</p>
+                          <p className="font-medium text-gray-700">
+                            {res.obtainedMarks ?? "-"}/{res.totalMarks ?? "-"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400">Percentage / Grade</p>
+                          <p className="font-medium text-gray-700">
+                            {res.percentage !== undefined ? `${res.percentage}%` : "-"} ({res.grade || "-"})
+                          </p>
+                        </div>
+                      </div>
+
+                      {res.examSubjectsDTOS && res.examSubjectsDTOS.length > 0 && (
+                        <div className="overflow-hidden rounded-lg border border-gray-100">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="bg-gray-50 text-gray-500 text-xs">
+                                <th className="text-left font-medium px-3 py-2">Subject</th>
+                                <th className="text-right font-medium px-3 py-2">Obtained</th>
+                                <th className="text-right font-medium px-3 py-2">Max</th>
+                                <th className="text-right font-medium px-3 py-2">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {res.examSubjectsDTOS.map((subj: any, sIdx: number) => (
+                                <tr
+                                  key={subj.ExamSubjectsId ?? sIdx}
+                                  className="border-t border-gray-100"
+                                >
+                                  <td className="px-3 py-2 text-gray-700">{subj.subjectName}</td>
+                                  <td className="px-3 py-2 text-right text-gray-800 font-medium">
+                                    {subj.obtainedMarks}
+                                  </td>
+                                  <td className="px-3 py-2 text-right text-gray-500">
+                                    {subj.maximumMarks}
+                                  </td>
+                                  <td className="px-3 py-2 text-right">
+                                    <span
+                                      className={`text-xs font-semibold ${subj.status === "PASS" ? "text-green-600" : "text-red-500"
+                                        }`}
+                                    >
+                                      {subj.status}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Tabs.TabPane>
+        )}
       </Tabs>
       <ConfigProvider componentDisabled={false}>
         <div className="flex justify-between gap-2 mt-4 pt-4 border-t border-gray-100">
@@ -734,7 +855,7 @@ export default function StudentForm({
             Back
           </Button>
 
-          {activeTab !== "academic" ? (
+          {activeTab !== tabKeys[tabKeys.length - 1] ? (
             <Button htmlType="button" type="primary" onClick={goNext}>
               Next
             </Button>

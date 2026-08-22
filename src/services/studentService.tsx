@@ -37,6 +37,32 @@ export interface AcademicInformationDTO {
   dob: string;
 }
 
+export interface ExamSubjectDTO {
+  ExamSubjectsId?: number;
+  resultId?: number;
+  subjectName: string;
+  maximumMarks: number;
+  obtainedMarks: number;
+  status: string; // "PASS" | "FAIL"
+}
+
+export interface StudentResultDTO {
+  resultId?: number;
+  studentId?: number;
+  academicYear: string;
+  standard: string;
+  division: string;
+  examType: string; // e.g. "UNIT_TEST"
+  startDate?: string;
+  endDate?: string;
+  totalMarks: number;
+  obtainedMarks: number;
+  percentage: number;
+  grade: string;
+  resultStatus: string; // "PASS" | "FAIL"
+  examSubjectsDTOS: ExamSubjectDTO[];
+}
+
 export interface StudentDTO {
   studentId?: number;
   firstName: string;
@@ -55,6 +81,7 @@ export interface StudentDTO {
   parentDTO: ParentDTO;
   studentDocuments: StudentDocumentDTO[];
   academicInformation: AcademicInformationDTO[];
+  studentResultDTOS?: StudentResultDTO[];
 }
 
 export interface StudentFilter {
