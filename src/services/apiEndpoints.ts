@@ -141,3 +141,4 @@ getStudentByUserId: (userId: number | string) =>
 getAllCurrentYearStudentsData: (page: number, size: number) =>
   `/jnpa-school-project/student/getAllCurrentYearStudentsData?page=${page}&size=${size}&sort=studentId,desc&paginate=true`,
 };
+
