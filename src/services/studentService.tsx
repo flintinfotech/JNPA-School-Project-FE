@@ -22,6 +22,14 @@ export interface StudentDocumentDTO {
   document: string | null; // base64
 }
 
+export interface StudentAchievementDTO {
+  academicYear?: string;
+  achievementDescription?: string;
+  achievementName?: string;
+  studentAchievementId?: number;
+  studentId?: number;
+}
+
 export interface AcademicInformationDTO {
   academicInformationId?: number;
   studentId?: number;
@@ -82,6 +90,7 @@ export interface StudentDTO {
   studentDocuments: StudentDocumentDTO[];
   academicInformation: AcademicInformationDTO[];
   studentResultDTOS?: StudentResultDTO[];
+  studentAchievementsDTOS?: StudentAchievementDTO[];
 }
 
 export interface StudentFilter {

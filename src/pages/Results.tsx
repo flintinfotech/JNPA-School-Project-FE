@@ -216,6 +216,7 @@ export default function Results() {
           <Tooltip title="Edit Result">
             <Button
               size="small"
+               type="primary"
               icon={<EditOutlined />}
               onClick={() => openDrawer(record, "edit")}
             />

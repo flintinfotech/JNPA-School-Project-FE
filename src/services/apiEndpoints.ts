@@ -148,4 +148,30 @@ getAllCurrentYearStudentsData: (page: number, size: number) =>
   updateStudentResult: () => `/jnpa-school-project/studentResult/updateStudentResult`,
   deleteStudentResult: (resultId: number | string) =>
     `/jnpa-school-project/studentResult/deleteStudentResult/${resultId}`,
+
+  // Student Achievements
+saveStudentAchievement: () =>
+  `/jnpa-school-project/studentAchievements/saveStudentAchievements`,
+
+updateStudentAchievement: () =>
+  "/jnpa-school-project/studentAchievements/updateStudentAchievements",
+deleteStudentAchievement: (
+  studentAchievementId: number
+) =>
+  `/jnpa-school-project/studentAchievements/deleteStudentAchievements/${studentAchievementId}`,
+
+  // ===============================
+  // Academic Calendar
+  // ===============================
+  saveAcademicCalendarEvent: () =>
+    `/jnpa-school-project/academicCalendarEvents/saveAcademicCalendarEvent`,
+
+  // 👇 TODO: add these once the corresponding endpoints exist on the backend
+  // (naming follows the same convention as the other modules above)
+  // updateAcademicCalendarEvent: () =>
+  //   `/jnpa-school-project/academicCalendarEvents/updateAcademicCalendarEvent`,
+  // deleteAcademicCalendarEvent: (academicCalendarId: number | string) =>
+  //   `/jnpa-school-project/academicCalendarEvents/deleteAcademicCalendarEvent/${academicCalendarId}`,
+  // getAllAcademicCalendarEventsByFilter: (page: number, size: number) =>
+  //   `/jnpa-school-project/academicCalendarEvents/getAllAcademicCalendarEventsByFilter?page=${page}&size=${size}&paginate=true`,
 };
