@@ -7,6 +7,8 @@ import { CgWebsite } from "react-icons/cg";
 import { BsFillClipboard2DataFill } from "react-icons/bs";
 import { MdAssignmentTurnedIn } from "react-icons/md";
 import { GrCircleInformation } from "react-icons/gr";
+import { RiMedalLine } from "react-icons/ri";
+import { SlCalender } from "react-icons/sl";
 import {
   PiBookOpenText,
   PiCalendarBlank,
@@ -20,6 +22,7 @@ import {
 import { MdClass } from "react-icons/md";
 
 import { ImProfile } from "react-icons/im";
+import { Label } from "recharts";
 
 // A single flat/clickable nav link
 export interface AdminNavLink {
@@ -90,6 +93,8 @@ export const adminNavItems: AdminNavEntry[] = [
        { label: "Subject Assignment", path: "/subject-assignment", icon: MdAssignment },
        {label: "Teacher Subjects",path: "/teacher-subjects",icon: FaChalkboardTeacher,},
         {label:"Results", path:"/results",icon:PiClipboardText},
+        {label:"Achievements",path:"/achievements",icon:RiMedalLine },
+        {label:"Academic calendar", path:"/academic-calender", icon:SlCalender},
     ],
   },
   {

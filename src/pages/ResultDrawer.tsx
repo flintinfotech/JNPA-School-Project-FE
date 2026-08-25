@@ -767,16 +767,6 @@ export default function ResultDrawer({
         styles={{
           body: { background: "#fff6ed", padding: "20px 24px" },
         }}
-      //   extra={
-      //     !isView && (
-      //       <Space>
-      //         <Button onClick={handleClose}>Cancel</Button>
-      //         <Button type="primary" loading={saving} onClick={handleSave}>
-      //           Save
-      //         </Button>
-      //       </Space>
-      //     )
-      //   }
       >
         <Spin spinning={loading}>
           <div style={{ marginBottom: 24 }}>
