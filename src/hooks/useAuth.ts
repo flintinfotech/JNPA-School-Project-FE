@@ -17,6 +17,7 @@ interface AuthUser {
 interface AuthState {
   isAuthenticated: boolean;
   user: AuthUser | null;
+  academicYear: AcademicYear | null;
 }
 
 interface AcademicYear {
@@ -28,10 +29,12 @@ export function useAuth() {
   const [auth, setAuth] = useState<AuthState>(() => {
     const token = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
+    const storedAcademicYear = localStorage.getItem("academicYear");
 
     return {
       isAuthenticated: !!token,
       user: token && storedUser ? JSON.parse(storedUser) : null,
+      academicYear: storedAcademicYear ? JSON.parse(storedAcademicYear) : null,
     };
   });
 
@@ -88,6 +91,7 @@ export function useAuth() {
         setAuth({
           isAuthenticated: true,
           user: response.data.userDTO,
+          academicYear,
         });
 
         return null;
@@ -117,6 +121,7 @@ export function useAuth() {
     setAuth({
       isAuthenticated: false,
       user: null,
+      academicYear: null,
     });
   };
 

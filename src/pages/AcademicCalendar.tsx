@@ -21,6 +21,11 @@ import {
   type AcademicCalendarEventDTO,
   type AcademicCalendarEventType,
 } from "../services/Academiccalendarservice";
+import { useAuth } from "../hooks/useAuth";
+
+// Roles allowed to add/edit/delete calendar events. Compared case-insensitively
+// since the backend/localStorage role string casing can vary (e.g. "ADMIN" vs "Admin").
+const MANAGE_ROLES = ["ADMIN", "PRINCIPAL"];
 
 const { Option } = Select;
 
@@ -55,9 +60,14 @@ interface EventFormValues {
 
 // Large batch size — this view shows everything for the visible month plus
 // the filtered list, not a paged table, so we pull a generous page once.
-const BATCH_SIZE = 200;
+const BATCH_SIZE = 20;
 
 export default function AcademicCalendar() {
+  const { user } = useAuth();
+  const canManage = MANAGE_ROLES.includes(
+    (user?.role || "").toUpperCase()
+  );
+
   const [events, setEvents] = useState<AcademicCalendarEventDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -219,14 +229,16 @@ export default function AcademicCalendar() {
     <div className="bg-[#F3F4F7] p-6 rounded-2xl">
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-2xl font-bold text-gray-900">Calendar</h1>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={openModal}
-          className="!bg-[#22C55E] hover:!bg-[#1EA34E] !border-none !rounded-full !h-9 !px-5 !font-medium"
-        >
-          Add New
-        </Button>
+        {canManage && (
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={openModal}
+            className="!bg-[#22C55E] hover:!bg-[#1EA34E] !border-none !rounded-full !h-9 !px-5 !font-medium"
+          >
+            Add New
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-col lg:flex-row gap-5 items-start">
@@ -331,7 +343,7 @@ export default function AcademicCalendar() {
                     <th className="font-medium pb-3 pr-4">Date</th>
                     <th className="font-medium pb-3 pr-4">Event Name</th>
                     <th className="font-medium pb-3">Type</th>
-                    <th className="font-medium pb-3"></th>
+                    {canManage && <th className="font-medium pb-3"></th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -358,31 +370,33 @@ export default function AcademicCalendar() {
                           {TYPE_META[event.eventType]?.label ?? event.eventType}
                         </span>
                       </td>
-                      <td className="py-3 rounded-r-lg text-right pr-2 align-middle">
-                        <div className="inline-flex items-center gap-6">
-                          <button
-                            onClick={() => openEditModal(event)}
-                            className="text-xs font-medium text-[#3B82F6] hover:underline"
-                          >
-                            Edit
-                          </button>
-                          <Popconfirm
-                            title="Delete this event?"
-                            description={`"${event.eventTitle}" will be permanently removed.`}
-                            onConfirm={() => handleDelete(event)}
-                            okText="Delete"
-                            okButtonProps={{
-                              danger: true,
-                              loading: deletingId === event.academicCalendarId,
-                            }}
-                            cancelText="Cancel"
-                          >
-                            <button className="text-xs font-medium text-red-500 hover:underline">
-                              Delete
+                      {canManage && (
+                        <td className="py-3 rounded-r-lg text-right pr-2 align-middle">
+                          <div className="inline-flex items-center gap-6">
+                            <button
+                              onClick={() => openEditModal(event)}
+                              className="text-xs font-medium text-[#3B82F6] hover:underline"
+                            >
+                              Edit
                             </button>
-                          </Popconfirm>
-                        </div>
-                      </td>
+                            <Popconfirm
+                              title="Delete this event?"
+                              description={`"${event.eventTitle}" will be permanently removed.`}
+                              onConfirm={() => handleDelete(event)}
+                              okText="Delete"
+                              okButtonProps={{
+                                danger: true,
+                                loading: deletingId === event.academicCalendarId,
+                              }}
+                              cancelText="Cancel"
+                            >
+                              <button className="text-xs font-medium text-red-500 hover:underline">
+                                Delete
+                              </button>
+                            </Popconfirm>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

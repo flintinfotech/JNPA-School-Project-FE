@@ -169,6 +169,6 @@ deleteStudentAchievement: (
     `/jnpa-school-project/academicCalendarEvents/updateAcademicCalendarEvent`,
   deleteAcademicCalendarEvent: (academicCalendarId: number | string) =>
     `/jnpa-school-project/academicCalendarEvents/deleteAcademicCalendarEvent/${academicCalendarId}`,
-  getAllAcademicCalendarEvents: (page: number, size: number) =>
-    `/jnpa-school-project/academicCalendarEvents/getAllAcademicCalendarEvents?page=${page}&size=${size}&paginate=true`,
+  getAllAcademicCalendarEventsByFilter: (page: number, size: number) =>
+    `/jnpa-school-project/academicCalendarEvents/getAllAcademicCalendarEventsByFilter?page=${page}&size=${size}&paginate=true`,
 };
