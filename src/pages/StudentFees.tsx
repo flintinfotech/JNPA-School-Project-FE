@@ -33,12 +33,13 @@ const PAYMENT_MODES = ["CASH", "UPI", "CARD", "NET_BANKING", "CHEQUE"];
 // Drawer theming — matches the Results page drawer's background color exactly.
 const DRAWER_BG_COLOR = "#fff6ed";
 
-// 👇 Change this key/path if your login response is stored differently
-// (Redux store, Context, sessionStorage, a different localStorage key, etc.)
-const AUTH_STORAGE_KEY = "authUser";
+// The academic year picked on the login screen is saved here by useAuth's
+// login() as { startDate, endDate } — same key/shape used across the whole
+// app (Header's "Academic Year" badge, the Student form's Academic Info tab).
+const ACADEMIC_YEAR_STORAGE_KEY = "academicYear";
 
-// Fallback only — used if there's no academicYearDTO available (e.g. no
-// stored login data, or the key/shape doesn't match your app yet).
+// Fallback only — used if there's no stored academic year at all (shouldn't
+// normally happen since login always sets one).
 const getCurrentAcademicYear = (): string => {
   const today = new Date();
   const year = today.getFullYear();
@@ -51,23 +52,28 @@ const getCurrentAcademicYear = (): string => {
   }
 };
 
-// Reads the academic year the user actually logged in under, from the
-// academicYearDTO returned by the login API (saved at login time). This is
-// what makes the page "pin" to e.g. 2021 or 2023 depending on when the user
-// logged in, instead of always showing today's real-world academic year.
+// Reads the academic year the user actually logged in under, from
+// localStorage (set at login time by useAuth). This "pins" every fee block
+// to the year the user is currently logged in under — e.g. always
+// "2026-2027" for a session started under { startDate: "2026-06-15",
+// endDate: "2027-04-30" } — and never silently drifts to today's real-world
+// academic year while that session is active.
 const getLoggedInAcademicYear = (): string => {
   try {
-    const authDataStr = localStorage.getItem(AUTH_STORAGE_KEY);
-    if (!authDataStr) return getCurrentAcademicYear();
+    const stored = localStorage.getItem(ACADEMIC_YEAR_STORAGE_KEY);
+    if (!stored) return getCurrentAcademicYear();
 
-    const authData = JSON.parse(authDataStr);
-    // 👇 Adjust this path if academicYearDTO is nested differently in your
-    // actual login response, e.g. authData.data.academicYearDTO
-    const dto = authData?.academicYearDTO;
-    if (!dto?.startDate) return getCurrentAcademicYear();
+    const { startDate, endDate } = JSON.parse(stored) as {
+      startDate?: string;
+      endDate?: string;
+    };
+    if (!startDate) return getCurrentAcademicYear();
 
-    const startYear = dayjs(dto.startDate).year();
-    const endYear = dto.endDate ? dayjs(dto.endDate).year() : startYear + 1;
+    const startYear = dayjs(startDate).year();
+    const endYear = endDate ? dayjs(endDate).year() : startYear + 1;
+    if (Number.isNaN(startYear) || Number.isNaN(endYear)) {
+      return getCurrentAcademicYear();
+    }
     return `${startYear}-${endYear}`;
   } catch {
     return getCurrentAcademicYear();
