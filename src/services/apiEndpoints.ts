@@ -165,6 +165,9 @@ deleteStudentAchievement: (
   // ===============================
   saveAcademicCalendarEvent: () =>
     `/jnpa-school-project/academicCalendarEvents/saveAcademicCalendarEvent`,
+
+  // 👇 TODO: add these once the corresponding endpoints exist on the backend
+  // (naming follows the same convention as the other modules above)
   updateAcademicCalendarEvent: () =>
     `/jnpa-school-project/academicCalendarEvents/updateAcademicCalendarEvent`,
   deleteAcademicCalendarEvent: (academicCalendarId: number | string) =>
