@@ -172,14 +172,6 @@ deleteStudentAchievement: (
     `/jnpa-school-project/academicCalendarEvents/updateAcademicCalendarEvent`,
   deleteAcademicCalendarEvent: (academicCalendarId: number | string) =>
     `/jnpa-school-project/academicCalendarEvents/deleteAcademicCalendarEvent/${academicCalendarId}`,
-  getAllAcademicCalendarEvents: (page: number, size: number) =>
+  getAllAcademicCalendarEventsByFilter: (page: number, size: number) =>
     `/jnpa-school-project/academicCalendarEvents/getAllAcademicCalendarEventsByFilter?page=${page}&size=${size}&paginate=true`,
-
-    // ===============================
-  // Student Fees
-  // ===============================
-  saveStudentFee: () => `/jnpa-school-project/studentFee/saveStudentFee`,
-  updateStudentFee: () => `/jnpa-school-project/studentFee/updateStudentFee`,
-  deleteStudentFee: (studentFeeId: number | string) =>
-    `/jnpa-school-project/studentFee/deleteStudentFee/${studentFeeId}`,
 };

@@ -56,7 +56,7 @@ export const getAllAcademicCalendarEvents = async (
   size: number
 ): Promise<ApiResponse<AcademicCalendarEventListResponse>> => {
   const response = await axiosInstance.post(
-    apiEndpoints.getAllAcademicCalendarEvents(page, size),
+    apiEndpoints.getAllAcademicCalendarEventsByFilter(page, size),
     {}
   );
   return response.data;

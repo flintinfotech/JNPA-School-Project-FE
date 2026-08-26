@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { LogOut, Menu, UserCircle, User } from "lucide-react";
+import { LogOut, Menu, UserCircle, User, Calendar } from "lucide-react";
 import { adminNavItems, isAdminNavGroup } from "../../config/adminNav";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -20,7 +20,21 @@ export default function Header({ onLogout, onMenuClick }: Props) {
     .flatMap((item) => (isAdminNavGroup(item) ? item.children : [item]))
     .find((link) => link.path === location.pathname);
 
-  const { user } = useAuth();
+  const { user, academicYear } = useAuth();
+
+  // "2026-06-15" / "2027-04-30"  ->  "2026 - 27"
+  const formatAcademicYear = (start?: string, end?: string) => {
+    if (!start || !end) return null;
+    const startYear = new Date(start).getFullYear();
+    const endYear = new Date(end).getFullYear();
+    if (Number.isNaN(startYear) || Number.isNaN(endYear)) return null;
+    return `${startYear} - ${String(endYear).slice(-2)}`;
+  };
+
+  const academicYearLabel = formatAcademicYear(
+    academicYear?.startDate,
+    academicYear?.endDate
+  );
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);
@@ -66,48 +80,59 @@ export default function Header({ onLogout, onMenuClick }: Props) {
         </h1>
       </div>
 
-      <div className="relative" ref={profileRef}>
-        <button
-          onClick={() => setProfileOpen((prev) => !prev)}
-          className="flex items-center justify-center rounded-full hover:bg-white/20 p-0.5 transition-all duration-200 hover:scale-105 active:scale-95"
-        >
-          <UserCircle size={30} className="text-white" />
-        </button>
-
-        {shouldRender && (
-          <div
-            className={`absolute right-0 top-12 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-3 z-50 origin-top-right transition-all duration-150 ease-out ${
-              profileOpen
-                ? "opacity-100 scale-100 translate-y-0"
-                : "opacity-0 scale-95 -translate-y-1"
-            }`}
-          >
-            <div className="px-4 pb-3 border-b border-gray-100">
-              <p className="text-sm font-semibold text-gray-800">
-                {displayName}
-              </p>
-            </div>
-
-            <button
-              onClick={handleProfileClick}
-              className="w-full flex items-center gap-2 px-4 py-2 mt-2 text-sm text-blue-500 hover:bg-blue-50 transition-colors"
-            >
-              <User size={16} />
-              Profile
-            </button>
-
-            <button
-              onClick={() => {
-                setProfileOpen(false);
-                onLogout();
-              }}
-              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
-            >
-              <LogOut size={16} />
-              Logout
-            </button>
+      <div className="flex items-center gap-3">
+        {academicYearLabel && (
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 border border-white/25 text-white">
+            <Calendar size={14} className="text-white/90" />
+            <span className="text-xs font-medium tracking-wide">
+              Academic Year {academicYearLabel}
+            </span>
           </div>
         )}
+
+        <div className="relative" ref={profileRef}>
+          <button
+            onClick={() => setProfileOpen((prev) => !prev)}
+            className="flex items-center justify-center rounded-full hover:bg-white/20 p-0.5 transition-all duration-200 hover:scale-105 active:scale-95"
+          >
+            <UserCircle size={30} className="text-white" />
+          </button>
+
+          {shouldRender && (
+            <div
+              className={`absolute right-0 top-12 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-3 z-50 origin-top-right transition-all duration-150 ease-out ${
+                profileOpen
+                  ? "opacity-100 scale-100 translate-y-0"
+                  : "opacity-0 scale-95 -translate-y-1"
+              }`}
+            >
+              <div className="px-4 pb-3 border-b border-gray-100">
+                <p className="text-sm font-semibold text-gray-800">
+                  {displayName}
+                </p>
+              </div>
+
+              <button
+                onClick={handleProfileClick}
+                className="w-full flex items-center gap-2 px-4 py-2 mt-2 text-sm text-blue-500 hover:bg-blue-50 transition-colors"
+              >
+                <User size={16} />
+                Profile
+              </button>
+
+              <button
+                onClick={() => {
+                  setProfileOpen(false);
+                  onLogout();
+                }}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
+              >
+                <LogOut size={16} />
+                Logout
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

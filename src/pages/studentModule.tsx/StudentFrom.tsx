@@ -94,7 +94,29 @@ const detectMimeType = (base64: string): string => {
   if (base64.startsWith("R0lGODlh") || base64.startsWith("R0lGODdh")) return "image/gif";
   return "application/octet-stream";
 };
+// Shows the academic year the user is currently logged in under (selected
+// on the login screen and stored by useAuth), e.g. "2026-2027" for
+// { startDate: "2026-06-15", endDate: "2027-04-30" }. Falls back to a
+// calendar-based guess only if nothing was stored (shouldn't normally happen
+// since login always sets this).
 const getCurrentAcademicYear = (): string => {
+  try {
+    const stored = localStorage.getItem("academicYear");
+    if (stored) {
+      const { startDate, endDate } = JSON.parse(stored) as {
+        startDate?: string;
+        endDate?: string;
+      };
+      const startYear = startDate ? new Date(startDate).getFullYear() : NaN;
+      const endYear = endDate ? new Date(endDate).getFullYear() : NaN;
+      if (!Number.isNaN(startYear) && !Number.isNaN(endYear)) {
+        return `${startYear}-${endYear}`;
+      }
+    }
+  } catch {
+    // fall through to date-based guess below
+  }
+
   const today = new Date();
   const year = today.getFullYear();
   const month = today.getMonth() + 1; // Jan = 1
