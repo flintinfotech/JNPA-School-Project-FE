@@ -165,10 +165,21 @@ deleteStudentAchievement: (
   // ===============================
   saveAcademicCalendarEvent: () =>
     `/jnpa-school-project/academicCalendarEvents/saveAcademicCalendarEvent`,
+
+  // 👇 TODO: add these once the corresponding endpoints exist on the backend
+  // (naming follows the same convention as the other modules above)
   updateAcademicCalendarEvent: () =>
     `/jnpa-school-project/academicCalendarEvents/updateAcademicCalendarEvent`,
   deleteAcademicCalendarEvent: (academicCalendarId: number | string) =>
     `/jnpa-school-project/academicCalendarEvents/deleteAcademicCalendarEvent/${academicCalendarId}`,
   getAllAcademicCalendarEvents: (page: number, size: number) =>
-    `/jnpa-school-project/academicCalendarEvents/getAllAcademicCalendarEvents?page=${page}&size=${size}&paginate=true`,
+    `/jnpa-school-project/academicCalendarEvents/getAllAcademicCalendarEventsByFilter?page=${page}&size=${size}&paginate=true`,
+
+    // ===============================
+  // Student Fees
+  // ===============================
+  saveStudentFee: () => `/jnpa-school-project/studentFee/saveStudentFee`,
+  updateStudentFee: () => `/jnpa-school-project/studentFee/updateStudentFee`,
+  deleteStudentFee: (studentFeeId: number | string) =>
+    `/jnpa-school-project/studentFee/deleteStudentFee/${studentFeeId}`,
 };
