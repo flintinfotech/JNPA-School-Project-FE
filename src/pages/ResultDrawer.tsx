@@ -28,6 +28,7 @@ import {
   LockOutlined,
 } from "@ant-design/icons";
 import dayjs, { Dayjs } from "dayjs";
+import type { FormInstance } from "antd/es/form";
 
 import {
   getStudentById,
@@ -55,6 +56,60 @@ const SUBJECT_FETCH_SIZE = 500;
 // 👇 TODO: ideally this list comes from the student's subject/standard setup
 // on the backend rather than being hardcoded here.
 const DEFAULT_SUBJECTS = ["Mathematics", "Science", "English"];
+
+// ===============================
+// Auto-calc helpers (Obtained Marks / Percentage / Grade / Result Status)
+// ===============================
+// 👇 ASSUMPTION: standard Indian school grading bands + a 35% passing mark.
+// Adjust these two to match your school's actual grading policy.
+const GRADE_BANDS: { min: number; grade: string }[] = [
+  { min: 90, grade: "A+" },
+  { min: 80, grade: "A" },
+  { min: 70, grade: "B+" },
+  { min: 60, grade: "B" },
+  { min: 50, grade: "C" },
+  { min: 35, grade: "D" },
+  { min: 0, grade: "F" },
+];
+const PASSING_PERCENTAGE = 35;
+
+const calculateGrade = (percentage: number): string => {
+  const band = GRADE_BANDS.find((b) => percentage >= b.min);
+  return band ? band.grade : "F";
+};
+
+const calculateResultStatus = (percentage: number): string =>
+  percentage >= PASSING_PERCENTAGE ? "PASS" : "FAIL";
+
+const recalcDerivedFields = (
+  subjects: ({ obtainedMarks?: number } | undefined)[] | undefined,
+  totalMarks?: number
+) => {
+  const obtainedMarks = (subjects || []).reduce(
+    (sum, s) => sum + (Number(s?.obtainedMarks) || 0),
+    0
+  );
+  const total = Number(totalMarks) || 0;
+  const percentage =
+    total > 0 ? Math.round((obtainedMarks / total) * 10000) / 100 : 0;
+  const grade = calculateGrade(percentage);
+  const resultStatus = calculateResultStatus(percentage);
+  return { obtainedMarks, percentage, grade, resultStatus };
+};
+
+// ===============================
+// Splits Total Marks equally across every subject in the record, e.g.
+// Total = 60 with 3 subjects -> [20, 20, 20]. When it doesn't divide evenly
+// (e.g. 100 / 3), the remainder is added to the first N subjects so the
+// split always sums back up to exactly Total Marks (e.g. [34, 33, 33]).
+// ===============================
+const distributeEqually = (total: number, count: number): number[] => {
+  if (!count || count <= 0) return [];
+  const safeTotal = Number(total) || 0;
+  const base = Math.floor(safeTotal / count);
+  const remainder = safeTotal - base * count;
+  return Array.from({ length: count }, (_, i) => base + (i < remainder ? 1 : 0));
+};
 
 interface NewSubjectFormValues {
   subjectName?: string;
@@ -110,6 +165,59 @@ const SubjectTableHeader = () => (
     <Col span={1} />
   </Row>
 );
+
+// ===============================
+// Watches a single "new record" card's subjects + totalMarks and
+// auto-fills:
+//  - each subject's Maximum Marks (Total Marks split equally)
+//  - Obtained Marks (sum of subject Obtained Marks)
+//  - Percentage / Grade / Result Status
+// All of those rendered fields are disabled so they're never typed manually.
+// ===============================
+function NewRecordAutoCalculator({
+  form,
+  name,
+}: {
+  form: FormInstance<{ newRecords: NewRecordFormValues[] }>;
+  name: number;
+}) {
+  const subjectsWatch = Form.useWatch(["newRecords", name, "subjects"], form) as
+    | NewSubjectFormValues[]
+    | undefined;
+  const totalMarksWatch = Form.useWatch(["newRecords", name, "totalMarks"], form) as
+    | number
+    | undefined;
+
+  const subjectCount = subjectsWatch?.length || 0;
+  // Only re-run on obtainedMarks changes and subject count changes — NOT on
+  // maximumMarks changes, since we're the ones setting maximumMarks below.
+  // Watching it too would create a feedback loop.
+  const obtainedMarksSignal = JSON.stringify(
+    (subjectsWatch || []).map((s) => s?.obtainedMarks)
+  );
+
+  useEffect(() => {
+    const total = Number(totalMarksWatch) || 0;
+    const currentSubjects: NewSubjectFormValues[] =
+      form.getFieldValue(["newRecords", name, "subjects"]) || [];
+    const maxMarksDistribution = distributeEqually(total, currentSubjects.length);
+    const updatedSubjects = currentSubjects.map((s, i) => ({
+      ...s,
+      maximumMarks: maxMarksDistribution[i] ?? 0,
+    }));
+    const derived = recalcDerivedFields(updatedSubjects, total);
+    const current = form.getFieldValue(["newRecords", name]) || {};
+    form.setFields([
+      {
+        name: ["newRecords", name],
+        value: { ...current, subjects: updatedSubjects, ...derived },
+      },
+    ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalMarksWatch, subjectCount, obtainedMarksSignal]);
+
+  return null;
+}
 
 export default function ResultDrawer({
   open,
@@ -285,11 +393,35 @@ export default function ResultDrawer({
     setEditDraft(null);
   };
 
+  // Splits editDraft.totalMarks equally across editDraft.examSubjectsDTOS —
+  // same rule as the "Add New Record" section above.
+  const redistributeMaxMarks = (
+    subjects: ExamSubjectDTO[],
+    totalMarks?: number
+  ): ExamSubjectDTO[] => {
+    const dist = distributeEqually(Number(totalMarks) || 0, subjects.length);
+    return subjects.map((s, i) => ({ ...s, maximumMarks: dist[i] ?? 0 }));
+  };
+
   const updateDraftField = <K extends keyof StudentResultDTO>(
     field: K,
     value: StudentResultDTO[K]
   ) => {
-    setEditDraft((prev) => (prev ? { ...prev, [field]: value } : prev));
+    setEditDraft((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, [field]: value };
+      // Total Marks drives both the equal max-marks split AND the
+      // percentage calc, so recompute both whenever it changes.
+      if (field === "totalMarks") {
+        const redistributed = redistributeMaxMarks(
+          next.examSubjectsDTOS || [],
+          value as unknown as number
+        );
+        const derived = recalcDerivedFields(redistributed, value as unknown as number);
+        return { ...next, examSubjectsDTOS: redistributed, ...derived };
+      }
+      return next;
+    });
   };
 
   const updateDraftSubject = (
@@ -301,22 +433,22 @@ export default function ResultDrawer({
       if (!prev) return prev;
       const subjects = [...(prev.examSubjectsDTOS || [])];
       subjects[subIdx] = { ...subjects[subIdx], [field]: value };
-      return { ...prev, examSubjectsDTOS: subjects };
+      const derived = recalcDerivedFields(subjects, prev.totalMarks);
+      return { ...prev, examSubjectsDTOS: subjects, ...derived };
     });
   };
 
   const addDraftSubject = () => {
-    setEditDraft((prev) =>
-      prev
-        ? {
-            ...prev,
-            examSubjectsDTOS: [
-              ...(prev.examSubjectsDTOS || []),
-              { subjectName: "", maximumMarks: 0, obtainedMarks: 0, status: "" },
-            ],
-          }
-        : prev
-    );
+    setEditDraft((prev) => {
+      if (!prev) return prev;
+      const subjects = [
+        ...(prev.examSubjectsDTOS || []),
+        { subjectName: "", maximumMarks: 0, obtainedMarks: 0, status: "" },
+      ];
+      const redistributed = redistributeMaxMarks(subjects, prev.totalMarks);
+      const derived = recalcDerivedFields(redistributed, prev.totalMarks);
+      return { ...prev, examSubjectsDTOS: redistributed, ...derived };
+    });
   };
 
   const removeDraftSubject = (subIdx: number) => {
@@ -324,7 +456,9 @@ export default function ResultDrawer({
       if (!prev) return prev;
       const subjects = [...(prev.examSubjectsDTOS || [])];
       subjects.splice(subIdx, 1);
-      return { ...prev, examSubjectsDTOS: subjects };
+      const redistributed = redistributeMaxMarks(subjects, prev.totalMarks);
+      const derived = recalcDerivedFields(redistributed, prev.totalMarks);
+      return { ...prev, examSubjectsDTOS: redistributed, ...derived };
     });
   };
 
@@ -558,46 +692,7 @@ export default function ResultDrawer({
               <Input value={record.endDate} disabled />
             )}
           </Col>
-          <Col span={12}>
-            <div className="text-xs text-gray-500 mb-1">Grade</div>
-            <Input
-              value={isEditingThis ? draft?.grade : record.grade}
-              disabled={!isEditingThis}
-              onChange={(e) => updateDraftField("grade", e.target.value)}
-            />
-          </Col>
-          <Col span={12}>
-            <div className="text-xs text-gray-500 mb-1">Result Status</div>
-            {isEditingThis ? (
-              <Select
-                style={{ width: "100%" }}
-                value={draft?.resultStatus}
-                onChange={(v) => updateDraftField("resultStatus", v)}
-              >
-                {RESULT_STATUS_OPTIONS.map((opt) => (
-                  <Option key={opt} value={opt}>
-                    {opt}
-                  </Option>
-                ))}
-              </Select>
-            ) : (
-              <Input value={record.resultStatus} disabled />
-            )}
-          </Col>
-          <Col span={8}>
-            <div className="text-xs text-gray-500 mb-1">Obtained Marks</div>
-            {isEditingThis ? (
-              <InputNumber
-                style={{ width: "100%" }}
-                min={0}
-                value={draft?.obtainedMarks}
-                onChange={(v) => updateDraftField("obtainedMarks", v ?? 0)}
-              />
-            ) : (
-              <Input value={record.obtainedMarks} disabled />
-            )}
-          </Col>
-          <Col span={8}>
+            <Col span={12}>
             <div className="text-xs text-gray-500 mb-1">Total Marks</div>
             {isEditingThis ? (
               <InputNumber
@@ -610,20 +705,55 @@ export default function ResultDrawer({
               <Input value={record.totalMarks} disabled />
             )}
           </Col>
-          <Col span={8}>
-            <div className="text-xs text-gray-500 mb-1">Percentage</div>
-            {isEditingThis ? (
-              <InputNumber
-                style={{ width: "100%" }}
-                min={0}
-                max={100}
-                value={draft?.percentage}
-                onChange={(v) => updateDraftField("percentage", v ?? 0)}
-              />
-            ) : (
-              <Input value={record.percentage} disabled />
-            )}
+          <Col span={12}>
+            {/* Auto-calculated: sum of subject Obtained Marks. Never manual. */}
+            <div className="text-xs text-gray-500 mb-1">Obtained Marks</div>
+            <InputNumber
+              style={{ width: "100%" }}
+              min={0}
+              value={isEditingThis ? draft?.obtainedMarks : record.obtainedMarks}
+              disabled
+            />
           </Col>
+            <Col span={8}>
+            {/* Auto-calculated: Obtained / Total x 100. Never manual. */}
+            <div className="text-xs text-gray-500 mb-1">Percentage</div>
+            <InputNumber
+              style={{ width: "100%" }}
+              min={0}
+              max={100}
+              value={isEditingThis ? draft?.percentage : record.percentage}
+              disabled
+            />
+          </Col>
+       
+
+            <Col span={8}>
+            {/* Auto-calculated from Percentage. Never manual. */}
+            <div className="text-xs text-gray-500 mb-1">Grade</div>
+            <Input
+              value={isEditingThis ? draft?.grade : record.grade}
+              disabled
+            />
+          </Col>
+           <Col span={8}>
+            {/* Auto-calculated from Percentage. Never manual. */}
+            <div className="text-xs text-gray-500 mb-1">Result Status</div>
+            <Select
+              style={{ width: "100%" }}
+              value={isEditingThis ? draft?.resultStatus : record.resultStatus}
+              disabled
+            >
+              {RESULT_STATUS_OPTIONS.map((opt) => (
+                <Option key={opt} value={opt}>
+                  {opt}
+                </Option>
+              ))}
+            </Select>
+          </Col>
+         
+          
+        
         </Row>
 
         <Divider style={{ margin: "16px 0 12px" }} orientation="left" plain>
@@ -634,7 +764,12 @@ export default function ResultDrawer({
           <>
             <SubjectTableHeader />
             {(draft?.examSubjectsDTOS || []).map((s, i) => (
-              <Row gutter={[8, 8]} key={s.ExamSubjectsId ?? i} align="middle">
+              <Row
+                gutter={[8, 8]}
+                key={s.ExamSubjectsId ?? i}
+                align="middle"
+                style={{ marginBottom: 8 }}
+              >
                 <Col span={8}>
                   <Select
                     style={{ width: "100%" }}
@@ -650,11 +785,12 @@ export default function ResultDrawer({
                   </Select>
                 </Col>
                 <Col span={5}>
+                  {/* Auto-calculated: Total Marks split equally across subjects */}
                   <InputNumber
                     style={{ width: "100%" }}
                     min={0}
                     value={s.maximumMarks}
-                    onChange={(v) => updateDraftSubject(i, "maximumMarks", v ?? 0)}
+                    disabled
                   />
                 </Col>
                 <Col span={5}>
@@ -831,6 +967,11 @@ export default function ResultDrawer({
                             </Popconfirm>
                           }
                         >
+                          {/* Watches this record's subjects + totalMarks and
+                              auto-fills maximumMarks (equal split), obtainedMarks,
+                              percentage, grade, resultStatus */}
+                          <NewRecordAutoCalculator form={form} name={field.name} />
+
                           <Row gutter={[16, 0]}>
                             <Col span={12}>
                               <Form.Item
@@ -904,7 +1045,8 @@ export default function ResultDrawer({
                                 label="Grade"
                                 rules={[{ required: true, message: "Required" }]}
                               >
-                                <Input placeholder="e.g. A" />
+                                {/* Auto-calculated from Percentage. Never manual. */}
+                                <Input placeholder="e.g. A" disabled />
                               </Form.Item>
                             </Col>
                             <Col span={12}>
@@ -913,7 +1055,8 @@ export default function ResultDrawer({
                                 label="Result Status"
                                 rules={[{ required: true, message: "Required" }]}
                               >
-                                <Select placeholder="Select status">
+                                {/* Auto-calculated from Percentage. Never manual. */}
+                                <Select placeholder="Select status" disabled>
                                   {RESULT_STATUS_OPTIONS.map((opt) => (
                                     <Option key={opt} value={opt}>
                                       {opt}
@@ -928,7 +1071,8 @@ export default function ResultDrawer({
                                 label="Obtained Marks"
                                 rules={[{ required: true, message: "Required" }]}
                               >
-                                <InputNumber style={{ width: "100%" }} min={0} />
+                                {/* Auto-calculated: sum of subject Obtained Marks */}
+                                <InputNumber style={{ width: "100%" }} min={0} disabled />
                               </Form.Item>
                             </Col>
                             <Col span={8}>
@@ -945,10 +1089,12 @@ export default function ResultDrawer({
                                 name={[field.name, "percentage"]}
                                 label="Percentage"
                               >
+                                {/* Auto-calculated: Obtained / Total x 100 */}
                                 <InputNumber
                                   style={{ width: "100%" }}
                                   min={0}
                                   max={100}
+                                  disabled
                                 />
                               </Form.Item>
                             </Col>
@@ -963,11 +1109,17 @@ export default function ResultDrawer({
                               <>
                                 {subjectFields.length > 0 && <SubjectTableHeader />}
                                 {subjectFields.map((subjectField) => (
-                                  <Row gutter={[8, 0]} key={subjectField.key} align="middle">
+                                  <Row
+                                    gutter={[8, 0]}
+                                    key={subjectField.key}
+                                    align="middle"
+                                    style={{ marginBottom: 8 }}
+                                  >
                                     <Col span={8}>
                                       <Form.Item
                                         name={[subjectField.name, "subjectName"]}
                                         rules={[{ required: true, message: "Required" }]}
+                                        style={{ marginBottom: 0 }}
                                       >
                                         <Select placeholder="Select subject">
                                           {subjectOptions.map((opt) => (
@@ -982,11 +1134,15 @@ export default function ResultDrawer({
                                       <Form.Item
                                         name={[subjectField.name, "maximumMarks"]}
                                         rules={[{ required: true, message: "Required" }]}
+                                        style={{ marginBottom: 0 }}
                                       >
+                                        {/* Auto-calculated: Total Marks split equally
+                                            across every subject in this record */}
                                         <InputNumber
                                           style={{ width: "100%" }}
                                           min={0}
                                           placeholder="Max"
+                                          disabled
                                         />
                                       </Form.Item>
                                     </Col>
@@ -994,6 +1150,7 @@ export default function ResultDrawer({
                                       <Form.Item
                                         name={[subjectField.name, "obtainedMarks"]}
                                         rules={[{ required: true, message: "Required" }]}
+                                        style={{ marginBottom: 0 }}
                                       >
                                         <InputNumber
                                           style={{ width: "100%" }}
@@ -1006,6 +1163,7 @@ export default function ResultDrawer({
                                       <Form.Item
                                         name={[subjectField.name, "status"]}
                                         rules={[{ required: true, message: "Required" }]}
+                                        style={{ marginBottom: 0 }}
                                       >
                                         <Select placeholder="Status">
                                           {RESULT_STATUS_OPTIONS.map((opt) => (
