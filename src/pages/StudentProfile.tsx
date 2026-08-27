@@ -1,20 +1,25 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
-import { Spin, Empty, message } from "antd";
+import { Spin, Empty, message, Tabs } from "antd";
 import {
     HiCheckCircle,
     HiXCircle,
     HiDownload,
     HiUser,
     HiStar,
+    HiCurrencyRupee,
 } from "react-icons/hi";
 import dayjs from "dayjs";
 
 import {
     getStudentById,
     getStudentByUserId,
+    getStudentFeeById,
+    extractFeesFromStudent,
     type StudentDTO,
     type StudentResultDTO,
+    type StudentFeeDTO,
+    type FeePaymentDTO,
 } from "../services/studentService";
 
 // ===========================
@@ -64,6 +69,14 @@ const detectMimeType = (base64: string): string => {
     return "application/octet-stream";
 };
 
+// ===========================
+// Small formatting helper
+// ===========================
+
+const formatCurrency = (value?: number | null): string => {
+    if (value === undefined || value === null || isNaN(value)) return "-";
+    return `\u20b9 ${Number(value).toLocaleString("en-IN")}`;
+};
 
 // ===========================
 // Small building blocks
@@ -122,12 +135,12 @@ function InfoRow({
     value?: string | number | null;
 }) {
     return (
-        <div className="flex items-start justify-between gap-4 py-2.5 border-b border-slate-100 last:border-b-0">
-            <span className="text-sm text-slate-500">
+        <div className="grid grid-cols-[220px_1fr] border-b border-slate-200 last:border-b-0">
+            <span className="px-4 py-2 text-sm text-slate-500 bg-slate-50">
                 {label}
             </span>
 
-            <span className="text-sm font-medium text-slate-800 text-right">
+            <span className="px-4 py-2 text-sm font-medium text-slate-800">
                 {value !== undefined &&
                     value !== null &&
                     value !== ""
@@ -173,77 +186,6 @@ function Card({
                 {children}
             </div>
         </div>
-    );
-}
-
-// ===========================
-// Achievements Card
-// ===========================
-
-function AchievementCard({
-    achievements,
-}: {
-    achievements: {
-        studentAchievementId?: number;
-        achievementName?: string;
-        achievementDescription?: string;
-        academicYear?: string;
-        studentId?: number;
-    }[];
-}) {
-    return (
-        <Card
-            title="Achievements"
-            subtitle="Student achievements and accomplishments"
-        >
-            {achievements.length === 0 ? (
-                <div className="text-center py-6">
-                    <div className="w-14 h-14 mx-auto rounded-full bg-amber-50 flex items-center justify-center mb-3">
-                        <HiStar
-                            size={28}
-                            className="text-amber-400"
-                        />
-                    </div>
-
-                    <p className="text-sm font-medium text-slate-500">
-                        No achievements added yet.
-                    </p>
-                </div>
-            ) : (
-                <div className="space-y-3">
-                    {achievements.map((achievement, index) => (
-                        <div
-                            key={
-                                achievement.studentAchievementId ??
-                                index
-                            }
-                            className="flex items-start gap-3 p-4 rounded-xl border border-amber-100 bg-gradient-to-r from-amber-50 to-white hover:shadow-md transition-all duration-200"
-                        >
-                            {/* Achievement Icon */}
-                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                                <HiStar
-                                    size={21}
-                                    className="text-amber-500"
-                                />
-                            </div>
-
-                            {/* Title + Description */}
-                            <div className="flex-1 min-w-0">
-                                <h3 className="text-sm font-semibold text-slate-800">
-                                    {achievement.achievementName ||
-                                        "Achievement"}
-                                </h3>
-
-                                <p className="text-xs text-slate-500 mt-1 leading-5">
-                                    {achievement.achievementDescription ||
-                                        "No description available."}
-                                </p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </Card>
     );
 }
 
@@ -439,6 +381,351 @@ function ResultCard({
 }
 
 // ===========================
+// Fee Card (read-only)
+// -----------------------------------------------------------
+// Shows the same fee data as the "View" (eye icon) drawer on the
+// Student Fees screen, driven by GET
+// /jnpa-school-project/studentFee/getStudentFee/{studentFeeId}.
+// Purely read-only — no inputs, no edit/delete actions.
+// ===========================
+function FeeCard({
+    fees,
+    loading,
+    error,
+}: {
+    fees: StudentFeeDTO[];
+    loading: boolean;
+    error: string | null;
+}) {
+    if (loading) {
+        return (
+            <Card title="Fee">
+                <div className="py-10 flex items-center justify-center">
+                    <Spin tip="Loading fee details..." />
+                </div>
+            </Card>
+        );
+    }
+
+    if (error) {
+        return (
+            <Card title="Fee">
+                <div className="py-8 text-center">
+                    <p className="text-sm text-red-500 font-medium">
+                        Failed to load fee details.
+                    </p>
+                    <p className="text-xs text-slate-400 mt-2">{error}</p>
+                </div>
+            </Card>
+        );
+    }
+
+    if (!fees || fees.length === 0) {
+        return (
+            <Card title="Fee">
+                <div className="py-8 text-center">
+                    <p className="text-sm text-slate-400">
+                        No fee records found.
+                    </p>
+                </div>
+            </Card>
+        );
+    }
+
+    // ===========================
+    // Overall Fee Summary
+    // ===========================
+
+    const totalFee = fees.reduce(
+        (sum, fee) => sum + (Number(fee.totalFeeAmount) || 0),
+        0
+    );
+
+    const totalPaid = fees.reduce(
+        (sum, fee) => sum + (Number(fee.paidAmount) || 0),
+        0
+    );
+
+    const totalPending = fees.reduce(
+        (sum, fee) => sum + (Number(fee.pendingAmount) || 0),
+        0
+    );
+
+    const totalDue = fees.reduce(
+        (sum, fee) => sum + (Number(fee.dueAmount) || 0),
+        0
+    );
+
+    return (
+        <div className="flex flex-col gap-5">
+
+            {/* =================================
+                Overall Fee Summary
+            ================================= */}
+
+            <Card title="Fee Summary">
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+
+                    <InfoStat
+                        value={formatCurrency(totalFee)}
+                        label="Total Fee"
+                    />
+
+                    <InfoStat
+                        value={formatCurrency(totalPaid)}
+                        label="Paid Amount"
+                    />
+
+                    <InfoStat
+                        value={formatCurrency(totalPending)}
+                        label="Pending Amount"
+                    />
+
+                    <InfoStat
+                        value={formatCurrency(totalDue)}
+                        label="Due Amount"
+                    />
+
+                </div>
+
+            </Card>
+
+
+            {/* =================================
+                Individual Fee Records
+            ================================= */}
+
+            {fees.map((fee, index) => {
+
+                const payments: FeePaymentDTO[] = fee.feePaymentDTOS || [];
+
+                const feeTotal = fee.totalFeeAmount;
+                const feePaid = fee.paidAmount;
+                const feePending = fee.pendingAmount;
+                const feeDue = fee.dueAmount;
+                const feeName = fee.feeName;
+                const feeDueDate = fee.dueDate;
+                const feeYear = fee.academicYear;
+                const feeId = fee.studentFeeId;
+
+                return (
+                    <Card
+                        key={feeId ?? index}
+                        title={feeName || `Fee Record ${index + 1}`}
+                        subtitle={
+                            feeYear
+                                ? `Academic Year: ${feeYear}`
+                                : undefined
+                        }
+                    >
+
+                        {/* =================================
+                            Main Fee Information
+                        ================================= */}
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+
+                            {/* Total Fee */}
+
+                            <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
+                                <p className="text-xs text-slate-500 mb-1">
+                                    Total Fee
+                                </p>
+
+                                <p className="text-lg font-semibold text-slate-800">
+                                    {formatCurrency(feeTotal)}
+                                </p>
+                            </div>
+
+
+                            {/* Paid Amount */}
+
+                            <div className="rounded-lg border border-slate-100 bg-green-50 p-4">
+                                <p className="text-xs text-slate-500 mb-1">
+                                    Paid Amount
+                                </p>
+
+                                <p className="text-lg font-semibold text-green-600">
+                                    {formatCurrency(feePaid)}
+                                </p>
+                            </div>
+
+
+                            {/* Pending Amount */}
+
+                            <div className="rounded-lg border border-slate-100 bg-orange-50 p-4">
+                                <p className="text-xs text-slate-500 mb-1">
+                                    Pending Amount
+                                </p>
+
+                                <p className="text-lg font-semibold text-orange-600">
+                                    {formatCurrency(feePending)}
+                                </p>
+                            </div>
+
+                        </div>
+
+
+                        {/* =================================
+                            Fee Details
+                        ================================= */}
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+
+                            <InfoRow
+                                label="Fee Name"
+                                value={feeName || "-"}
+                            />
+
+                            <InfoRow
+                                label="Due Amount"
+                                value={
+                                    feeDue !== undefined
+                                        ? formatCurrency(feeDue)
+                                        : "-"
+                                }
+                            />
+
+                            <InfoRow
+                                label="Due Date"
+                                value={
+                                    feeDueDate
+                                        ? dayjs(feeDueDate).format("DD-MM-YYYY")
+                                        : "-"
+                                }
+                            />
+
+                        </div>
+
+
+                        {/* =================================
+                            Payment History
+                        ================================= */}
+
+                        {payments.length > 0 && (
+                            <div className="mt-4">
+
+                                <div className="flex items-center justify-between mb-3">
+
+                                    <h4 className="text-sm font-semibold text-slate-700">
+                                        Payment History
+                                    </h4>
+
+                                    <span className="text-xs text-slate-400">
+                                        {payments.length} Payment
+                                        {payments.length !== 1 ? "s" : ""}
+                                    </span>
+
+                                </div>
+
+
+                                <div className="overflow-x-auto rounded-lg border border-slate-100">
+
+                                    <table className="w-full text-sm">
+
+                                        <thead>
+                                            <tr className="bg-slate-50 text-slate-500 text-xs">
+
+                                                <th className="text-left font-medium px-3 py-3">
+                                                    Payment Date
+                                                </th>
+
+                                                <th className="text-right font-medium px-3 py-3">
+                                                    Amount
+                                                </th>
+
+                                                <th className="text-left font-medium px-3 py-3">
+                                                    Payment Mode
+                                                </th>
+
+                                                <th className="text-left font-medium px-3 py-3">
+                                                    Transaction ID
+                                                </th>
+
+                                                <th className="text-left font-medium px-3 py-3">
+                                                    Remarks
+                                                </th>
+
+                                            </tr>
+                                        </thead>
+
+
+                                        <tbody>
+
+                                            {payments.map((payment, paymentIndex) => {
+                                                const paymentId = payment.paymentId;
+                                                const paymentDate = payment.paymentDate;
+                                                const paymentAmount = payment.amount;
+                                                const paymentMode = payment.paymentMode;
+                                                const paymentTxn = payment.transactionId;
+                                                const paymentRemarks = payment.remarks;
+
+                                                return (
+                                                    <tr
+                                                        key={paymentId ?? paymentIndex}
+                                                        className="border-t border-slate-100"
+                                                    >
+
+                                                        {/* Payment Date */}
+
+                                                        <td className="px-3 py-3 text-slate-600">
+                                                            {paymentDate
+                                                                ? dayjs(paymentDate).format("DD-MM-YYYY")
+                                                                : "-"}
+                                                        </td>
+
+
+                                                        {/* Amount */}
+
+                                                        <td className="px-3 py-3 text-right font-semibold text-green-600">
+                                                            {formatCurrency(paymentAmount)}
+                                                        </td>
+
+
+                                                        {/* Payment Mode */}
+
+                                                        <td className="px-3 py-3">
+                                                            <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-600">
+                                                                {paymentMode || "-"}
+                                                            </span>
+                                                        </td>
+
+
+                                                        {/* Transaction ID */}
+
+                                                        <td className="px-3 py-3 text-slate-600">
+                                                            {paymentTxn || "-"}
+                                                        </td>
+
+
+                                                        {/* Remarks */}
+
+                                                        <td className="px-3 py-3 text-slate-500">
+                                                            {paymentRemarks || "-"}
+                                                        </td>
+
+                                                    </tr>
+                                                );
+                                            })}
+
+                                        </tbody>
+
+                                    </table>
+
+                                </div>
+
+                            </div>
+                        )}
+
+                    </Card>
+                );
+            })}
+
+        </div>
+    );
+}
+// ===========================
 // Student Profile
 // ===========================
 
@@ -460,6 +747,22 @@ export default function StudentProfile() {
         useState<StudentDTO | null>(null);
 
     const [loading, setLoading] = useState(true);
+
+    // Which tab is showing on the right-hand side (Personal / Address /
+    // Academic / Documents / etc.)
+    const [activeTab, setActiveTab] = useState("personal");
+
+    // ===========================
+    // Fee tab state
+    // -----------------------------------------------------------
+    // Fee list comes from the student payload (studentFeeDTOS), then
+    // each record is enriched on-demand via
+    // GET /studentFee/getStudentFee/{studentFeeId}.
+    // ===========================
+    const [fees, setFees] = useState<StudentFeeDTO[]>([]);
+    const [feeLoading, setFeeLoading] = useState(false);
+    const [feeError, setFeeError] = useState<string | null>(null);
+    const [feeFetchedForId, setFeeFetchedForId] = useState<number | null>(null);
 
     // ===========================
     // Fetch Student
@@ -562,6 +865,81 @@ export default function StudentProfile() {
 
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isParent]);
+
+    // ===========================
+    // Fetch Fee Data
+    // -----------------------------------------------------------
+    // Fires when the user opens the Fee tab. The student payload
+    // (getStudentById / getStudentByUserId) carries one or more fee
+    // records under studentFeeDTOS, each with its own studentFeeId.
+    // For each of those ids we call the dedicated detail endpoint —
+    //   GET /jnpa-school-project/studentFee/getStudentFee/{studentFeeId}
+    // — to get the fully populated record (including every
+    // feePaymentDTOS entry), the same data shown by the "View" (eye
+    // icon) drawer on the Student Fees screen. Only fetches once per
+    // student (won't re-fetch every time you switch tabs back and
+    // forth) — remove the feeFetchedForId guard if you want it to
+    // always refetch instead.
+    // ===========================
+
+    useEffect(() => {
+        if (activeTab !== "fee") return;
+        if (!student) return;
+
+        const studentKey = student.studentId ?? null;
+        if (feeFetchedForId === studentKey) return; // already fetched
+
+        // TEMP DEBUG — remove once fee data is confirmed working.
+        // Paste this object's contents back so we can see the real
+        // key that holds fee data (if any) on the student payload.
+        console.log("[Fee tab] full student object:", student);
+
+        const feeStubs = extractFeesFromStudent(student);
+
+        console.log("[Fee tab] fee stubs extracted from student:", feeStubs);
+
+        if (feeStubs.length === 0) {
+            setFees([]);
+            setFeeError(null);
+            setFeeFetchedForId(studentKey);
+            return;
+        }
+
+        const loadFees = async () => {
+            setFeeLoading(true);
+            setFeeError(null);
+
+            try {
+                const results = await Promise.all(
+                    feeStubs.map(async (stub) => {
+                        if (!stub.studentFeeId) return stub;
+                        const res = await getStudentFeeById(stub.studentFeeId);
+                        // TEMP DEBUG — remove once fee data is confirmed working.
+                        console.log(
+                            `[Fee tab] getStudentFeeById(${stub.studentFeeId}) response:`,
+                            res
+                        );
+                        return res?.data ?? stub;
+                    })
+                );
+
+                console.log("[Fee tab] final fees passed to FeeCard:", results);
+                setFees(results);
+                setFeeFetchedForId(studentKey);
+            } catch (err: any) {
+                console.error("Failed to load fee details:", err);
+                setFeeError(
+                    err?.response?.data?.message ||
+                    err?.message ||
+                    "Something went wrong while loading fee details."
+                );
+            } finally {
+                setFeeLoading(false);
+            }
+        };
+
+        loadFees();
+    }, [activeTab, student, feeFetchedForId]);
 
     // ===========================
     // Loading
@@ -720,539 +1098,383 @@ export default function StudentProfile() {
     return (
         <div className="min-h-screen bg-slate-50 px-4 py-6 sm:px-8">
 
-            <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-5 items-start">
+            
 
-                {/* ===========================
-                    LEFT - STUDENT OVERVIEW
-                =========================== */}
+            <div className="max-w-6xl mx-auto">
 
-                <div className="md:sticky md:top-6 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+               {/* ===========================
+    TOP OVERVIEW
+    ONE CARD WITH PARTITION
+=========================== */}
 
-                    <div className="px-5 py-4 border-b border-slate-100">
-                        <h2 className="text-base font-semibold text-indigo-700">
-                            {student.firstName}{" "}
-                            {student.lastName}
-                        </h2>
-                    </div>
+<div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
 
-                    <div className="p-5 flex flex-col items-center">
+    <div className="grid grid-cols-1 md:grid-cols-2">
 
-                        {/* Profile Image */}
+        {/* ===========================
+            STUDENT PROFILE
+        =========================== */}
+        <div className="p-6 flex flex-col items-center text-center">
 
-                        <div className="w-32 h-32 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center">
+            <h2 className="text-base font-semibold text-indigo-700 mb-4">
+                {student.firstName} {student.lastName}
+            </h2>
 
-                            {photoUrl ? (
-                                <img
-                                    src={photoUrl}
-                                    alt={`${student.firstName} ${student.lastName}`}
-                                    className="w-full h-full object-cover"
-                                />
-                            ) : (
-                                <HiUser
-                                    size={48}
-                                    className="text-slate-300"
-                                />
-                            )}
+            {/* Profile Image */}
+            <div className="w-32 h-32 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center">
 
-                        </div>
+                {photoUrl ? (
+                    <img
+                        src={photoUrl}
+                        alt={`${student.firstName} ${student.lastName}`}
+                        className="w-full h-full object-cover"
+                    />
+                ) : (
+                    <HiUser
+                        size={48}
+                        className="text-slate-300"
+                    />
+                )}
 
-                        {/* Stats */}
+            </div>
 
-                        <div className="grid grid-cols-2 gap-4 w-full mt-6">
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-x-10 gap-y-5 w-full max-w-sm mt-6">
 
-                            <InfoStat
-                                value={String(
-                                    student.studentId ??
-                                    "-"
-                                )}
-                                label="Admission No"
-                            />
+                <InfoStat
+                    value={String(student.studentId ?? "-")}
+                    label="Admission Id"
+                />
 
-                            <InfoStat
-                                value={
-                                    student.gender ||
-                                    "-"
-                                }
-                                label="Gender"
-                            />
+                <InfoStat
+                    value={student.gender || "-"}
+                    label="Gender"
+                />
 
-                            <InfoStat
-                                value={
-                                    academic?.rollNo ||
-                                    "-"
-                                }
-                                label="Roll No"
-                            />
+                <InfoStat
+                    value={academic?.rollNo || "-"}
+                    label="Roll No"
+                />
 
-                            <div className="text-center">
+                {/* Status */}
+                <div className="text-center">
 
-                                <p
-                                    className={`text-base font-semibold ${isActive
-                                            ? "text-green-600"
-                                            : "text-red-500"
-                                        }`}
-                                >
-                                    {student.status ||
-                                        "-"}
-                                </p>
+                    <p
+                        className={`text-base font-semibold ${
+                            isActive
+                                ? "text-green-600"
+                                : "text-red-500"
+                        }`}
+                    >
+                        {student.status || "-"}
+                    </p>
 
-                                <p className="text-xs text-slate-500 mt-0.5">
-                                    Status
-                                </p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                        Status
+                    </p>
 
-                            </div>
-
-                        </div>
-
-                        {/* Profile Status */}
-
-                        <div className="w-full border-t border-slate-100 mt-5 pt-4 text-center">
-
-                            {allComplete ? (
-                                <p className="text-sm font-medium text-green-600">
-                                    Student profile is complete
-                                </p>
-                            ) : (
-                                <p className="text-sm font-medium text-amber-600">
-                                    Some profile details are pending
-                                </p>
-                            )}
-
-                        </div>
-
-                        {/* Checklist */}
-
-                        <div className="w-full border-t border-slate-100 mt-4 pt-4 space-y-2">
-
-                            <ChecklistRow
-                                label="Personal Info"
-                                complete={
-                                    personalInfoComplete
-                                }
-                            />
-
-                            <ChecklistRow
-                                label="Address Info"
-                                complete={
-                                    addressInfoComplete
-                                }
-                            />
-
-                            <ChecklistRow
-                                label="Parent Info"
-                                complete={
-                                    parentInfoComplete
-                                }
-                            />
-
-                            <ChecklistRow
-                                label="Academic Info"
-                                complete={
-                                    academicInfoComplete
-                                }
-                            />
-
-                            <ChecklistRow
-                                label="Uploaded Documents"
-                                complete={
-                                    documentsComplete
-                                }
-                            />
-
-                        </div>
-
-                    </div>
                 </div>
 
+            </div>
+
+            
+
+        </div>
+
+
+        {/* ===========================
+            VERTICAL PARTITION
+            + PROFILE CHECKLIST
+        =========================== */}
+
+        <div className="p-6 border-t md:border-t-0 md:border-l border-slate-200 flex flex-col justify-center">
+
+
+                
+            <div className="space-y-0">
+
+                <ChecklistRow
+                    label="Personal Info"
+                    complete={personalInfoComplete}
+                />
+
+                <ChecklistRow
+                    label="Address Info"
+                    complete={addressInfoComplete}
+                />
+
+                <ChecklistRow
+                    label="Academic Info"
+                    complete={academicInfoComplete}
+                />
+
+                <ChecklistRow
+                    label="Uploaded Documents"
+                    complete={documentsComplete}
+                />
+
+            </div>
+            {/* Profile Completion */}
+            <div className="w-full border-t border-slate-100 mt-6 pt-4">
+
+                {allComplete ? (
+                    <p className="text-sm font-medium text-green-600">
+                        Student profile is complete
+                    </p>
+                ) : (
+                    <p className="text-sm font-medium text-amber-600">
+                        Some profile details are pending
+                    </p>
+                )}
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
                 {/* ===========================
-                    RIGHT SIDE
+                    TABS — full width, below the overview row
                 =========================== */}
 
-                <div className="md:col-span-2 grid grid-cols-1 lg:grid-cols-7 gap-5 items-start">
+               <div className="mt-4 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
 
-                    {/* ===========================
-                        LEFT SUB COLUMN
-                    =========================== */}
+    <div className="px-4 pt-2">
 
-                    <div className="lg:col-span-3 flex flex-col gap-5">
-                        <AchievementCard
-                            achievements={achievements}
-                        />
-                        {/* ===========================
-                            PERSONAL INFORMATION
-                        =========================== */}
-
-                        <Card title="Personal Information">
-
-                            <InfoRow
-                                label="First Name"
-                                value={student.firstName}
-                            />
-
-                            <InfoRow
-                                label="Last Name"
-                                value={student.lastName}
-                            />
-
-                            <InfoRow
-                                label="Gender"
-                                value={student.gender}
-                            />
-
-                            <InfoRow
-                                label="Date of Birth"
-                                value={
-                                    student.DOB
-                                        ? dayjs(
-                                            student.DOB
-                                        ).format(
-                                            "DD-MM-YYYY"
-                                        )
-                                        : undefined
-                                }
-                            />
-
-                            <InfoRow
-                                label="Blood Group"
-                                value={
-                                    student.bloodGroup
-                                }
-                            />
-
-                            <InfoRow
-                                label="Category"
-                                value={
-                                    student.category
-                                }
-                            />
-
-                            <InfoRow
-                                label="Religion"
-                                value={
-                                    student.religion
-                                }
-                            />
-
-                            <InfoRow
-                                label="Caste"
-                                value={
-                                    student.caste
-                                }
-                            />
-
-                            <InfoRow
-                                label="Nationality"
-                                value={
-                                    student.nationality
-                                }
-                            />
-
-                            <InfoRow
-                                label="Aadhaar No"
-                                value={
-                                    student.aadhaarCard
-                                }
-                            />
-
-                            <InfoRow
-                                label="Address"
-                                value={
-                                    student.address
-                                }
-                            />
-
-                            <InfoRow
-                                label="Status"
-                                value={
-                                    student.status
-                                }
-                            />
-
-                        </Card>
-
-                        
-
-                    
-
-                        {/* ===========================
-                            PARENT / GUARDIAN
-                        =========================== */}
-
-                        <Card title="Parent / Guardian">
-
-                            <InfoRow
-                                label="Name"
-                                value={parent?.name}
-                            />
-
-                            <InfoRow
-                                label="Relation"
-                                value={
-                                    parent?.relation
-                                }
-                            />
-
-                            <InfoRow
-                                label="Occupation"
-                                value={
-                                    parent?.occupation
-                                }
-                            />
-
-                            <InfoRow
-                                label="Phone"
-                                value={
-                                    parent?.phone
-                                }
-                            />
-
-                            <InfoRow
-                                label="Email"
-                                value={
-                                    parent?.email
-                                }
-                            />
-
-                            <InfoRow
-                                label="Address"
-                                value={
-                                    parent?.address
-                                }
-                            />
-
-                            <InfoRow
-                                label="Annual Income"
-                                value={
-                                    parent?.annualIncome !==
-                                        undefined &&
-                                        parent?.annualIncome !==
-                                        null
-                                        ? `₹ ${parent.annualIncome}`
-                                        : undefined
-                                }
-                            />
-
-                        </Card>
-
-                        {/* ===========================
-                            ACADEMIC INFORMATION
-                        =========================== */}
-
-                        {academicRecords.length ===
-                            0 ? (
-                            <Card title="Academic Information">
-
-                                <p className="text-sm text-slate-400">
-                                    No academic information
-                                    added yet.
-                                </p>
-
-                            </Card>
-                        ) : (
-                            academicRecords.map(
-                                (rec, idx) => (
-                                    <Card
-                                        key={
-                                            rec.academicInformationId ??
-                                            idx
-                                        }
-                                        title={
-                                            rec.standard
-                                                ? `Std.${rec.standard.replace(
-                                                    " Standard",
-                                                    ""
-                                                )}${rec.division
-                                                    ? ` Division-${rec.division}`
-                                                    : ""
-                                                }`
-                                                : `Academic Record ${idx + 1
-                                                }`
-                                        }
-                                        subtitle={
-                                            rec.academicYear
-                                                ? `Academic Year: ${rec.academicYear}`
-                                                : undefined
-                                        }
-                                    >
-
-                                        <InfoRow
-                                            label="Admission No"
-                                            value={
-                                                rec.admissionNo
-                                            }
-                                        />
-
-                                        <InfoRow
-                                            label="Admission Date"
-                                            value={
-                                                rec.admissionDate
-                                                    ? dayjs(
-                                                        rec.admissionDate
-                                                    ).format(
-                                                        "DD-MM-YYYY"
-                                                    )
-                                                    : undefined
-                                            }
-                                        />
-
-                                        <InfoRow
-                                            label="Standard"
-                                            value={
-                                                rec.standard
-                                            }
-                                        />
-
-                                        <InfoRow
-                                            label="Division"
-                                            value={
-                                                rec.division
-                                            }
-                                        />
-
-                                        <InfoRow
-                                            label="Roll No"
-                                            value={
-                                                rec.rollNo
-                                            }
-                                        />
-
-                                        <InfoRow
-                                            label="Academic Year"
-                                            value={
-                                                rec.academicYear
-                                            }
-                                        />
-
-                                        <InfoRow
-                                            label="Blood Group"
-                                            value={
-                                                rec.bloodGroup
-                                            }
-                                        />
-
-                                        <InfoRow
-                                            label="Category"
-                                            value={
-                                                rec.category
-                                            }
-                                        />
-
-                                        <InfoRow
-                                            label="Caste"
-                                            value={
-                                                rec.caste
-                                            }
-                                        />
-
+        <Tabs
+            activeKey={activeTab}
+            onChange={setActiveTab}
+                        items={[
+                            {
+                                key: "personal",
+                                label: "Personal Info",
+                                children: (
+                                    <div className="px-1 pb-5">
+                                        <div className="border border-slate-200 rounded-lg overflow-hidden">
+                                        <InfoRow label="First Name" value={student.firstName} />
+                                        <InfoRow label="Last Name" value={student.lastName} />
+                                        <InfoRow label="Gender" value={student.gender} />
                                         <InfoRow
                                             label="Date of Birth"
                                             value={
-                                                rec.dob
-                                                    ? dayjs(
-                                                        rec.dob
-                                                    ).format(
-                                                        "DD-MM-YYYY"
-                                                    )
+                                                student.DOB
+                                                    ? dayjs(student.DOB).format("DD-MM-YYYY")
                                                     : undefined
                                             }
                                         />
+                                        <InfoRow label="Blood Group" value={student.bloodGroup} />
+                                        <InfoRow label="Category" value={student.category} />
+                                        <InfoRow label="Religion" value={student.religion} />
+                                        <InfoRow label="Caste" value={student.caste} />
+                                        <InfoRow label="Nationality" value={student.nationality} />
+                                        <InfoRow label="Aadhaar No" value={student.aadhaarCard} />
+                                        <InfoRow label="Status" value={student.status} />
+                                        </div>
+                                    </div>
+                                ),
+                            },
+                            {
+                                key: "address",
+                                label: "Address Info",
+                                children: (
+                                    <div className="px-1 pb-5">
+                                        <InfoRow label="Student Address" value={student.address} />
+                                        <InfoRow label="Parent / Guardian Address" value={parent?.address} />
+                                    </div>
+                                ),
+                            },
+                            {
+                                key: "parent",
+                                label: "Parent / Guardian",
+                                children: (
+                                    <div className="px-1 pb-5">
+                                        <InfoRow label="Name" value={parent?.name} />
+                                        <InfoRow label="Relation" value={parent?.relation} />
+                                        <InfoRow label="Occupation" value={parent?.occupation} />
+                                        <InfoRow label="Phone" value={parent?.phone} />
+                                        <InfoRow label="Email" value={parent?.email} />
+                                        <InfoRow label="Address" value={parent?.address} />
+                                        <InfoRow
+                                            label="Annual Income"
+                                            value={
+                                                parent?.annualIncome !== undefined &&
+                                                    parent?.annualIncome !== null
+                                                    ? `\u20b9 ${parent.annualIncome}`
+                                                    : undefined
+                                            }
+                                        />
+                                    </div>
+                                ),
+                            },
+                            {
+                                key: "academic",
+                                label: "Academic Info",
+                                children: (
+                                    <div className="px-1 pb-5 flex flex-col gap-4">
+                                        {academicRecords.length === 0 ? (
+                                            <p className="text-sm text-slate-400">
+                                                No academic information added yet.
+                                            </p>
+                                        ) : (
+                                            academicRecords.map((rec, idx) => (
+                                                <div
+                                                    key={rec.academicInformationId ?? idx}
+                                                    className="rounded-xl border border-slate-100 p-4"
+                                                >
+                                                    <h3 className="text-sm font-semibold text-indigo-700 mb-1">
+                                                        {rec.standard
+                                                            ? `Std.${rec.standard.replace(" Standard", "")}${rec.section ? ` Section-${rec.section}` : ""
+                                                            }`
+                                                            : `Academic Record ${idx + 1}`}
+                                                    </h3>
 
-                                    </Card>
-                                )
-                            )
-                        )}
-
-                        {/* ===========================
-                            DOCUMENTS
-                        =========================== */}
-
-                        <Card title="Documents">
-
-                            {documents.length ===
-                                0 ? (
-                                <p className="text-sm text-slate-400">
-                                    No documents uploaded.
-                                </p>
-                            ) : (
-                                <div className="space-y-2">
-
-                                    {documents.map(
-                                        (
-                                            doc,
-                                            idx
-                                        ) => (
-                                            <div
-                                                key={
-                                                    doc.studentDocumentId ??
-                                                    idx
-                                                }
-                                                className="flex items-center justify-between py-2 border-b border-slate-50 last:border-b-0"
-                                            >
-
-                                                <div>
-
-                                                    <p className="text-sm text-slate-700">
-                                                        {
-                                                            doc.documentName
-                                                        }
-                                                    </p>
-
-                                                    {doc.uploadDate && (
-                                                        <p className="text-xs text-slate-400">
-                                                            {dayjs(
-                                                                doc.uploadDate
-                                                            ).format(
-                                                                "DD-MM-YYYY"
-                                                            )}
+                                                    {rec.academicYear && (
+                                                        <p className="text-xs text-slate-500 mb-2">
+                                                            Academic Year: {rec.academicYear}
                                                         </p>
                                                     )}
 
-                                                </div>
-
-                                                <button
-                                                    onClick={() =>
-                                                        handleViewDocument(
-                                                            doc
-                                                        )
-                                                    }
-                                                    className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 cursor-pointer print:hidden"
-                                                >
-                                                    <HiDownload
-                                                        size={
-                                                            14
+                                                    <InfoRow label="Admission No" value={rec.admissionNo} />
+                                                    <InfoRow
+                                                        label="Admission Date"
+                                                        value={
+                                                            rec.admissionDate
+                                                                ? dayjs(rec.admissionDate).format("DD-MM-YYYY")
+                                                                : undefined
                                                         }
                                                     />
-
-                                                    View
-                                                </button>
-
+                                                    <InfoRow label="Standard" value={rec.standard} />
+                                                    <InfoRow label="Section" value={rec.section} />
+                                                    <InfoRow label="Roll No" value={rec.rollNo} />
+                                                    <InfoRow label="Academic Year" value={rec.academicYear} />
+                                                    <InfoRow label="Blood Group" value={rec.bloodGroup} />
+                                                    <InfoRow label="Category" value={rec.category} />
+                                                    <InfoRow label="Caste" value={rec.caste} />
+                                                    <InfoRow
+                                                        label="Date of Birth"
+                                                        value={
+                                                            rec.dob
+                                                                ? dayjs(rec.dob).format("DD-MM-YYYY")
+                                                                : undefined
+                                                        }
+                                                    />
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                ),
+                            },
+                            {
+                                key: "achievements",
+                                label: "Achievements",
+                                children: (
+                                    <div className="px-1 pb-5">
+                                        {achievements.length === 0 ? (
+                                            <div className="text-center py-6">
+                                                <div className="w-14 h-14 mx-auto rounded-full bg-amber-50 flex items-center justify-center mb-3">
+                                                    <HiStar size={28} className="text-amber-400" />
+                                                </div>
+                                                <p className="text-sm font-medium text-slate-500">
+                                                    No achievements added yet.
+                                                </p>
                                             </div>
-                                        )
-                                    )}
-
-                                </div>
-                            )}
-
-                        </Card>
-
-                    </div>
-
-                    {/* ===========================
-                        RESULT COLUMN
-                    =========================== */}
-
-                    <div className="lg:col-span-4 lg:sticky lg:top-6">
-
-                        <ResultCard
-                            results={results}
-                        />
-
-                    </div>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                {achievements.map((achievement, index) => (
+                                                    <div
+                                                        key={achievement.studentAchievementId ?? index}
+                                                        className="flex items-start gap-3 p-4 rounded-xl border border-amber-100 bg-gradient-to-r from-amber-50 to-white hover:shadow-md transition-all duration-200"
+                                                    >
+                                                        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                                                            <HiStar size={21} className="text-amber-500" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <h3 className="text-sm font-semibold text-slate-800">
+                                                                {achievement.achievementName || "Achievement"}
+                                                            </h3>
+                                                            <p className="text-xs text-slate-500 mt-1 leading-5">
+                                                                {achievement.achievementDescription ||
+                                                                    "No description available."}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ),
+                            },
+                            {
+                                key: "documents",
+                                label: "Uploaded Documents",
+                                children: (
+                                    <div className="px-1 pb-5">
+                                        {documents.length === 0 ? (
+                                            <p className="text-sm text-slate-400">No documents uploaded.</p>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                {documents.map((doc, idx) => (
+                                                    <div
+                                                        key={doc.studentDocumentId ?? idx}
+                                                        className="flex items-center justify-between py-2 border-b border-slate-50 last:border-b-0"
+                                                    >
+                                                        <div>
+                                                            <p className="text-sm text-slate-700">
+                                                                {doc.documentName}
+                                                            </p>
+                                                            {doc.uploadDate && (
+                                                                <p className="text-xs text-slate-400">
+                                                                    {dayjs(doc.uploadDate).format("DD-MM-YYYY")}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                        <button
+                                                            onClick={() => handleViewDocument(doc)}
+                                                            className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 cursor-pointer print:hidden"
+                                                        >
+                                                            <HiDownload size={14} />
+                                                            View
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ),
+                            },
+                            {
+                                key: "results",
+                                label: "Results",
+                                children: (
+                                    <div className="px-1 pb-5">
+                                        <ResultCard results={results} />
+                                    </div>
+                                ),
+                            },
+                            {
+                                key: "fee",
+                                label: (
+                                    <span className="inline-flex items-center gap-1">
+                                        <HiCurrencyRupee size={15} />
+                                        Fee
+                                    </span>
+                                ),
+                                children: (
+                                    <div className="px-1 pb-5">
+                                        <FeeCard fees={fees} loading={feeLoading} error={feeError} />
+                                    </div>
+                                ),
+                            },
+                        ]}
+                    />
 
                 </div>
 
             </div>
 
         </div>
+        </div>
+    
     );
 }

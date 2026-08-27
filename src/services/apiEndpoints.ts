@@ -182,4 +182,10 @@ deleteStudentAchievement: (
   updateStudentFee: () => `/jnpa-school-project/studentFee/updateStudentFee`,
   deleteStudentFee: (studentFeeId: number | string) =>
     `/jnpa-school-project/studentFee/deleteStudentFee/${studentFeeId}`,
+  // Returns full details (incl. all feePaymentDTOS) for ONE fee record by
+  // its own studentFeeId — this is the authoritative source for a fee's
+  // detail view since getStudentById's embedded studentFeeDTOS array isn't
+  // reliably populated.
+  getStudentFee: (studentFeeId: number | string) =>
+    `/jnpa-school-project/studentFee/getStudentFee/${studentFeeId}`,
 };
