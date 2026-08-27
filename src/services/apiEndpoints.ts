@@ -182,10 +182,15 @@ deleteStudentAchievement: (
   updateStudentFee: () => `/jnpa-school-project/studentFee/updateStudentFee`,
   deleteStudentFee: (studentFeeId: number | string) =>
     `/jnpa-school-project/studentFee/deleteStudentFee/${studentFeeId}`,
-  // Returns full details (incl. all feePaymentDTOS) for ONE fee record by
-  // its own studentFeeId — this is the authoritative source for a fee's
-  // detail view since getStudentById's embedded studentFeeDTOS array isn't
-  // reliably populated.
-  getStudentFee: (studentFeeId: number | string) =>
-    `/jnpa-school-project/studentFee/getStudentFee/${studentFeeId}`,
+     // ===============================
+  // Time Table
+  // ===============================
+  saveTimeTable: () => `/jnpa-school-project/timeTable/saveTimeTable`,
+  updateTimeTable: () => `/jnpa-school-project/timeTable/updateTimeTable`,
+  getTimeTableById: (timeTableId: number | string) =>
+    `/jnpa-school-project/timeTable/getTimeTableByTimeTableId/${timeTableId}`,
+  deleteTimeTable: (timeTableId: number | string) =>
+    `/jnpa-school-project/timeTable/deleteTimeTable/${timeTableId}`,
+  getAllTimeTables: (page: number, size: number) =>
+    `/jnpa-school-project/timeTable/getAllTimeTableByFilter?page=${page}&size=${size}&paginate=true`,
 };

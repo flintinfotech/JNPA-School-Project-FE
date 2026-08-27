@@ -829,7 +829,7 @@ export default function ResultDrawer({
                     style={{ width: "100%" }}
                     min={0}
                     value={s.maximumMarks}
-                    disabled
+                    // disabled
                   />
                 </Col>
                 <Col span={5}>
@@ -1172,7 +1172,7 @@ export default function ResultDrawer({
                                     <Col span={5}>
                                       <Form.Item
                                         name={[subjectField.name, "maximumMarks"]}
-                                        rules={[{ required: true, message: "Required" }]}
+                                        // rules={[{ required: true, message: "Required" }]}
                                         style={{ marginBottom: 0 }}
                                       >
                                         {/* Auto-calculated: Total Marks split equally
