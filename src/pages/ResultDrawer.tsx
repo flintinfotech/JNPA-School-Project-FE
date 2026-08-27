@@ -47,6 +47,39 @@ import {
 
 const { Option } = Select;
 
+// Shows the academic year the user is currently logged in under (selected
+// on the login screen and stored by useAuth), e.g. "2026-2027" for
+// { startDate: "2026-06-15", endDate: "2027-04-30" }. Falls back to a
+// calendar-based guess only if nothing was stored (shouldn't normally
+// happen since login always sets this). Same logic as StudentFrom.tsx.
+const getCurrentAcademicYear = (): string => {
+  try {
+    const stored = localStorage.getItem("academicYear");
+    if (stored) {
+      const { startDate, endDate } = JSON.parse(stored) as {
+        startDate?: string;
+        endDate?: string;
+      };
+      const startYear = startDate ? new Date(startDate).getFullYear() : NaN;
+      const endYear = endDate ? new Date(endDate).getFullYear() : NaN;
+      if (!Number.isNaN(startYear) && !Number.isNaN(endYear)) {
+        return `${startYear}-${endYear}`;
+      }
+    }
+  } catch {
+    // fall through to the calendar-based guess below
+  }
+
+  const now = new Date();
+  const year = now.getFullYear();
+  // School years typically start mid-year (e.g. June) — before that month,
+  // treat it as still part of the previous academic year.
+  const ACADEMIC_YEAR_START_MONTH = 5; // June (0-indexed)
+  return now.getMonth() >= ACADEMIC_YEAR_START_MONTH
+    ? `${year}-${year + 1}`
+    : `${year - 1}-${year}`;
+};
+
 const RESULT_STATUS_OPTIONS = ["PASS", "FAIL"];
 
 // getAllSubjectMasterByFilter is paginated with no "get everything" option —
@@ -311,7 +344,13 @@ export default function ResultDrawer({
   const defaultNewRecord = (): NewRecordFormValues => ({
     standard: studentProfile.standard,
     division: studentProfile.division,
-    academicYear: studentProfile.academicYear || academicYears[0],
+    // New results default to the academic year the user is currently
+    // logged in under (set on the login screen), not the student's own
+    // profile year — that's what "give from login year" means here.
+    academicYear:
+      getCurrentAcademicYear() ||
+      studentProfile.academicYear ||
+      academicYears[0],
     subjects: DEFAULT_SUBJECTS.map((subjectName) => ({ subjectName })),
   });
 
