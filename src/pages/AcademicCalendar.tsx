@@ -23,8 +23,6 @@ import {
 } from "../services/Academiccalendarservice";
 import { useAuth } from "../hooks/useAuth";
 
-// Roles allowed to add/edit/delete calendar events. Compared case-insensitively
-// since the backend/localStorage role string casing can vary (e.g. "ADMIN" vs "Admin").
 const MANAGE_ROLES = ["ADMIN", "PRINCIPAL"];
 
 const { Option } = Select;
@@ -38,8 +36,6 @@ const EVENT_TYPE_OPTIONS: AcademicCalendarEventType[] = [
   "OTHER",
 ];
 
-// Pill label + dot color per type — derived from the same set the Add Event
-// form already uses, so a new type shows up here automatically.
 const TYPE_META: Record<string, { label: string; dot: string }> = {
   EXAMINATION: { label: "Examination", dot: "#F97066" },
   HOLIDAY: { label: "Holiday", dot: "#22C55E" },
@@ -51,6 +47,27 @@ const TYPE_META: Record<string, { label: string; dot: string }> = {
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+const ACADEMIC_YEAR_STORAGE_KEY = "academicYear";
+
+// Same helper as the Student Fees page — reads the logged-in session's
+// startDate and returns it as a Dayjs, so the calendar opens on the year
+// the user is logged in under. Falls back to today's date if anything
+// is missing or unparseable — never throws.
+const getLoggedInSessionStartDate = (): Dayjs => {
+  try {
+    const stored = localStorage.getItem(ACADEMIC_YEAR_STORAGE_KEY);
+    if (!stored) return dayjs();
+
+    const { startDate } = JSON.parse(stored) as { startDate?: string };
+    if (!startDate) return dayjs();
+
+    const parsed = dayjs(startDate);
+    return parsed.isValid() ? parsed : dayjs();
+  } catch {
+    return dayjs();
+  }
+};
+
 interface EventFormValues {
   eventTitle: string;
   eventType: AcademicCalendarEventType;
@@ -58,15 +75,11 @@ interface EventFormValues {
   description?: string;
 }
 
-// Large batch size — this view shows everything for the visible month plus
-// the filtered list, not a paged table, so we pull a generous page once.
 const BATCH_SIZE = 20;
 
 export default function AcademicCalendar() {
   const { user } = useAuth();
-  const canManage = MANAGE_ROLES.includes(
-    (user?.role || "").toUpperCase()
-  );
+  const canManage = MANAGE_ROLES.includes((user?.role || "").toUpperCase());
 
   const [events, setEvents] = useState<AcademicCalendarEventDTO[]>([]);
   const [loading, setLoading] = useState(false);
@@ -76,11 +89,15 @@ export default function AcademicCalendar() {
   const [editingEvent, setEditingEvent] =
     useState<AcademicCalendarEventDTO | null>(null);
 
-  const [visibleMonth, setVisibleMonth] = useState<Dayjs>(dayjs());
-  const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
-  const [activeType, setActiveType] = useState<
-    "ALL" | AcademicCalendarEventType
-  >("ALL");
+  const [visibleMonth, setVisibleMonth] = useState<Dayjs>(() =>
+    getLoggedInSessionStartDate()
+  );
+  const [selectedDate, setSelectedDate] = useState<Dayjs>(() =>
+    getLoggedInSessionStartDate()
+  );
+  const [activeType, setActiveType] = useState<"ALL" | AcademicCalendarEventType>(
+    "ALL"
+  );
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const handleDelete = async (event: AcademicCalendarEventDTO) => {
@@ -125,7 +142,6 @@ export default function AcademicCalendar() {
     setModalOpen(true);
   };
 
-  // 👇 add this
   const openEditModal = (event: AcademicCalendarEventDTO) => {
     setEditingEvent(event);
     form.setFieldsValue({
@@ -191,7 +207,7 @@ export default function AcademicCalendar() {
       setSaving(false);
     }
   };
-  // Does a given calendar day fall inside any event's [startDate, endDate] range?
+
   const eventsOnDay = useCallback(
     (day: Dayjs) =>
       events.filter(
@@ -199,13 +215,11 @@ export default function AcademicCalendar() {
           e.startDate &&
           e.endDate &&
           !day.isBefore(dayjs(e.startDate), "day") &&
-          !day.isAfter(dayjs(e.endDate), "day"),
+          !day.isAfter(dayjs(e.endDate), "day")
       ),
-    [events],
+    [events]
   );
 
-  // Build the 6x7 grid for the visible month, including leading/trailing
-  // days from adjacent months so the weeks line up.
   const calendarCells = useMemo(() => {
     const startOfMonth = visibleMonth.startOf("month");
     const gridStart = startOfMonth.subtract(startOfMonth.day(), "day");
@@ -219,9 +233,7 @@ export default function AcademicCalendar() {
 
   const filteredEvents = useMemo(() => {
     const list =
-      activeType === "ALL"
-        ? events
-        : events.filter((e) => e.eventType === activeType);
+      activeType === "ALL" ? events : events.filter((e) => e.eventType === activeType);
     return [...list].sort((a, b) => (a.startDate < b.startDate ? -1 : 1));
   }, [events, activeType]);
 
@@ -242,7 +254,6 @@ export default function AcademicCalendar() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-5 items-start">
-        {/* Month calendar */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 w-full lg:w-[420px] shrink-0">
           <div className="flex items-center justify-between mb-4">
             <button
@@ -279,18 +290,13 @@ export default function AcademicCalendar() {
               const isSelected = day.isSame(selectedDate, "day");
 
               return (
-                <div
-                  key={day.format("YYYY-MM-DD")}
-                  className="flex items-center justify-center"
-                >
+                <div key={day.format("YYYY-MM-DD")} className="flex items-center justify-center">
                   <button
                     onClick={() => setSelectedDate(day)}
                     className={[
                       "w-9 h-9 rounded-full text-sm flex items-center justify-center transition",
                       !inMonth ? "text-gray-300" : "text-gray-700",
-                      hasEvent && inMonth
-                        ? "bg-[#3B82F6] text-white font-medium"
-                        : "",
+                      hasEvent && inMonth ? "bg-[#3B82F6] text-white font-medium" : "",
                       isSelected && !hasEvent ? "ring-1 ring-[#93C5FD]" : "",
                       !hasEvent ? "hover:bg-gray-100" : "",
                     ].join(" ")}
@@ -303,7 +309,6 @@ export default function AcademicCalendar() {
           </div>
         </div>
 
-        {/* Event list */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex-1 w-full">
           <div className="flex flex-wrap gap-2 mb-4">
             <button
@@ -363,8 +368,7 @@ export default function AcademicCalendar() {
                           <span
                             className="w-1.5 h-1.5 rounded-full"
                             style={{
-                              backgroundColor:
-                                TYPE_META[event.eventType]?.dot ?? "#94A3B8",
+                              backgroundColor: TYPE_META[event.eventType]?.dot ?? "#94A3B8",
                             }}
                           />
                           {TYPE_META[event.eventType]?.label ?? event.eventType}
@@ -407,11 +411,7 @@ export default function AcademicCalendar() {
       </div>
 
       <Modal
-        title={
-          editingEvent
-            ? "Edit Academic Calendar Event"
-            : "Add Academic Calendar Event"
-        }
+        title={editingEvent ? "Edit Academic Calendar Event" : "Add Academic Calendar Event"}
         open={modalOpen}
         onCancel={closeModal}
         onOk={handleSave}
@@ -452,9 +452,7 @@ export default function AcademicCalendar() {
                   if (!value || value.length < 2) return Promise.resolve();
                   const [start, end] = value;
                   if (end.isBefore(start, "day")) {
-                    return Promise.reject(
-                      new Error("End date cannot be before start date"),
-                    );
+                    return Promise.reject(new Error("End date cannot be before start date"));
                   }
                   return Promise.resolve();
                 },
@@ -465,10 +463,7 @@ export default function AcademicCalendar() {
           </Form.Item>
 
           <Form.Item name="description" label="Description">
-            <Input.TextArea
-              rows={3}
-              placeholder="e.g. Mid-Term examination for all classes"
-            />
+            <Input.TextArea rows={3} placeholder="e.g. Mid-Term examination for all classes" />
           </Form.Item>
         </Form>
       </Modal>

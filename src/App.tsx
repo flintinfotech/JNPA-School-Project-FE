@@ -65,6 +65,7 @@ import Results from "./pages/Results";
 import Achievements from "./pages/Achievements";
 import AcademicCalendar from "./pages/AcademicCalendar";
 import StudentFees from "./pages/StudentFees";
+import TimeTable from "./pages/TimeTable";
 export default function App() {
 
   const { isAuthenticated, login, logout } = useAuth();
@@ -92,10 +93,11 @@ export default function App() {
   const isAchievementsPage = location.pathname ==="/achievements";
   const isAcademicCalendarPage = location.pathname == "/academic-calender";
   const isStudentFeesPage = location.pathname === "/student-fees";
+  const isTimeTablePage = location.pathname === "/time-table";
   const isHomePage = location.pathname === "/";
 
-  const hideNavbarFooter = isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage || isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage || isStudentProfile|| isResultsPage || isAchievementsPage || isAcademicCalendarPage || isStudentFeesPage ;
-  const hideFooter = isHomePage || isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage || isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage || isStudentProfile|| isResultsPage || isAchievementsPage || isAcademicCalendarPage || isStudentFeesPage ;
+  const hideNavbarFooter = isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage || isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage || isStudentProfile|| isResultsPage || isAchievementsPage || isAcademicCalendarPage || isStudentFeesPage || isTimeTablePage ;
+  const hideFooter = isHomePage || isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage ||	isTeacherSubjectsPage ||	isAdmissionInquiryPage	||	isDashboardPage	||	isProfilePage	||	isStudentProfile||	isResultsPage	||	isAchievementsPage	||	isAcademicCalendarPage	||	isStudentFeesPage	||	isTimeTablePage ;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -150,6 +152,7 @@ export default function App() {
             <Route path="/achievements" element={<Achievements/>}/>
             <Route path="/academic-calender" element={<AcademicCalendar/>}/>
             <Route path="/student-fees" element={< StudentFees/>}/>
+            <Route path="/time-table" element={<TimeTable/>}/>
           </Route>
 
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
