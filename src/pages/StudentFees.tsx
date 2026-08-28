@@ -292,7 +292,9 @@ function StudentFeeForm({
                   <Input />
                 </Form.Item>
 
-                {!viewOnly && feeFields.length > 1 && (
+                {/* 👇 always shown (not just when there are 2+ fee cards) —
+                    only view-only mode hides it now. */}
+                {!viewOnly && (
                   <div className="flex justify-end mb-1">
                     <Button
                       danger
@@ -947,6 +949,11 @@ export default function StudentFeesManagement() {
             ...(fee.status ? { status: fee.status } : {}),
             feePaymentDTOS: (fee.feePaymentDTOS || []).map((p: any) => ({
               ...(p.paymentId ? { paymentId: p.paymentId } : {}),
+              // 👇 NEW — required by the backend: FEE_PAYMENT_ENTITY.STUDENT_FEE_ID
+              // is NOT NULL, so every payment row (new or existing) needs it set
+              // explicitly. Without this, adding a new payment while updating an
+              // existing fee fails with a NULL constraint violation on insert.
+              ...(fee.studentFeeId ? { studentFeeId: fee.studentFeeId } : {}),
               // 👇 NEW — pass receiptNo through on update so it isn't wiped
               // out; on a new payment this is undefined and the backend
               // presumably assigns it.
