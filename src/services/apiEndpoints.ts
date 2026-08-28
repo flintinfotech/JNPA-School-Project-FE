@@ -22,8 +22,7 @@ export const apiEndpoints = {
 
   saveStudent: () => `/jnpa-school-project/student/saveStudent`,
   updateStudent: () => `/jnpa-school-project/student/updateStudent`,
-  getStudentById: (studentId: number | string) =>
-    `/jnpa-school-project/student/getStudentById/${studentId}`,
+  getStudentById: (studentId: number | string) =>`/jnpa-school-project/student/getStudentById/${studentId}`,
   deleteStudent: (studentId: number | string) =>
     `/jnpa-school-project/student/deleteStudent/${studentId}`,
   getAllStudents: (page: number, size: number) =>
@@ -177,6 +176,7 @@ deleteStudentAchievement: (
   getAllAcademicCalendarEventsByFilter: (page: number, size: number) =>
     `/jnpa-school-project/academicCalendarEvents/getAllAcademicCalendarEventsByFilter?page=${page}&size=${size}&paginate=true`,
 
+
   // ===============================
   // Student Fee   👈 ADDED — these were missing, which is why save/update/delete were failing
   // ===============================
@@ -186,6 +186,9 @@ deleteStudentAchievement: (
   `/jnpa-school-project/studentFee/getStudentFeeById/${studentFeeId}`,
   deleteStudentFee: (studentFeeId: number | string) =>
     `/jnpa-school-project/studentFee/deleteStudentFee/${studentFeeId}`,
+
+
+
      // ===============================
   // Time Table
   // ===============================
@@ -197,4 +200,5 @@ deleteStudentAchievement: (
     `/jnpa-school-project/timeTable/deleteTimeTable/${timeTableId}`,
   getAllTimeTables: (page: number, size: number) =>
     `/jnpa-school-project/timeTable/getAllTimeTableByFilter?page=${page}&size=${size}&paginate=true`,
+
 };
