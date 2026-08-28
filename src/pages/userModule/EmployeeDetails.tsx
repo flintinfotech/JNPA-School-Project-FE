@@ -12,7 +12,7 @@ import {
 } from "../../services/userService";
 import UserUpdateProfileTable from "./EmployeeDetailsTable";
 import User from "./Employee";
-import dayjs from "dayjs";
+import dayjs from "dayjs";git
 import { getAllStaticData, type StaticDataResponse } from "../../services/staticDataService";
 import EmployeeViewer from "./EmployeeViewer";
 
