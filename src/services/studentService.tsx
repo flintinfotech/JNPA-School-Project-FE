@@ -72,12 +72,13 @@ export interface StudentResultDTO {
 }
 
 export interface FeePaymentDTO {
-  paymentId?: number;
+  feePaymentId?: number;
   studentFeeId?: number;
   amount?: number;
   paymentMode?: string; // "CASH" | "UPI" | "CARD" | "NET_BANKING" | "CHEQUE"
   paymentDate?: string;
   transactionId?: string;
+  receiptNo?: string; // e.g. "RCT00006" — comes straight from the backend
   remarks?: string;
 }
 
@@ -264,7 +265,7 @@ export const getAllStudents = async (
 // ===========================
 // Student Fee (detail view)
 // ===========================
-// GET /jnpa-school-project/studentFee/getStudentFee/{studentFeeId}
+// GET /jnpa-school-project/studentFee/getStudentFeeById/{studentFeeId}
 // Response shape: { success, message, data: StudentFeeDTO, timestamp }
 // This is the authoritative source for a single fee's full details
 // (including every feePaymentDTOS entry) — used to fetch/enrich each fee

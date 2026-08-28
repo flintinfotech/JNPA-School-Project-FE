@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
-import { Spin, Empty, message, Tabs } from "antd";
+import { Spin, Empty, message, Tabs, Button } from "antd";
+import { PrinterOutlined } from "@ant-design/icons";
 import {
     HiCheckCircle,
     HiXCircle,
@@ -10,6 +11,7 @@ import {
     HiCurrencyRupee,
 } from "react-icons/hi";
 import dayjs from "dayjs";
+import FeeReceiptModal, { getPaymentReceiptNo } from "../components/FeeReceipt";
 
 import {
     getStudentById,
@@ -160,26 +162,32 @@ function Card({
     subtitle,
     children,
     className = "",
+    extra,
 }: {
     title: string;
     subtitle?: string;
     children: React.ReactNode;
     className?: string;
+    extra?: React.ReactNode;
 }) {
     return (
         <div
             className={`bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full ${className}`}
         >
-            <div className="px-5 py-4 border-b border-slate-100">
-                <h2 className="text-base font-semibold text-indigo-700">
-                    {title}
-                </h2>
+            <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-3">
+                <div>
+                    <h2 className="text-base font-semibold text-indigo-700">
+                        {title}
+                    </h2>
 
-                {subtitle && (
-                    <p className="text-xs text-slate-500 mt-0.5">
-                        {subtitle}
-                    </p>
-                )}
+                    {subtitle && (
+                        <p className="text-xs text-slate-500 mt-0.5">
+                            {subtitle}
+                        </p>
+                    )}
+                </div>
+
+                {extra && <div className="shrink-0">{extra}</div>}
             </div>
 
             <div className="p-5 flex-1">
@@ -392,10 +400,12 @@ function FeeCard({
     fees,
     loading,
     error,
+    onPrintReceipt,
 }: {
     fees: StudentFeeDTO[];
     loading: boolean;
     error: string | null;
+    onPrintReceipt: (fee: StudentFeeDTO, payment: FeePaymentDTO | null) => void;
 }) {
     if (loading) {
         return (
@@ -518,6 +528,15 @@ function FeeCard({
                                 ? `Academic Year: ${feeYear}`
                                 : undefined
                         }
+                        extra={
+                            <Button
+                                size="small"
+                                icon={<PrinterOutlined />}
+                                onClick={() => onPrintReceipt(fee, null)}
+                            >
+                                Print Receipt
+                            </Button>
+                        }
                     >
 
                         {/* =================================
@@ -573,10 +592,15 @@ function FeeCard({
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
 
+                            {/* <InfoRow
+                                label="Receipt No"
+                                value={getCardReceiptNo(fee)}
+                            />
+
                             <InfoRow
                                 label="Fee Name"
                                 value={feeName || "-"}
-                            />
+                            /> */}
 
                             <InfoRow
                                 label="Due Amount"
@@ -628,6 +652,10 @@ function FeeCard({
                                             <tr className="bg-slate-50 text-slate-500 text-xs">
 
                                                 <th className="text-left font-medium px-3 py-3">
+                                                    Receipt No
+                                                </th>
+
+                                                <th className="text-left font-medium px-3 py-3">
                                                     Payment Date
                                                 </th>
 
@@ -647,6 +675,10 @@ function FeeCard({
                                                     Remarks
                                                 </th>
 
+                                                <th className="text-right font-medium px-3 py-3">
+                                                    Receipt
+                                                </th>
+
                                             </tr>
                                         </thead>
 
@@ -654,7 +686,7 @@ function FeeCard({
                                         <tbody>
 
                                             {payments.map((payment, paymentIndex) => {
-                                                const paymentId = payment.paymentId;
+                                                const paymentId = payment.feePaymentId;
                                                 const paymentDate = payment.paymentDate;
                                                 const paymentAmount = payment.amount;
                                                 const paymentMode = payment.paymentMode;
@@ -666,6 +698,13 @@ function FeeCard({
                                                         key={paymentId ?? paymentIndex}
                                                         className="border-t border-slate-100"
                                                     >
+
+                                                        {/* Receipt No */}
+
+                                                        <td className="px-3 py-3 text-slate-600 font-medium">
+                                                            {getPaymentReceiptNo(payment)}
+                                                        </td>
+
 
                                                         {/* Payment Date */}
 
@@ -703,6 +742,18 @@ function FeeCard({
 
                                                         <td className="px-3 py-3 text-slate-500">
                                                             {paymentRemarks || "-"}
+                                                        </td>
+
+                                                        {/* Print Receipt — opens a printable receipt for
+                                                            just this one transaction */}
+                                                        <td className="px-3 py-3 text-right">
+                                                            <Button
+                                                                size="small"
+                                                                icon={<PrinterOutlined />}
+                                                                onClick={() => onPrintReceipt(fee, payment)}
+                                                            >
+                                                                Receipt
+                                                            </Button>
                                                         </td>
 
                                                     </tr>
@@ -763,6 +814,14 @@ export default function StudentProfile() {
     const [feeLoading, setFeeLoading] = useState(false);
     const [feeError, setFeeError] = useState<string | null>(null);
     const [feeFetchedForId, setFeeFetchedForId] = useState<number | null>(null);
+
+    // Which fee's/transaction's printable receipt is currently open
+    // (either the card-level "Print Receipt" button, or a "Receipt"
+    // button on one payment row) — null when the modal is closed.
+    const [receiptTarget, setReceiptTarget] = useState<{
+        fee: StudentFeeDTO;
+        payment: FeePaymentDTO | null;
+    } | null>(null);
 
     // ===========================
     // Fetch Student
@@ -1462,7 +1521,14 @@ export default function StudentProfile() {
                                 ),
                                 children: (
                                     <div className="px-1 pb-5">
-                                        <FeeCard fees={fees} loading={feeLoading} error={feeError} />
+                                        <FeeCard
+                                            fees={fees}
+                                            loading={feeLoading}
+                                            error={feeError}
+                                            onPrintReceipt={(fee, payment) =>
+                                                setReceiptTarget({ fee, payment })
+                                            }
+                                        />
                                     </div>
                                 ),
                             },
@@ -1474,7 +1540,16 @@ export default function StudentProfile() {
             </div>
 
         </div>
+
+        <FeeReceiptModal
+            open={!!receiptTarget}
+            onClose={() => setReceiptTarget(null)}
+            student={student}
+            academic={academic}
+            fee={receiptTarget?.fee ?? null}
+            payment={receiptTarget?.payment ?? null}
+        />
         </div>
-    
+
     );
 }
