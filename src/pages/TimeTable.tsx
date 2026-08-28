@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, Fragment } from "react";
 import {
   Form,
   Input,
   Select,
   TimePicker,
-  InputNumber,
   Button,
   Drawer,
   Modal,
@@ -49,8 +48,58 @@ const STANDARD_FALLBACK = [
   "10th Standard",
 ];
 
+// 👇 ASSUMED fallback — used ONLY until getAllStaticData has actually been
+// fetched (fetched lazily on Add/Edit/View — see ensureStaticData below).
+const PERIOD_FALLBACK = [
+  "Period 1",
+  "Period 2",
+  "Period 3",
+  "Period 4",
+  "Period 5",
+  "Period 6",
+  "Period 7",
+  "Period 8",
+  "Break 1",
+  "Lunch Break",
+];
+
 const DRAWER_BG_COLOR = "#fff6ed";
 const ACADEMIC_YEAR_STORAGE_KEY = "academicYear";
+
+// ---------------------------------------------------------------
+// 🛠️ FIX — static-data normalization helpers.
+//
+// getAllStaticData's entries were assumed to be plain strings
+// (e.g. "Break 1"). If the real API instead returns objects, e.g.
+// { label: "Break 1", value: 5 } or { name: "Break 1", id: 5 },
+// then rendering that object directly as a React child, or calling
+// string methods like .match()/.toLowerCase() on it, throws and
+// crashes the whole page to a blank screen — which is exactly what
+// happened when picking "Break".
+//
+// toLabel/toValue below make every static-data consumer safe
+// regardless of whether the entry is a string or an object.
+// ---------------------------------------------------------------
+const toLabel = (item: any): string => {
+  if (item === null || item === undefined) return "";
+  if (typeof item === "string") return item;
+  if (typeof item === "number") return String(item);
+  return String(
+    item.label ?? item.name ?? item.periodName ?? item.title ?? item.value ?? ""
+  );
+};
+
+const toValue = (item: any): string => {
+  if (item === null || item === undefined) return "";
+  if (typeof item === "string") return item;
+  if (typeof item === "number") return String(item);
+  return String(
+    item.value ?? item.label ?? item.name ?? item.periodName ?? item.id ?? ""
+  );
+};
+
+const normalizeList = (list: any): string[] =>
+  Array.isArray(list) ? list.map((item) => toValue(item)) : [];
 
 const getCurrentAcademicYear = (): string => {
   const today = new Date();
@@ -89,6 +138,43 @@ function useIsMobile(breakpoint = 768) {
   return isMobile;
 }
 
+// ---------------------------------------------------------------
+// 🛠️ FIX — small error boundary.
+// If anything unexpected still throws while rendering the read-only
+// grid (bad/legacy data, unexpected shapes, etc.), this catches it
+// and shows a small inline message instead of taking down the whole
+// page to a blank screen.
+// ---------------------------------------------------------------
+class TimeTableErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: unknown, info: unknown) {
+    // eslint-disable-next-line no-console
+    console.error("TimeTable view render error:", error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: "48px 0", textAlign: "center", color: "#8A5A12" }}>
+          <p style={{ marginBottom: 12 }}>
+            Something went wrong while showing this timetable.
+          </p>
+          <Button onClick={() => this.setState({ hasError: false })}>Try again</Button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 interface TimeTableRow {
   timeTableId: number;
   // classMasterId?: number | null;
@@ -113,10 +199,10 @@ interface TeacherOption {
   employeeCode?: string;
 }
 
-// 👇 Loose type — shape of getAllStaticData's response is assumed to match
-// the { "blood group": [...], "division": [...], "medium": [...] } pattern
-// already used in StudentForm.tsx.
-type StaticDataMap = Record<string, string[]>;
+// 👇 Loose type — getAllStaticData's response may contain plain strings OR
+// objects per key. Kept as `any[]` and normalized via toLabel/toValue at
+// the point of use so either shape works safely.
+type StaticDataMap = Record<string, any[]>;
 
 const emptyPeriod = () => ({
   timeTablePeriodId: undefined,
@@ -208,6 +294,27 @@ function TimeTableForm({
     }
   };
 
+  // 🛠️ FIX — normalize every static-data list (string OR object entries)
+  // into safe { value, label } pairs before rendering any <Option>.
+  const standardOptions = (staticData?.["standard"] ?? STANDARD_FALLBACK).map((s: any) => ({
+    value: toValue(s),
+    label: toLabel(s),
+  }));
+  const divisionOptions = (staticData?.["division"] ?? []).map((d: any) => ({
+    value: toValue(d),
+    label: toLabel(d),
+  }));
+  const mediumOptions = (staticData?.["medium"] ?? []).map((m: any) => ({
+    value: toValue(m),
+    label: toLabel(m),
+  }));
+  const periodOptions = (staticData?.["Time table periods"] ?? PERIOD_FALLBACK).map(
+    (p: any) => ({
+      value: toValue(p),
+      label: toLabel(p),
+    })
+  );
+
   return (
     <Form form={form} layout="vertical">
       <Form.Item name="timeTableId" hidden>
@@ -221,9 +328,9 @@ function TimeTableForm({
           rules={[{ required: true, message: "Standard is required" }]}
         >
           <Select placeholder="Select standard" allowClear>
-            {(staticData?.["standard"] ?? STANDARD_FALLBACK).map((s) => (
-              <Option key={s} value={s}>
-                {s}
+            {standardOptions.map((opt) => (
+              <Option key={opt.value} value={opt.value}>
+                {opt.label}
               </Option>
             ))}
           </Select>
@@ -234,9 +341,9 @@ function TimeTableForm({
           rules={[{ required: true, message: "Division is required" }]}
         >
           <Select placeholder="Select division" allowClear>
-            {staticData?.["division"]?.map((d) => (
-              <Option key={d} value={d}>
-                {d}
+            {divisionOptions.map((opt) => (
+              <Option key={opt.value} value={opt.value}>
+                {opt.label}
               </Option>
             ))}
           </Select>
@@ -247,9 +354,9 @@ function TimeTableForm({
           rules={[{ required: true, message: "Medium is required" }]}
         >
           <Select placeholder="Select medium" allowClear>
-            {staticData?.["medium"]?.map((m) => (
-              <Option key={m} value={m}>
-                {m}
+            {mediumOptions.map((opt) => (
+              <Option key={opt.value} value={opt.value}>
+                {opt.label}
               </Option>
             ))}
           </Select>
@@ -299,11 +406,17 @@ function TimeTableForm({
                   </Form.Item>
                   <Form.Item
                     {...restField}
-                    label="Period Number"
+                    label="Period"
                     name={[name, "periodNumber"]}
-                    rules={[{ required: true, message: "Period number is required" }]}
+                    rules={[{ required: true, message: "Period is required" }]}
                   >
-                    <InputNumber style={{ width: "100%" }} min={1} placeholder="1" />
+                    <Select placeholder="Select period" allowClear>
+                      {periodOptions.map((opt) => (
+                        <Option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </Option>
+                      ))}
+                    </Select>
                   </Form.Item>
                   <div className="grid grid-cols-2 gap-x-2">
                     <Form.Item
@@ -330,7 +443,6 @@ function TimeTableForm({
                     {...restField}
                     label="Subject"
                     name={[name, "subjectId"]}
-                    rules={[{ required: true, message: "Subject is required" }]}
                   >
                     <Select
                       placeholder="Select subject"
@@ -349,7 +461,6 @@ function TimeTableForm({
                     {...restField}
                     label="Teacher"
                     name={[name, "employeeDetailsId"]}
-                    rules={[{ required: true, message: "Teacher is required" }]}
                   >
                     <Select
                       placeholder="Select teacher"
@@ -396,110 +507,473 @@ function TimeTableForm({
 
 // ===============================
 // Read-only Timetable Grid (used in the View popup)
-// Days across the top, periods down the side — built straight from the
-// nested subjectMasterDTO / employeeDetailsDTO your API already returns,
-// so no dropdown data is needed to render it.
-// ===============================
-function TimeTableGridView({ data }: { data: any }) {
-  const periods: any[] = data?.timeTablePeriods || [];
+// ---------------------------------------------------------------
+// "day-lane" weekly board. Each weekday is its own vertical lane;
+// each period is a clearly separated card. Break/Lunch periods get
+// their own simpler card (no subject/teacher line) instead of an
+// awkward "-"/"-" pair. Built entirely with CSS Grid (no <table>).
+// ---------------------------------------------------------------
+const TAG_PALETTE: { bg: string; border: string; text: string }[] = [
+  { bg: "#FCEEDA", border: "#E8A33D", text: "#8A5A12" }, // amber
+  { bg: "#DFF3EF", border: "#2E8B79", text: "#1D5C50" }, // teal
+  { bg: "#FBE6DE", border: "#D9633B", text: "#9C3E1F" }, // coral
+  { bg: "#E7E9FB", border: "#4C5FD5", text: "#33409C" }, // indigo
+  { bg: "#F3E4EF", border: "#8E4585", text: "#6B2F62" }, // plum
+  { bg: "#EAF1E1", border: "#6B8E4E", text: "#4A6636" }, // moss
+  { bg: "#E7ECEF", border: "#5B6B79", text: "#3E4A55" }, // slate
+  { bg: "#F7E1EA", border: "#C1477A", text: "#8E2F58" }, // rose
+];
 
-  const periodNumbers: number[] = Array.from(
-    new Set(periods.map((p) => p.periodNumber))
-  ).sort((a: number, b: number) => a - b);
+const hashString = (str: string): number => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+};
 
-  const periodTimeLabel = (num: number) => {
-    const p = periods.find((pp) => pp.periodNumber === num);
-    if (!p) return "";
-    const fmt = (t: string) => (t ? dayjs(t, "HH:mm:ss").format("hh:mm A") : "");
-    return `${fmt(p.startTime)} - ${fmt(p.endTime)}`;
+const getTagStyle = (subjectName?: string) => {
+  if (!subjectName) return null;
+  return TAG_PALETTE[hashString(subjectName) % TAG_PALETTE.length];
+};
+
+const dayAbbrev = (day: string) => day.charAt(0) + day.slice(1, 3).toLowerCase();
+
+const initialsOf = (first?: string, last?: string) => {
+  const a = (first || "").trim().charAt(0);
+  const b = (last || "").trim().charAt(0);
+  const combo = `${a}${b}`.toUpperCase();
+  return combo || "—";
+};
+
+// 🛠️ FIX — accepts `any`, not just `string`, and coerces via toLabel
+// first. Previously this called `.match()` directly on `label`; if
+// `label` was ever an object (mismatched static-data shape) this threw
+// and crashed the whole page. Now it's always operating on a string.
+const railLabel = (label: any) => {
+  const str = toLabel(label) || String(label ?? "");
+  const m = str.match(/^Period\s+(\d+)$/i);
+  return m ? `P${m[1]}` : str;
+};
+
+// 🛠️ NEW — detects Break/Lunch-type periods so they can get their own
+// simple card instead of an empty subject/teacher layout.
+const isBreakLabel = (label: any) => {
+  const str = toLabel(label) || String(label ?? "");
+  return /break|lunch|recess/i.test(str);
+};
+
+function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: string[] }) {
+  const periods: any[] = Array.isArray(data?.timeTablePeriods) ? data.timeTablePeriods : [];
+  const todayName = dayjs().format("dddd").toUpperCase();
+
+  // 🛠️ FIX — always compare on normalized strings, never raw values that
+  // might be objects.
+  const normalizedOrder = (periodOrder || []).map((p) => toLabel(p) || String(p ?? ""));
+
+  const orderIndex = (label: any) => {
+    const str = toLabel(label) || String(label ?? "");
+    const idx = normalizedOrder.indexOf(str);
+    return idx === -1 ? Number.MAX_SAFE_INTEGER : idx;
   };
 
-  const findCell = (day: string, periodNumber: number) =>
-    periods.find((p) => p.day === day && p.periodNumber === periodNumber);
+  const periodNumbers: string[] = Array.from(
+    new Set(periods.map((p) => (toLabel(p.periodNumber) || String(p.periodNumber ?? ""))))
+  ).sort((a: string, b: string) => orderIndex(a) - orderIndex(b));
+
+  const periodTimeLabel = (num: string) => {
+    const p = periods.find((pp) => (toLabel(pp.periodNumber) || String(pp.periodNumber ?? "")) === num);
+    if (!p) return "";
+    const fmt = (t: string) => (t ? dayjs(t, "HH:mm:ss").format("hh:mm A") : "");
+    return `${fmt(p.startTime)} – ${fmt(p.endTime)}`;
+  };
+
+  const findCell = (day: string, periodNumber: string) =>
+    periods.find(
+      (p) => p.day === day && (toLabel(p.periodNumber) || String(p.periodNumber ?? "")) === periodNumber
+    );
 
   return (
-    <div>
-      <div className="mb-4 flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-600">
-        <span>
-          <strong>Standard:</strong> {data?.standard || "-"}
-        </span>
-        <span>
-          <strong>Division:</strong> {data?.division || "-"}
-        </span>
-        <span>
-          <strong>Medium:</strong> {data?.medium || "-"}
-        </span>
-        <span>
-          <strong>Academic Year:</strong> {data?.academicYear || "-"}
-        </span>
+    <div className="sked-wrap">
+      {/* Info banner */}
+      <div className="sked-banner">
+        <div className="sked-banner-left">
+          <span className="sked-eyebrow">Weekly Timetable</span>
+          <h3 className="sked-title">
+            {data?.standard || "-"}
+            {data?.division ? <span className="sked-div">Division {data.division}</span> : null}
+          </h3>
+        </div>
+        <div className="sked-banner-right">
+          <div className="sked-chip">
+            <span className="sked-chip-label">Medium</span>
+            <span className="sked-chip-value">{data?.medium || "-"}</span>
+          </div>
+          <div className="sked-chip">
+            <span className="sked-chip-label">Academic Year</span>
+            <span className="sked-chip-value">{data?.academicYear || "-"}</span>
+          </div>
+        </div>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="bg-gray-50">
-              <th className="px-3 py-2 text-left font-semibold text-gray-600 border-b border-r border-gray-200 whitespace-nowrap">
-                Period
-              </th>
-              {DAYS.map((day) => (
-                <th
-                  key={day}
-                  className="px-3 py-2 text-center font-semibold text-gray-600 border-b border-gray-200 whitespace-nowrap"
-                >
+      {/* Board */}
+      {periodNumbers.length === 0 ? (
+        <div className="sked-empty">
+          <span className="sked-empty-icon">🗓</span>
+          <p>No periods added yet.</p>
+        </div>
+      ) : (
+        <div
+          className="sked-board"
+          style={{ gridTemplateColumns: `84px repeat(${DAYS.length}, 1fr)` }}
+        >
+          {/* corner cell */}
+          <div className="sked-corner" />
+
+          {/* day lane headers */}
+          {DAYS.map((day) => {
+            const isToday = day === todayName;
+            return (
+              <div key={day} className={`sked-daylabel ${isToday ? "is-today" : ""}`}>
+                <span className="sked-daylabel-full">
                   {day.charAt(0) + day.slice(1).toLowerCase()}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {periodNumbers.length === 0 ? (
-              <tr>
-                <td colSpan={DAYS.length + 1} className="text-center text-gray-400 py-8">
-                  No periods added yet.
-                </td>
-              </tr>
-            ) : (
-              periodNumbers.map((num) => (
-                <tr key={num} className="even:bg-gray-50/50">
-                  <td className="px-3 py-2 border-r border-b border-gray-100 font-medium text-gray-700 whitespace-nowrap align-top">
-                    Period {num}
-                    <div className="text-xs text-gray-400 font-normal">
-                      {periodTimeLabel(num)}
-                    </div>
-                  </td>
-                  {DAYS.map((day) => {
-                    const cell = findCell(day, num);
+                </span>
+                <span className="sked-daylabel-short">{dayAbbrev(day)}</span>
+                {isToday && <span className="sked-today-badge">Today</span>}
+              </div>
+            );
+          })}
+
+          {/* period rows */}
+          {periodNumbers.map((num) => {
+            const isBreakRow = isBreakLabel(num);
+            return (
+              <Fragment key={num}>
+                <div className={`sked-rail ${isBreakRow ? "is-break" : ""}`}>
+                  <span className="sked-rail-num">{railLabel(num)}</span>
+                  <span className="sked-rail-time">{periodTimeLabel(num)}</span>
+                </div>
+
+                {DAYS.map((day) => {
+                  const cell = findCell(day, num);
+                  const isToday = day === todayName;
+
+                  if (!cell) {
                     return (
-                      <td
-                        key={day}
-                        className="px-3 py-2 border-b border-gray-100 text-center align-top"
-                      >
-                        {cell ? (
-                          <div>
-                            <p className="font-medium text-gray-800">
-                              {cell.subjectMasterDTO?.subjectName || "-"}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {[
-                                cell.employeeDetailsDTO?.firstName,
-                                cell.employeeDetailsDTO?.lastName,
-                              ]
-                                .filter(Boolean)
-                                .join(" ") || "-"}
-                            </p>
-                          </div>
-                        ) : (
-                          <span className="text-gray-300">-</span>
-                        )}
-                      </td>
+                      <div key={day} className={`sked-slot ${isToday ? "is-today" : ""}`}>
+                        <div className="sked-empty-slot">Free</div>
+                      </div>
                     );
-                  })}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                  }
+
+                  // 🛠️ FIX — Break/Lunch periods get a dedicated simple
+                  // card. Previously these fell through to the normal
+                  // subject/teacher card, which just showed "-" / "-"
+                  // and (before the toLabel fix) could crash on object
+                  // shaped data.
+                  if (isBreakRow) {
+                    return (
+                      <div key={day} className={`sked-slot ${isToday ? "is-today" : ""}`}>
+                        <div className="sked-break-card">
+                          <span className="sked-break-label">{railLabel(num)}</span>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  const subjectName = cell?.subjectMasterDTO?.subjectName;
+                  const tag = getTagStyle(subjectName);
+                  const teacherFirst = cell?.employeeDetailsDTO?.firstName;
+                  const teacherLast = cell?.employeeDetailsDTO?.lastName;
+                  const teacherName = [teacherFirst, teacherLast].filter(Boolean).join(" ");
+
+                  return (
+                    <div key={day} className={`sked-slot ${isToday ? "is-today" : ""}`}>
+                      <div
+                        className="sked-card"
+                        style={{ background: tag?.bg, borderColor: tag?.border }}
+                      >
+                        <p className="sked-card-subject" style={{ color: tag?.text }}>
+                          {subjectName || "-"}
+                        </p>
+                        <div className="sked-card-teacher">
+                          <span className="sked-avatar" style={{ background: tag?.border }}>
+                            {initialsOf(teacherFirst, teacherLast)}
+                          </span>
+                          <span className="sked-teacher-name">{teacherName || "-"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </Fragment>
+            );
+          })}
+        </div>
+      )}
+
+      <style>{`
+        .sked-wrap {
+          font-family: inherit;
+        }
+
+        /* Banner */
+        .sked-banner {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: space-between;
+          align-items: flex-end;
+          gap: 16px;
+          background: #F5F7FA;
+          border: 1px solid #E3E8EE;
+          border-radius: 12px;
+          padding: 16px 20px;
+          margin-bottom: 16px;
+          position: relative;
+          overflow: hidden;
+        }
+        .sked-banner::before {
+          content: "";
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 4px;
+          background: #E8A33D;
+        }
+        .sked-eyebrow {
+          display: block;
+          font-size: 11px;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          color: #C07E1E;
+          font-weight: 700;
+          margin-bottom: 4px;
+        }
+        .sked-title {
+          margin: 0;
+          font-size: 21px;
+          font-weight: 700;
+          color: #1E2530;
+          line-height: 1.2;
+          display: flex;
+          align-items: baseline;
+          gap: 8px;
+        }
+        .sked-div {
+          font-weight: 400;
+          color: #667085;
+          font-size: 15px;
+        }
+        .sked-banner-right {
+          display: flex;
+          gap: 20px;
+        }
+        .sked-chip {
+          display: flex;
+          flex-direction: column;
+          text-align: right;
+        }
+        .sked-chip-label {
+          font-size: 10px;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          color: #8D96A6;
+        }
+        .sked-chip-value {
+          font-size: 14px;
+          font-weight: 600;
+          color: #1E2530;
+        }
+
+        /* Board — CSS Grid, no table, no scrollbar */
+        .sked-board {
+          display: grid;
+          gap: 6px;
+          align-items: stretch;
+        }
+
+        .sked-corner {
+          background: transparent;
+        }
+
+        .sked-daylabel {
+          background: #EEF1F5;
+          border-radius: 8px;
+          padding: 8px 6px;
+          text-align: center;
+          font-weight: 700;
+          font-size: 13px;
+          color: #3D4658;
+          position: relative;
+        }
+        .sked-daylabel.is-today {
+          background: #FCEEDA;
+          color: #8A5A12;
+        }
+        .sked-daylabel-short { display: none; }
+        .sked-today-badge {
+          display: block;
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          color: #C07E1E;
+          margin-top: 2px;
+        }
+
+        .sked-rail {
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          padding: 6px 8px;
+          border-radius: 8px;
+          background: #FAFAF8;
+          border: 1px dashed #E3E0D6;
+        }
+        .sked-rail.is-break {
+          background: #FBE6DE;
+          border: 1px dashed #D9633B;
+        }
+        .sked-rail-num {
+          font-weight: 700;
+          font-size: 13px;
+          color: #1E2530;
+        }
+        .sked-rail-time {
+          font-size: 10px;
+          color: #8D96A6;
+          margin-top: 2px;
+          line-height: 1.2;
+        }
+
+        .sked-slot {
+          border-radius: 8px;
+          min-height: 76px;
+          display: flex;
+        }
+        .sked-slot.is-today {
+          background: rgba(232, 163, 61, 0.07);
+          border-radius: 8px;
+        }
+
+        .sked-card {
+          width: 100%;
+          border: 1px solid transparent;
+          border-left: 4px solid;
+          border-radius: 8px;
+          padding: 8px 10px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          gap: 6px;
+        }
+        .sked-card-subject {
+          margin: 0;
+          font-weight: 700;
+          font-size: 13px;
+          line-height: 1.25;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .sked-card-teacher {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          min-width: 0;
+        }
+        .sked-avatar {
+          flex-shrink: 0;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          color: #fff;
+          font-size: 9px;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .sked-teacher-name {
+          font-size: 11.5px;
+          color: #4A5262;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        /* Break / Lunch card — deliberately simpler, no avatar/teacher row */
+        .sked-break-card {
+          width: 100%;
+          height: 100%;
+          min-height: 60px;
+          border: 1px dashed #D9633B;
+          background: repeating-linear-gradient(
+            135deg,
+            #FBE6DE,
+            #FBE6DE 8px,
+            #FCEEDA 8px,
+            #FCEEDA 16px
+          );
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          padding: 6px;
+        }
+        .sked-break-label {
+          font-weight: 700;
+          font-size: 12px;
+          color: #9C3E1F;
+          letter-spacing: 0.02em;
+        }
+
+        .sked-empty-slot {
+          width: 100%;
+          border: 1px dashed #E3E8EE;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #C3CAD6;
+          font-size: 11px;
+        }
+
+        .sked-empty {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+          padding: 56px 0;
+          color: #A9A28F;
+          border: 1px dashed #E3E8EE;
+          border-radius: 12px;
+        }
+        .sked-empty-icon {
+          font-size: 24px;
+        }
+
+        @media (max-width: 640px) {
+          .sked-banner {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          .sked-banner-right {
+            width: 100%;
+            justify-content: space-between;
+            gap: 12px;
+          }
+          .sked-chip { text-align: left; }
+          .sked-daylabel-full { display: none; }
+          .sked-daylabel-short { display: inline; }
+          .sked-card-subject { font-size: 12px; }
+          .sked-teacher-name { font-size: 10.5px; }
+          .sked-slot { min-height: 64px; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -548,16 +1022,12 @@ export default function TimeTable() {
     fetchTimeTables(page, pageSize);
   }, [page, pageSize, fetchTimeTables]);
 
-  // Dropdown data — fetched once on mount.
+  // Teacher/Subject dropdown data — fetched once on mount (unchanged).
+  // Static data (Standard/Division/Medium/Period lists) is NOT fetched here
+  // — it's loaded lazily by ensureStaticData(), only when Add/Edit/View
+  // is actually opened. See ensureStaticData below.
   useEffect(() => {
     (async () => {
-      try {
-        const res = await api.get(apiEndpoints.getAllStaticData());
-        const data = res.data?.data ?? res.data ?? {};
-        setStaticData(data);
-      } catch {
-        // non-fatal — Standard/Division/Medium dropdowns fall back/empty
-      }
       try {
         const res = await api.post(apiEndpoints.getAllemployeeDetails(0, 200), {});
         const { list } = extractListAndTotal(res);
@@ -575,6 +1045,20 @@ export default function TimeTable() {
     })();
   }, []);
 
+  // getAllStaticData is called on-demand only, the first time the
+  // Add/Edit/View is opened. Once loaded it's cached in state, so opening
+  // Add/Edit/View again won't call the API again.
+  const ensureStaticData = useCallback(async () => {
+    if (staticData) return; // already loaded — don't refetch
+    try {
+      const res = await api.get(apiEndpoints.getAllStaticData());
+      const data = res.data?.data ?? res.data ?? {};
+      setStaticData(data);
+    } catch {
+      // non-fatal — Standard/Division/Medium/Period dropdowns fall back/empty
+    }
+  }, [staticData]);
+
   const populateForm = (data: any) => {
     form.setFieldsValue({
       timeTableId: data?.timeTableId,
@@ -584,8 +1068,9 @@ export default function TimeTable() {
       academicYear: data?.academicYear ?? getLoggedInAcademicYear(),
       timeTablePeriods: (data?.timeTablePeriods || []).map((p: any) => ({
         timeTablePeriodId: p.timeTablePeriodId,
+        // 🛠️ FIX — normalize in case a legacy record stored an object
         day: p.day,
-        periodNumber: p.periodNumber,
+        periodNumber: toLabel(p.periodNumber) || p.periodNumber,
         startTime: p.startTime ? dayjs(p.startTime, "HH:mm:ss") : null,
         endTime: p.endTime ? dayjs(p.endTime, "HH:mm:ss") : null,
         subjectId: p.subjectId ?? p.subjectMasterDTO?.subjectMasterId,
@@ -602,12 +1087,14 @@ export default function TimeTable() {
       timeTablePeriods: [emptyPeriod()],
     });
     setDrawerOpen(true);
+    ensureStaticData(); // loads Standard/Division/Medium/Period options on first open
   };
 
   const openEditDrawer = async (record: TimeTableRow) => {
     setIsEditing(true);
     setDrawerOpen(true);
     setDrawerLoading(true);
+    ensureStaticData(); // loads Standard/Division/Medium/Period options on first open
     try {
       const res = await api.get(apiEndpoints.getTimeTableById(record.timeTableId));
       const data = res.data?.data ?? res.data;
@@ -628,6 +1115,7 @@ export default function TimeTable() {
     setViewOpen(true);
     setViewLoading(true);
     setViewData(null);
+    ensureStaticData(); // needed so the grid can order periods correctly
     try {
       const res = await api.get(apiEndpoints.getTimeTableById(record.timeTableId));
       const data = res.data?.data ?? res.data;
@@ -806,20 +1294,30 @@ export default function TimeTable() {
         </Spin>
       </Drawer>
 
-      {/* View — popup, not a drawer, showing a proper timetable grid */}
+      {/* View — popup, not a drawer, showing a proper timetable grid.
+          Wrapped in an error boundary so a bad/unexpected record shows a
+          small message instead of blanking the whole page. */}
       <Modal
-        title="Time Table"
         open={viewOpen}
         onCancel={closeView}
         footer={null}
-        width={950}
+        width="min(1400px, 96vw)"
         destroyOnClose
+        closable
+        styles={{ body: { padding: 20 } }}
       >
         <Spin spinning={viewLoading} tip="Loading timetable...">
           {!viewLoading && !viewData ? (
             <Empty description="Time table not found" style={{ padding: "40px 0" }} />
           ) : (
-            viewData && <TimeTableGridView data={viewData} />
+            viewData && (
+              <TimeTableErrorBoundary>
+                <TimeTableGridView
+                  data={viewData}
+                  periodOrder={normalizeList(staticData?.["Time table periods"] ?? PERIOD_FALLBACK)}
+                />
+              </TimeTableErrorBoundary>
+            )
           )}
         </Spin>
       </Modal>
