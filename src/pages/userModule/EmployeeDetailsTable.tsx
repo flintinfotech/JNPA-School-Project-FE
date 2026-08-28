@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
-import { Button, Popconfirm } from "antd";
+import { Button, Popconfirm, Tag } from "antd";
 import { EyeOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import CommonTable from "../../components/commonTable";
 import type { UserDTO } from "../../services/userService";
+
+const statusColor = (status?: string) =>
+  (status || "").toUpperCase() === "ACTIVE" ? "green" : "red";
 
 interface UserTableProps {
   data: UserDTO[];
@@ -81,6 +84,13 @@ export default function UserUpdateProfileTable({
       render: (role: string) => role.charAt(0).toUpperCase() + role.slice(1).toLowerCase()
     },
     {
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      render: (status: string) =>
+        status ? <Tag color={statusColor(status)}>{status}</Tag> : "-",
+    },
+    {
       title: "Action",
       key: "action",
       align: "center" as const,
@@ -147,9 +157,16 @@ export default function UserUpdateProfileTable({
                     {record.firstName} {record.lastName}
                   </p>
                 </div>
-                <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-full font-medium">
-                  {record.role}
-                </span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-full font-medium">
+                    {record.role}
+                  </span>
+                  {record.status && (
+                    <Tag color={statusColor(record.status)} style={{ margin: 0 }}>
+                      {record.status}
+                    </Tag>
+                  )}
+                </div>
               </div>
 
               <div className="text-xs text-gray-500 space-y-1 mb-3">

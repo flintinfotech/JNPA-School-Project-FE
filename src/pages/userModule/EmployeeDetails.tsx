@@ -74,6 +74,9 @@ export default function UpdateUserProfile() {
   const openAddDrawer = () => {
     setEditingUser(null);
     form.resetFields();
+    // New employees default to ACTIVE — matches the Status field's own
+    // initialValue, set explicitly here too since resetFields() runs first.
+    form.setFieldsValue({ status: "ACTIVE" });
     setDrawerOpen(true);
   };
   // Fetches static data (role list, etc.) only on the first time the Role dropdown is opened
@@ -198,6 +201,7 @@ export default function UpdateUserProfile() {
           dateOfBirth: user.dateOfBirth ? dayjs(user.dateOfBirth) : null,
           joiningDate: user.joiningDate ? dayjs(user.joiningDate) : null,
           leavingDate: user.leavingDate ? dayjs(user.leavingDate) : null,
+          status: user.status || "ACTIVE", // 👈 NEW — pulled straight from the API response
 
           documents:
             user.userDocumentDTOS?.map((doc: any) => {
@@ -232,6 +236,7 @@ export default function UpdateUserProfile() {
           userId: record.userId,
           firstName: record.firstName,
           lastName: record.lastName,
+          status: "ACTIVE", // 👈 NEW — default for a record with no employee details yet
         });
       }
 
@@ -354,6 +359,7 @@ export default function UpdateUserProfile() {
         dateOfBirth: values.dateOfBirth.format("YYYY-MM-DD"),
         joiningDate: values.joiningDate.format("YYYY-MM-DD"),
         leavingDate: values.leavingDate ? values.leavingDate.format("YYYY-MM-DD") : null,
+        status: values.status, // 👈 NEW
         userDocumentDTOS: (values.documents || [])
           .filter((doc: any) => doc.documentName || doc.document)
           .map((doc: any) => ({
