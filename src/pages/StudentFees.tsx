@@ -19,12 +19,14 @@ import {
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
+  PrinterOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import type { FormInstance } from "antd/es/form";
 import CommonTable from "../components/commonTable"; // 👈 change to your actual path
 import api from "../lib/axios"; // 👈 change to your actual axios instance path
 import { apiEndpoints } from "../services/apiEndpoints"; // 👈 change to your actual path
+import FeeReceiptModal from "../components/FeeReceipt";
 
 const { Option } = Select;
 
@@ -207,6 +209,10 @@ interface StudentFeeFormProps {
   loading: boolean;
   viewOnly?: boolean;
   onDelete?: (studentFeeId: number) => void;
+  // Only used when viewOnly — shows "Print Receipt" buttons on each fee
+  // block and each payment, and hands back the current form values for
+  // that block/payment so FeeReceiptModal can render them.
+  onPrintReceipt?: (fee: any, payment: any | null) => void;
 }
 
 function StudentFeeForm({
@@ -216,6 +222,7 @@ function StudentFeeForm({
   loading,
   viewOnly = false,
   onDelete,
+  onPrintReceipt,
 }: StudentFeeFormProps) {
   const handleFinish = async () => {
     try {
@@ -280,6 +287,37 @@ function StudentFeeForm({
                   </div>
                 )}
 
+                {/* Print Receipt — whole-card receipt, view mode only.
+                    Uses the same fee name shown in the form above
+                    ("Fee Name" field) as the receipt title.
+                    Wrapped in ConfigProvider componentDisabled={false}
+                    because the parent <Form disabled={viewOnly}> would
+                    otherwise disable this Button too — same trick used
+                    for the Save/Update button below. */}
+                {viewOnly && onPrintReceipt && (
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-semibold text-gray-700">
+                      {form.getFieldValue(["studentFeeDTOS", feeName, "feeName"]) ||
+                        `Fee ${feeName + 1}`}
+                    </span>
+                    <ConfigProvider componentDisabled={false}>
+                      <Button
+                        size="small"
+                        htmlType="button"
+                        icon={<PrinterOutlined />}
+                        onClick={() =>
+                          onPrintReceipt(
+                            form.getFieldValue(["studentFeeDTOS", feeName]),
+                            null
+                          )
+                        }
+                      >
+                        Print Receipt
+                      </Button>
+                    </ConfigProvider>
+                  </div>
+                )}
+
                 {/* Row 1 */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-x-4">
                   <Form.Item
@@ -334,38 +372,56 @@ function StudentFeeForm({
                             <span className="text-sm font-semibold text-gray-700">
                               Payment {payIndex + 1}
                             </span>
-                            {!viewOnly && (
-                              <Button
-                                danger
-                                type="text"
-                                htmlType="button"
-                                icon={<DeleteOutlined style={{ fontSize: 18 }} />}
-                                onClick={() => removePayment(payName)}
-                              />
-                            )}
+                            <div className="flex items-center gap-2">
+                              {viewOnly && onPrintReceipt && (
+                                <ConfigProvider componentDisabled={false}>
+                                  <Button
+                                    size="small"
+                                    htmlType="button"
+                                    icon={<PrinterOutlined />}
+                                    onClick={() =>
+                                      onPrintReceipt(
+                                        form.getFieldValue(["studentFeeDTOS", feeName]),
+                                        form.getFieldValue([
+                                          "studentFeeDTOS",
+                                          feeName,
+                                          "feePaymentDTOS",
+                                          payName,
+                                        ])
+                                      )
+                                    }
+                                  >
+                                    Print
+                                  </Button>
+                                </ConfigProvider>
+                              )}
+                              {!viewOnly && (
+                                <Button
+                                  danger
+                                  type="text"
+                                  htmlType="button"
+                                  icon={<DeleteOutlined style={{ fontSize: 18 }} />}
+                                  onClick={() => removePayment(payName)}
+                                />
+                              )}
+                            </div>
                           </div>
 
-                          {/* 🔧 FIX: was name={[payName, "paymentId"]} — the API
-                              returns "feePaymentId", so the old key never
-                              matched and this field was always empty. That
-                              caused updates to look like brand-new payments
-                              (no ID sent back), which the backend then tried
-                              to INSERT instead of UPDATE. */}
                           <Form.Item
                             {...restField}
-                            name={[payName, "feePaymentId"]}
+                            name={[payName, "paymentId"]}
                             hidden
                           >
                             <Input />
                           </Form.Item>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
-                            {/* Receipt No, auto-generated by the backend.
-                                Disabled just like Student Code / Admission Id
-                                elsewhere in the app; it simply displays
-                                whatever value came back from the API and is
-                                never typed in manually. On a brand-new
-                                payment it stays blank until saved. */}
+                            {/* 👇 NEW — Receipt No, auto-generated by the
+                                backend. Disabled just like Student Code /
+                                Admission Id elsewhere in the app; it simply
+                                displays whatever value came back from the
+                                API and is never typed in manually. On a
+                                brand-new payment it stays blank until saved. */}
                             <Form.Item
                               {...restField}
                               label="Receipt No"
@@ -501,6 +557,18 @@ function StudentFeesTable({ data, loading, pagination, onEdit }: StudentFeesTabl
   const [viewStudentName, setViewStudentName] = useState("");
   const [viewHasFees, setViewHasFees] = useState(true);
 
+  // Full student payload from getStudentById (name, academicInformation,
+  // etc.) — kept around so the printable receipt has the same header
+  // details (Adm No, Class, Roll No) as the Student Profile's Fee tab.
+  const [viewStudent, setViewStudent] = useState<any>(null);
+
+  // Which fee block / payment's receipt is currently open — null when
+  // the receipt modal is closed. payment is null for a whole-card receipt.
+  const [receiptTarget, setReceiptTarget] = useState<{
+    fee: any;
+    payment: any | null;
+  } | null>(null);
+
   const populateViewForm = (fees: any[], studentId: number) => {
     setViewHasFees(fees.length > 0);
     viewForm.setFieldsValue({
@@ -516,8 +584,7 @@ function StudentFeesTable({ data, loading, pagination, onEdit }: StudentFeesTabl
         dueDate: fee?.dueDate ? dayjs(fee.dueDate) : null,
         feePaymentDTOS: (fee?.feePaymentDTOS || []).map((p: any) => ({
           ...p,
-          feePaymentId: p.feePaymentId, // pulled straight from the API response
-          receiptNo: p.receiptNo,
+          receiptNo: p.receiptNo, // 👈 NEW — pulled straight from the API response
           paymentDate: p.paymentDate ? dayjs(p.paymentDate) : null,
         })),
       })),
@@ -533,6 +600,7 @@ function StudentFeesTable({ data, loading, pagination, onEdit }: StudentFeesTabl
       // GET http://flintinfotech-dev.in:8443/jnpa-school-project/student/getStudentById/{id}
       const res = await api.get(apiEndpoints.getStudentById(record.studentId));
       const studentData = res.data?.data ?? res.data;
+      setViewStudent(studentData);
       populateViewForm(extractFees(studentData), record.studentId);
     } catch (error: any) {
       message.error(error?.response?.data?.message || "Failed to load fee details");
@@ -545,6 +613,7 @@ function StudentFeesTable({ data, loading, pagination, onEdit }: StudentFeesTabl
   const closeView = () => {
     setIsViewOpen(false);
     viewForm.resetFields();
+    setViewStudent(null);
   };
 
   const columns = [
@@ -673,10 +742,20 @@ function StudentFeesTable({ data, loading, pagination, onEdit }: StudentFeesTabl
               isEditing={false}
               loading={false}
               viewOnly
+              onPrintReceipt={(fee, payment) => setReceiptTarget({ fee, payment })}
             />
           )}
         </Spin>
       </Drawer>
+
+      <FeeReceiptModal
+        open={!!receiptTarget}
+        onClose={() => setReceiptTarget(null)}
+        student={viewStudent}
+        academic={viewStudent?.academicInformation?.[0]}
+        fee={receiptTarget?.fee ?? null}
+        payment={receiptTarget?.payment ?? null}
+      />
     </>
   );
 }
@@ -744,8 +823,7 @@ export default function StudentFeesManagement() {
               dueDate: fee?.dueDate ? dayjs(fee.dueDate) : null,
               feePaymentDTOS: (fee?.feePaymentDTOS || []).map((p: any) => ({
                 ...p,
-                feePaymentId: p.feePaymentId, // pulled straight from the API response
-                receiptNo: p.receiptNo,
+                receiptNo: p.receiptNo, // 👈 NEW — pulled straight from the API response
                 paymentDate: p.paymentDate ? dayjs(p.paymentDate) : null,
               })),
             }))
@@ -788,15 +866,10 @@ export default function StudentFeesManagement() {
             pendingAmount: fee.pendingAmount,
             dueAmount: fee.dueAmount,
             feePaymentDTOS: (fee.feePaymentDTOS || []).map((p: any) => ({
-              // 🔧 FIX: was p.paymentId (always undefined, since the API
-              // field is feePaymentId) — so every update looked like a new
-              // payment with no ID, and the backend tried to INSERT it.
-              ...(p.feePaymentId ? { feePaymentId: p.feePaymentId } : {}),
-              // 🔧 FIX: the payment row's FK was never being sent at all.
-              // Attach it explicitly from the parent fee block, since the
-              // backend requires student_fee_id on the payment row itself
-              // rather than inferring it from nesting.
-              ...(fee.studentFeeId ? { studentFeeId: fee.studentFeeId } : {}),
+              ...(p.paymentId ? { paymentId: p.paymentId } : {}),
+              // 👇 NEW — pass receiptNo through on update so it isn't wiped
+              // out; on a new payment this is undefined and the backend
+              // presumably assigns it.
               ...(p.receiptNo ? { receiptNo: p.receiptNo } : {}),
               amount: p.amount,
               paymentMode: p.paymentMode,
