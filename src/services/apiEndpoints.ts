@@ -1,3 +1,5 @@
+
+
 export const apiEndpoints = {
   login: () => `/jnpa-school-project/auth/login`,
   getLastFiveAcademicYears: () => `/jnpa-school-project/auth/getLastFiveAcademicYears`,
@@ -180,6 +182,8 @@ deleteStudentAchievement: (
   // ===============================
   saveStudentFee: () => `/jnpa-school-project/studentFee/saveStudentFee`,
   updateStudentFee: () => `/jnpa-school-project/studentFee/updateStudentFee`,
+  getStudentFeeById: (studentFeeId: number | string) =>
+  `/jnpa-school-project/studentFee/getStudentFeeById/${studentFeeId}`,
   deleteStudentFee: (studentFeeId: number | string) =>
     `/jnpa-school-project/studentFee/deleteStudentFee/${studentFeeId}`,
      // ===============================
