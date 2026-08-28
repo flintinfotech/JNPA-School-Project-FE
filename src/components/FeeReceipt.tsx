@@ -27,12 +27,38 @@ export const SCHOOL_INFO = {
 // Number -> Indian words (for "Total in Words")
 // ===========================
 const ONES = [
-  "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
-  "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
-  "Seventeen", "Eighteen", "Nineteen",
+  "",
+  "One",
+  "Two",
+  "Three",
+  "Four",
+  "Five",
+  "Six",
+  "Seven",
+  "Eight",
+  "Nine",
+  "Ten",
+  "Eleven",
+  "Twelve",
+  "Thirteen",
+  "Fourteen",
+  "Fifteen",
+  "Sixteen",
+  "Seventeen",
+  "Eighteen",
+  "Nineteen",
 ];
 const TENS = [
-  "", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety",
+  "",
+  "",
+  "Twenty",
+  "Thirty",
+  "Forty",
+  "Fifty",
+  "Sixty",
+  "Seventy",
+  "Eighty",
+  "Ninety",
 ];
 
 function twoDigits(n: number): string {
@@ -82,7 +108,8 @@ const feeStatusStyle = (status?: string) => {
   if (s === "PAID" || s === "COMPLETED" || s === "SUCCESS")
     return { color: "#237804", fontWeight: 700 };
   if (s === "PENDING") return { color: "#ad6800", fontWeight: 700 };
-  if (s === "FAILED" || s === "CANCELLED" || s === "OVERDUE") return { color: "#a8071a", fontWeight: 700 };
+  if (s === "FAILED" || s === "CANCELLED" || s === "OVERDUE")
+    return { color: "#a8071a", fontWeight: 700 };
   return { color: "#1f1f1f", fontWeight: 700 };
 };
 
@@ -141,27 +168,42 @@ export default function FeeReceiptModal({
   const isCardLevel = !payment;
   const allPayments = fee.feePaymentDTOS || [];
 
-  const studentName = `${student.firstName || ""} ${student.lastName || ""}`.trim();
+  const studentName =
+    `${student.firstName || ""} ${student.lastName || ""}`.trim();
 
   const className =
     academic?.standard || academic?.section
       ? `${academic?.standard || ""}${academic?.section ? ` - ${academic.section}` : ""}`
       : "-";
 
+  // For a card-level receipt, find the most recent payment so the header
+  // can show ITS backend-issued Receipt No — same one already shown for
+  // that row in the "Payments Received" table below, so the two never
+  // disagree. (Previously the header used a frontend-generated
+  // "FEE-<id>" number while the table showed the real backend one —
+  // two different Receipt Nos on the same printout.)
+  const latestPayment = allPayments.length
+    ? allPayments.reduce((latest, p) => {
+        if (!p.paymentDate) return latest;
+        return !latest ||
+          !latest.paymentDate ||
+          dayjs(p.paymentDate).isAfter(dayjs(latest.paymentDate))
+          ? p
+          : latest;
+      }, allPayments[0])
+    : undefined;
+
   // Receipt No / Date / amount differ depending on whether this is a
   // single-transaction receipt or the whole fee card's receipt.
   const receiptNo = isCardLevel
-    ? getCardReceiptNo(fee)
+    ? latestPayment
+      ? getPaymentReceiptNo(latestPayment)
+      : "-"
     : getPaymentReceiptNo(payment!);
 
-  const latestPaymentDate = allPayments.length
-    ? allPayments.reduce((latest, p) => {
-        if (!p.paymentDate) return latest;
-        return !latest || dayjs(p.paymentDate).isAfter(dayjs(latest)) ? p.paymentDate : latest;
-      }, undefined as string | undefined)
-    : undefined;
-
-  const receiptDate = isCardLevel ? latestPaymentDate : payment!.paymentDate;
+  const receiptDate = isCardLevel
+    ? latestPayment?.paymentDate
+    : payment!.paymentDate;
   const receiptAmount = isCardLevel ? fee.paidAmount : payment!.amount;
 
   // Same name shown as the card title on the Fee tab (fee.feeName) —
@@ -182,11 +224,16 @@ export default function FeeReceiptModal({
         <Button key="close" onClick={onClose}>
           Close
         </Button>,
-        <Button key="print" type="primary" icon={<PrinterOutlined />} onClick={handlePrint}>
+        <Button
+          key="print"
+          type="primary"
+          icon={<PrinterOutlined />}
+          onClick={handlePrint}
+        >
           Print Receipt
         </Button>,
       ]}
-    //   title={receiptTitle}
+      //   title={receiptTitle}
     >
       {/* Only this block is visible when printing — see @media print rules below. */}
       <div id="fee-receipt-print-area" className="fee-receipt">
@@ -288,22 +335,46 @@ export default function FeeReceiptModal({
 
         <div className="fr-band">{receiptTitle.toUpperCase()}</div>
 
-        {/* Receipt / student info */}
+        {/* Receipt / student info
+            👇 Receipt No is only shown up here for a SINGLE-transaction
+            receipt (isCardLevel === false), where there's exactly one
+            payment and one number, so header and detail always agree.
+            For a card-level receipt (whole fee, possibly several
+            payments), each payment already gets its own real Receipt No
+            in the "PAYMENTS RECEIVED" table below — showing one payment's
+            number up here too just reads as a second, conflicting number,
+            so it's left out of the header in that case. */}
         <div className="fr-info">
-          <div><span className="label">Receipt No</span>: {receiptNo}</div>
+          {!isCardLevel && (
+            <div>
+              <span className="label">Name</span>: {studentName || "-"}
+            </div>
+          )}
+          <div>
+           <span className="label">Receipt No</span>: {receiptNo}
+          </div>
           <div>
             <span className="label">Date</span>:{" "}
             {receiptDate ? dayjs(receiptDate).format("DD/MM/YYYY") : "-"}
           </div>
 
-          <div><span className="label">Adm No</span>: {academic?.admissionNo ?? "-"}</div>
-          <div><span className="label">Session</span>: {fee.academicYear || academic?.academicYear || "-"}</div>
+          <div>
+            <span className="label">Admission No</span>:{" "}
+            {academic?.admissionNo ?? "-"}
+          </div>
+          <div>
+            <span className="label">Academic Year</span>:{" "}
+            {fee.academicYear || academic?.academicYear || "-"}
+          </div>
 
-          <div><span className="label">Name</span>: {studentName || "-"}</div>
-          <div><span className="label">Class</span>: {className}</div>
+          <div>
+            <span className="label">Class</span>: {className}
+          </div>
 
-          <div><span className="label">Fee Head</span>: {fee.feeName || "-"}</div>
-          <div><span className="label">Roll No</span>: {academic?.rollNo ?? "-"}</div>
+          {/* <div><span className="label">Fee Head</span>: {fee.feeName || "-"}</div> */}
+          <div>
+            <span className="label">Roll No</span>: {academic?.rollNo ?? "-"}
+          </div>
         </div>
 
         {/* Fee breakdown */}
@@ -324,7 +395,9 @@ export default function FeeReceiptModal({
               <td>{fee.feeName || "-"}</td>
               <td className="num">{formatCurrency(fee.totalFeeAmount)}</td>
               <td className="num">{formatCurrency(receiptAmount)}</td>
-              <td className="num">{formatCurrency(fee.pendingAmount ?? fee.dueAmount)}</td>
+              <td className="num">
+                {formatCurrency(fee.pendingAmount ?? fee.dueAmount)}
+              </td>
               <td style={feeStatusStyle(fee.status)}>{fee.status || "-"}</td>
             </tr>
           </tbody>
@@ -333,7 +406,10 @@ export default function FeeReceiptModal({
         {isCardLevel ? (
           <>
             {/* Card-level receipt: list every payment made against this fee */}
-            <div className="fr-band" style={{ background: "#fff", fontWeight: 700 }}>
+            <div
+              className="fr-band"
+              style={{ background: "#fff", fontWeight: 700 }}
+            >
               PAYMENTS RECEIVED
             </div>
             {allPayments.length > 0 ? (
@@ -343,7 +419,7 @@ export default function FeeReceiptModal({
                     <th>Receipt No</th>
                     <th>Date</th>
                     <th>Mode</th>
-                    <th>Txn / Ref No</th>
+                    {/* <th>Txn / Ref No</th> */}
                     <th className="num">Amount</th>
                   </tr>
                 </thead>
@@ -351,9 +427,13 @@ export default function FeeReceiptModal({
                   {allPayments.map((p, i) => (
                     <tr key={p.feePaymentId ?? i}>
                       <td>{getPaymentReceiptNo(p)}</td>
-                      <td>{p.paymentDate ? dayjs(p.paymentDate).format("DD/MM/YYYY") : "-"}</td>
+                      <td>
+                        {p.paymentDate
+                          ? dayjs(p.paymentDate).format("DD/MM/YYYY")
+                          : "-"}
+                      </td>
                       <td>{p.paymentMode || "-"}</td>
-                      <td>{p.transactionId || "-"}</td>
+                      {/* <td>{p.transactionId || "-"}</td> */}
                       <td className="num">{formatCurrency(p.amount)}</td>
                     </tr>
                   ))}
@@ -368,17 +448,28 @@ export default function FeeReceiptModal({
         ) : (
           <>
             {/* Single-transaction receipt: this one payment's details */}
-            <div className="fr-band" style={{ background: "#fff", fontWeight: 700 }}>
+            <div
+              className="fr-band"
+              style={{ background: "#fff", fontWeight: 700 }}
+            >
               PAY MODE INFORMATION
             </div>
             <div className="fr-paymode">
-              <div><span className="label">Pay Mode</span>: {payment!.paymentMode || "-"}</div>
+              <div>
+                <span className="label">Pay Mode</span>:{" "}
+                {payment!.paymentMode || "-"}
+              </div>
               <div>
                 <span className="label">Date</span>:{" "}
-                {payment!.paymentDate ? dayjs(payment!.paymentDate).format("DD/MM/YYYY") : "-"}
+                {payment!.paymentDate
+                  ? dayjs(payment!.paymentDate).format("DD/MM/YYYY")
+                  : "-"}
               </div>
-              <div><span className="label">Txn / Ref No</span>: {payment!.transactionId || "-"}</div>
-              <div><span className="label">Remarks</span>: {payment!.remarks || "-"}</div>
+              {/* <div><span className="label">Txn / Ref No</span>: {payment!.transactionId || "-"}</div> */}
+              <div>
+                <span className="label">Remarks</span>:{" "}
+                {payment!.remarks || "-"}
+              </div>
             </div>
           </>
         )}
@@ -389,14 +480,15 @@ export default function FeeReceiptModal({
         </div>
 
         <div className="fr-words">
-          <strong>Total in Words:</strong> {numberToIndianWords(receiptAmount)} Only
+          <strong>Total in Words:</strong> {numberToIndianWords(receiptAmount)}{" "}
+          Only
         </div>
 
-        <div className="fr-footer">
+        {/* <div className="fr-footer">
           This is a computer generated receipt and does not require a signature.
-        </div>
+        </div> */}
 
-        <div className="fr-copy">PARENT COPY</div>
+        {/* <div className="fr-copy">PARENT COPY</div> */}
       </div>
     </Modal>
   );
