@@ -12,6 +12,7 @@ import {
   Empty,
   message,
   ConfigProvider,
+  Pagination,
 } from "antd";
 import {
   PlusOutlined,
@@ -23,6 +24,7 @@ import dayjs from "dayjs";
 import type { FormInstance } from "antd/es/form";
 import CommonTable from "../components/commonTable"; // 👈 change to your actual path
 import api from "../lib/axios"; // 👈 change to your actual axios instance path
+import { useAuth } from "../hooks/useAuth"; // 👈 same hook Results.tsx uses for role/user info
 import { apiEndpoints } from "../services/apiEndpoints"; // 👈 change to your actual path
 
 const { Option } = Select;
@@ -65,6 +67,22 @@ const PERIOD_FALLBACK = [
 
 const DRAWER_BG_COLOR = "#fff6ed";
 const ACADEMIC_YEAR_STORAGE_KEY = "academicYear";
+
+interface TimeTableFilters {
+  standard?: string;
+  division?: string;
+  medium?: string;
+}
+
+// Exact backend endpoint requested for class-filtered timetables.
+// This is kept here so the request does not depend on whether the
+// apiEndpoints file has the method named getAllTimeTableByFilter yet.
+const getAllTimeTableByFilterEndpoint = (page: number, size: number) =>
+  `/jnpa-school-project/timeTable/getAllTimeTableByFilter?page=${page}&size=${size}&paginate=true`;
+
+
+// 👇 NEW — how many period cards show per page inside Add/Edit.
+const PERIOD_PAGE_SIZE = 10;
 
 // ---------------------------------------------------------------
 // 🛠️ FIX — static-data normalization helpers.
@@ -125,6 +143,30 @@ const getLoggedInAcademicYear = (): string => {
     return getCurrentAcademicYear();
   }
 };
+
+// ---------------------------------------------------------------
+// 🛠️ FIX — role-based access + "show only my timetable" for teachers,
+// now using the SAME useAuth() hook + role-check pattern as Results.tsx,
+// instead of guessing at localStorage. This is imported at the top of
+// the file and called inside the TimeTable component below (hooks can
+// only be called inside a component/hook, not at module scope).
+//
+// 👇 TODO — confirm these two things against your actual `user` object
+// shape from useAuth() (same TODO Results.tsx already flags for TEACHER_ROLE):
+//   1) the exact role string the backend sends for admin/principal
+//      (ADMIN_ROLES below assumes "ADMIN" and "PRINCIPAL")
+//   2) the field on `user` that holds this teacher's own
+//      employeeDetailsId (assumed below as `user.employeeDetailsId` —
+//      Results.tsx's classScope only shows user.standard/division/medium,
+//      not an id field, so this one specifically needs your confirmation)
+// ---------------------------------------------------------------
+const TEACHER_ROLE = "TEACHER"; // 👈 matches the constant already in Results.tsx
+const ADMIN_ROLES = ["ADMIN", "PRINCIPAL"];
+
+const isAdminOrPrincipal = (role?: string) => ADMIN_ROLES.includes(role || "");
+
+const isTeacherRole = (role?: string) => role === TEACHER_ROLE;
+
 
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(
@@ -208,8 +250,9 @@ const emptyPeriod = () => ({
   timeTablePeriodId: undefined,
   day: undefined,
   periodNumber: undefined,
-  startTime: null,
-  endTime: null,
+  // 🛠️ FIX — one combined range field instead of separate startTime /
+  // endTime fields. Holds a dayjs [start, end] tuple from the RangePicker.
+  timeRange: null as [any, any] | null,
   subjectId: undefined,
   employeeDetailsId: undefined,
 });
@@ -257,6 +300,9 @@ interface TimeTableFormProps {
   staticData: StaticDataMap | null;
   teacherOptions: TeacherOption[];
   subjectOptions: SubjectOption[];
+  // 👇 NEW — called whenever Standard/Division/Medium are all selected, so
+  // the parent can refetch the teacher list filtered to that class.
+  onClassChange?: (standard?: string, division?: string, medium?: string) => void;
 }
 
 function TimeTableForm({
@@ -267,6 +313,7 @@ function TimeTableForm({
   staticData,
   teacherOptions,
   subjectOptions,
+  onClassChange,
 }: TimeTableFormProps) {
   const handleFinish = async () => {
     try {
@@ -278,21 +325,47 @@ function TimeTableForm({
         division: values.division,
         medium: values.medium,
         academicYear: values.academicYear,
-        timeTablePeriods: (values.timeTablePeriods || []).map((p: any) => ({
-          ...(p.timeTablePeriodId ? { timeTablePeriodId: p.timeTablePeriodId } : {}),
-          day: p.day,
-          periodNumber: p.periodNumber,
-          startTime: p.startTime ? dayjs(p.startTime).format("HH:mm:ss") : null,
-          endTime: p.endTime ? dayjs(p.endTime).format("HH:mm:ss") : null,
-          subjectId: p.subjectId,
-          employeeDetailsId: p.employeeDetailsId,
-        })),
+        timeTablePeriods: (values.timeTablePeriods || []).map((p: any) => {
+          // 🛠️ FIX — split the combined [start, end] range back into the
+          // two fields the backend expects.
+          const [rangeStart, rangeEnd] = Array.isArray(p.timeRange)
+            ? p.timeRange
+            : [null, null];
+          return {
+            ...(p.timeTablePeriodId ? { timeTablePeriodId: p.timeTablePeriodId } : {}),
+            day: p.day,
+            periodNumber: p.periodNumber,
+            startTime: rangeStart ? dayjs(rangeStart).format("HH:mm:ss") : null,
+            endTime: rangeEnd ? dayjs(rangeEnd).format("HH:mm:ss") : null,
+            subjectId: p.subjectId,
+            employeeDetailsId: p.employeeDetailsId,
+          };
+        }),
       };
       onFinish(payload);
     } catch {
       // validation errors are shown inline by antd
     }
   };
+
+  // 👇 NEW — pagination state for the period cards below. Watching the
+  // form's periods array lets us compute total pages even outside the
+  // Form.List render callback.
+  const [periodPage, setPeriodPage] = useState(1);
+
+  // 👇 NEW — watch Standard/Division/Medium so we can ask the parent to
+  // refetch the teacher list filtered to this class as soon as all three
+  // are picked.
+  const watchedStandard = Form.useWatch("standard", form);
+  const watchedDivision = Form.useWatch("division", form);
+  const watchedMedium = Form.useWatch("medium", form);
+
+  useEffect(() => {
+    if (watchedStandard && watchedDivision && watchedMedium) {
+      onClassChange?.(watchedStandard, watchedDivision, watchedMedium);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedStandard, watchedDivision, watchedMedium]);
 
   // 🛠️ FIX — normalize every static-data list (string OR object entries)
   // into safe { value, label } pairs before rendering any <Option>.
@@ -308,6 +381,24 @@ function TimeTableForm({
     value: toValue(m),
     label: toLabel(m),
   }));
+
+  // 🛠️ NEW — if staticData loaded but Division/Medium came out empty, the
+  // dropdown literally can't be filled in, which silently blocks
+  // onClassChange from ever firing (it needs all three). This warns loudly
+  // in devtools so it's obvious *why* the filtered-teacher-fetch payload
+  // never goes out, instead of it looking like a mystery.
+  useEffect(() => {
+    if (staticData && (divisionOptions.length === 0 || mediumOptions.length === 0)) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        "TimeTable: getAllStaticData response has no usable \"division\" and/or \"medium\" keys" +
+          " — Division/Medium dropdown(s) are empty, so Standard+Division+Medium can never all be" +
+          " filled in, and the filtered teacher fetch will never fire. Actual staticData keys:",
+        Object.keys(staticData)
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [staticData]);
   const periodOptions = (staticData?.["Time table periods"] ?? PERIOD_FALLBACK).map(
     (p: any) => ({
       value: toValue(p),
@@ -368,9 +459,39 @@ function TimeTableForm({
       </Form.Item>
 
       <Form.List name="timeTablePeriods">
-        {(fields, { add, remove }) => (
-          <>
-            {fields.map(({ key, name, ...restField }) => (
+        {(fields, { add, remove }) => {
+          // 👇 NEW — only render 10 period cards at a time. `name`/`key`
+          // on each field still refer to its real index in the full
+          // array, so add/remove/validation all keep working normally —
+          // we're only slicing what's rendered, not the underlying data.
+          const totalPages = Math.max(1, Math.ceil(fields.length / PERIOD_PAGE_SIZE));
+          const safePage = Math.min(periodPage, totalPages);
+          const startIdx = (safePage - 1) * PERIOD_PAGE_SIZE;
+          const visibleFields = fields.slice(startIdx, startIdx + PERIOD_PAGE_SIZE);
+
+          const handleAddPeriod = () => {
+            add(emptyPeriod());
+            // jump to whichever page the newly added card will land on
+            const newTotal = fields.length + 1;
+            setPeriodPage(Math.ceil(newTotal / PERIOD_PAGE_SIZE));
+          };
+
+          return (
+            <>
+              {fields.length > PERIOD_PAGE_SIZE && (
+                <div className="flex justify-end mb-3">
+                  <Pagination
+                    current={safePage}
+                    pageSize={PERIOD_PAGE_SIZE}
+                    total={fields.length}
+                    onChange={(p) => setPeriodPage(p)}
+                    showSizeChanger={false}
+                    size="small"
+                  />
+                </div>
+              )}
+
+              {visibleFields.map(({ key, name, ...restField }) => (
               <div
                 key={key}
                 className="border-2 border-gray-400 rounded-lg p-4 mb-4 relative bg-white"
@@ -389,7 +510,7 @@ function TimeTableForm({
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
                   <Form.Item
                     {...restField}
                     label="Day"
@@ -397,9 +518,9 @@ function TimeTableForm({
                     rules={[{ required: true, message: "Day is required" }]}
                   >
                     <Select placeholder="Select day">
-                      {DAYS.map((d) => (
+                      {DAYS.map((d, idx) => (
                         <Option key={d} value={d}>
-                          {d.charAt(0) + d.slice(1).toLowerCase()}
+                          {idx + 1} - {d.charAt(0) + d.slice(1).toLowerCase()}
                         </Option>
                       ))}
                     </Select>
@@ -418,25 +539,24 @@ function TimeTableForm({
                       ))}
                     </Select>
                   </Form.Item>
-                  <div className="grid grid-cols-2 gap-x-2">
-                    <Form.Item
-                      {...restField}
-                      label="Start Time"
-                      name={[name, "startTime"]}
-                      rules={[{ required: true, message: "Start time required" }]}
-                    >
-                      <TimePicker className="w-full" format="HH:mm" />
-                    </Form.Item>
-                    <Form.Item
-                      {...restField}
-                      label="End Time"
-                      name={[name, "endTime"]}
-                      rules={[{ required: true, message: "End time required" }]}
-                    >
-                      <TimePicker className="w-full" format="HH:mm" />
-                    </Form.Item>
-                  </div>
                 </div>
+
+                {/* 🛠️ FIX — one combined Start/End time range picker,
+                    replacing the two separate Start Time / End Time
+                    pickers. Same 12-hour display + 5-min steps as before. */}
+                <Form.Item
+                  {...restField}
+                  label="Time"
+                  name={[name, "timeRange"]}
+                  rules={[{ required: true, message: "Start and end time are required" }]}
+                >
+                  <TimePicker.RangePicker
+                    className="w-full"
+                    format="hh:mm A"
+                    use12Hours
+                    minuteStep={5}
+                  />
+                </Form.Item>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
                   <Form.Item
@@ -478,20 +598,34 @@ function TimeTableForm({
                   </Form.Item>
                 </div>
               </div>
-            ))}
+              ))}
 
-            <Button
-              htmlType="button"
-              type="dashed"
-              icon={<PlusOutlined />}
-              onClick={() => add(emptyPeriod())}
-              block
-              className="mb-4"
-            >
-              Add Period
-            </Button>
-          </>
-        )}
+              {fields.length > PERIOD_PAGE_SIZE && (
+                <div className="flex justify-end mb-3">
+                  <Pagination
+                    current={safePage}
+                    pageSize={PERIOD_PAGE_SIZE}
+                    total={fields.length}
+                    onChange={(p) => setPeriodPage(p)}
+                    showSizeChanger={false}
+                    size="small"
+                  />
+                </div>
+              )}
+
+              <Button
+                htmlType="button"
+                type="dashed"
+                icon={<PlusOutlined />}
+                onClick={handleAddPeriod}
+                block
+                className="mb-4"
+              >
+                Add Period
+              </Button>
+            </>
+          );
+        }}
       </Form.List>
 
       <ConfigProvider componentDisabled={false}>
@@ -631,7 +765,8 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
           {/* corner cell */}
           <div className="sked-corner" />
 
-          {/* day lane headers */}
+          {/* day lane headers — full day name on desktop, short 3-letter
+              abbreviation on mobile (back to how it was originally). */}
           {DAYS.map((day) => {
             const isToday = day === todayName;
             return (
@@ -1004,6 +1139,16 @@ export default function TimeTable() {
   const [viewLoading, setViewLoading] = useState(false);
   const [viewData, setViewData] = useState<any>(null);
 
+  // 🛠️ FIX — same useAuth() hook Results.tsx already uses, instead of
+  // guessing at localStorage.
+  const { user } = useAuth();
+  const canDelete = isAdminOrPrincipal(user?.role);
+  const viewerIsTeacher = isTeacherRole(user?.role);
+
+
+  const [myScheduleLoading, setMyScheduleLoading] = useState(false);
+  const [mySchedule, setMySchedule] = useState<any>(null);
+
   const fetchTimeTables = useCallback(async (pageNum: number, size: number) => {
     setTableLoading(true);
     try {
@@ -1019,14 +1164,18 @@ export default function TimeTable() {
   }, []);
 
   useEffect(() => {
-    fetchTimeTables(page, pageSize);
-  }, [page, pageSize, fetchTimeTables]);
+    // 👇 NEW — teachers don't need the admin list at all; skip loading it.
+    if (!viewerIsTeacher) {
+      fetchTimeTables(page, pageSize);
+    }
+  }, [page, pageSize, fetchTimeTables, viewerIsTeacher]);
 
   // Teacher/Subject dropdown data — fetched once on mount (unchanged).
   // Static data (Standard/Division/Medium/Period lists) is NOT fetched here
   // — it's loaded lazily by ensureStaticData(), only when Add/Edit/View
   // is actually opened. See ensureStaticData below.
   useEffect(() => {
+    if (viewerIsTeacher) return; // teachers never open Add/Edit
     (async () => {
       try {
         const res = await api.post(apiEndpoints.getAllemployeeDetails(0, 200), {});
@@ -1043,7 +1192,36 @@ export default function TimeTable() {
         // non-fatal
       }
     })();
-  }, []);
+  }, [viewerIsTeacher]);
+
+  // 👇 FIX — fetches teachers filtered by the class/division/medium chosen
+  // in the Add/Edit form, instead of always showing every teacher.
+  // Your apiEndpoints.ts already has this exact endpoint under the name
+  // `getAllemployeeDetails` (it builds
+  // .../employeeDetails/getAllEmployeeDetailsByFilter?page=0&size=200&paginate=true) —
+  // there's no separate `getAllEmployeeDetailsByFilter` function, so this
+  // now calls the one that actually exists, with the filter payload in
+  // the request body. Fails silently (keeps whatever teacherOptions we
+  // already had) so the dropdown is never left empty on error.
+  const fetchTeachersForClass = useCallback(
+    async (standard?: string, division?: string, medium?: string) => {
+      if (!standard || !division || !medium) return;
+      // eslint-disable-next-line no-console
+      console.log("TimeTable: fetching teachers filtered by", { standard, division, medium });
+      try {
+        const res = await api.post(
+          apiEndpoints.getAllemployeeDetails(0, 200),
+          { standard, division, medium }
+        );
+        const { list } = extractListAndTotal(res);
+        setTeacherOptions(list.filter((e: any) => (e.role || "").toUpperCase() === "TEACHER"));
+      } catch (error: any) {
+        // eslint-disable-next-line no-console
+        console.warn("TimeTable: filtered teacher fetch failed, keeping previous list", error);
+      }
+    },
+    []
+  );
 
   // getAllStaticData is called on-demand only, the first time the
   // Add/Edit/View is opened. Once loaded it's cached in state, so opening
@@ -1059,6 +1237,152 @@ export default function TimeTable() {
     }
   }, [staticData]);
 
+  // ---------------------------------------------------------------
+  // Teacher timetable
+  //
+  // Same pattern as Achievements.tsx:
+  //   TEACHER -> useAuth() -> user.standard/division/medium
+  //   -> POST getAllTimeTableByFilter with those 3 fields.
+  //
+  // The backend request is:
+  // POST /jnpa-school-project/timeTable/getAllTimeTableByFilter
+  //      ?page=0&size=500&paginate=true
+  //
+  // Payload:
+  // {
+  //   standard: "1st Standard",
+  //   division: "A",
+  //   medium: "English"
+  // }
+  //
+  // After the API returns the timetable(s) for that class, we keep only
+  // periods assigned to the logged-in teacher.
+  // ---------------------------------------------------------------
+
+  // EXACTLY like Achievements.tsx classScope.
+  const teacherClassScope = {
+    standard: user?.standard || "",
+    division: user?.division || "",
+    medium: user?.medium || "",
+  };
+
+  const fetchMySchedule = useCallback(async () => {
+    if (!viewerIsTeacher) return;
+
+    setMyScheduleLoading(true);
+
+    const payload = {
+      standard: teacherClassScope.standard,
+      division: teacherClassScope.division,
+      medium: teacherClassScope.medium,
+    };
+
+    console.log("TimeTable teacher payload:", payload);
+
+    if (!payload.standard || !payload.division || !payload.medium) {
+      console.warn("TimeTable: teacher class information is incomplete", payload);
+      setMySchedule(null);
+      setMyScheduleLoading(false);
+      return;
+    }
+
+    try {
+      const res = await api.post(
+        getAllTimeTableByFilterEndpoint(0, 500),
+        payload
+      );
+
+      console.log("TimeTable getAllTimeTableByFilter response:", res?.data);
+
+      // IMPORTANT: backend response is:
+      // res.data.data["Time TableDTOS"]
+      const timetableList = Array.isArray(
+        res?.data?.data?.["Time TableDTOS"]
+      )
+        ? res.data.data["Time TableDTOS"]
+        : [];
+
+      console.log("TimeTable class records:", timetableList);
+
+      const allPeriods = timetableList.flatMap((tt: any) => {
+        const periods = Array.isArray(tt?.timeTablePeriods)
+          ? tt.timeTablePeriods
+          : [];
+
+        return periods.map((period: any) => ({
+          ...period,
+          standard: tt?.standard ?? payload.standard,
+          division: tt?.division ?? payload.division,
+          medium: tt?.medium ?? payload.medium,
+          academicYear: tt?.academicYear ?? getLoggedInAcademicYear(),
+        }));
+      });
+
+      console.log("TimeTable all periods returned by API:", allPeriods);
+
+      // IMPORTANT:
+      // Do NOT filter periods by employeeDetailsId/userId here.
+      // The API response is the source of truth for the timetable display.
+      // Whatever periods the backend returns for the selected
+      // Standard + Division + Medium must be displayed.
+      //
+      // Example backend response:
+      // data["Time TableDTOS"][0].timeTablePeriods
+      //
+      // This also fixes the case where the logged-in user's employeeDetailsId
+      // is null (for example Rahul), while the API correctly returns a
+      // timetable period belonging to another employee record.
+      console.log("TimeTable: displaying ALL periods returned by API:", allPeriods);
+
+      const firstTimetable = timetableList[0];
+
+      setMySchedule({
+        standard: firstTimetable?.standard ?? payload.standard,
+        division: firstTimetable?.division ?? payload.division,
+        medium: firstTimetable?.medium ?? payload.medium,
+        academicYear:
+          firstTimetable?.academicYear ?? getLoggedInAcademicYear(),
+        timeTablePeriods: allPeriods,
+      });
+
+      console.log("TimeTable FINAL DISPLAY DATA:", {
+        standard: firstTimetable?.standard ?? payload.standard,
+        division: firstTimetable?.division ?? payload.division,
+        medium: firstTimetable?.medium ?? payload.medium,
+        academicYear:
+          firstTimetable?.academicYear ?? getLoggedInAcademicYear(),
+        timeTablePeriods: allPeriods,
+      });
+
+    } catch (error: any) {
+      console.error("TimeTable getAllTimeTableByFilter failed:", error);
+      message.error(
+        error?.response?.data?.message ||
+          error?.response?.data?.body ||
+          "Failed to load your timetable"
+      );
+      setMySchedule(null);
+    } finally {
+      setMyScheduleLoading(false);
+    }
+  }, [
+    viewerIsTeacher,
+    teacherClassScope.standard,
+    teacherClassScope.division,
+    teacherClassScope.medium,
+  ]);
+
+  useEffect(() => {
+    if (!viewerIsTeacher) return;
+
+    void ensureStaticData();
+    void fetchMySchedule();
+  }, [
+    viewerIsTeacher,
+    ensureStaticData,
+    fetchMySchedule,
+  ]);
+
   const populateForm = (data: any) => {
     form.setFieldsValue({
       timeTableId: data?.timeTableId,
@@ -1071,8 +1395,11 @@ export default function TimeTable() {
         // 🛠️ FIX — normalize in case a legacy record stored an object
         day: p.day,
         periodNumber: toLabel(p.periodNumber) || p.periodNumber,
-        startTime: p.startTime ? dayjs(p.startTime, "HH:mm:ss") : null,
-        endTime: p.endTime ? dayjs(p.endTime, "HH:mm:ss") : null,
+        // 🛠️ FIX — combine startTime/endTime into the single range field
+        timeRange:
+          p.startTime && p.endTime
+            ? [dayjs(p.startTime, "HH:mm:ss"), dayjs(p.endTime, "HH:mm:ss")]
+            : null,
         subjectId: p.subjectId ?? p.subjectMasterDTO?.subjectMasterId,
         employeeDetailsId: p.employeeDetailsId ?? p.employeeDetailsDTO?.employeeDetailsId,
       })),
@@ -1161,6 +1488,34 @@ export default function TimeTable() {
     }
   };
 
+  // 👇 NEW — a teacher who logs in never sees the admin class list; they
+  // land straight on their own merged weekly schedule (Vikas sees Vikas's
+  // periods, Rahul sees Rahul's, automatically, based on the logged-in
+  // user's employeeDetailsId). No Add/Edit/Delete controls here at all.
+  if (viewerIsTeacher) {
+    return (
+      <div>
+        <h2 className="text-lg font-semibold mb-4">
+          My Timetable{user?.firstName ? ` — ${user.firstName}` : ""}
+        </h2>
+        <Spin spinning={myScheduleLoading} tip="Loading your timetable...">
+          {!myScheduleLoading && (!mySchedule || mySchedule.timeTablePeriods.length === 0) ? (
+            <Empty description="No periods assigned to you yet" style={{ padding: "40px 0" }} />
+          ) : (
+            mySchedule && (
+              <TimeTableErrorBoundary>
+                <TimeTableGridView
+                  data={mySchedule}
+                  periodOrder={normalizeList(staticData?.["Time table periods"] ?? PERIOD_FALLBACK)}
+                />
+              </TimeTableErrorBoundary>
+            )
+          )}
+        </Spin>
+      </div>
+    );
+  }
+
   const columns = [
     { title: "Standard", dataIndex: "standard", key: "standard", render: (v: string) => v || "-" },
     { title: "Division", dataIndex: "division", key: "division", render: (v: string) => v || "-" },
@@ -1184,14 +1539,17 @@ export default function TimeTable() {
             size="small"
             onClick={() => openEditDrawer(record)}
           />
-          <Popconfirm
-            title="Delete this timetable?"
-            onConfirm={() => handleDelete(record.timeTableId)}
-            okText="Delete"
-            okButtonProps={{ danger: true }}
-          >
-            <Button danger icon={<DeleteOutlined />} size="small" />
-          </Popconfirm>
+          {/* 🛠️ FIX — Delete is only shown for ADMIN / PRINCIPAL. */}
+          {canDelete && (
+            <Popconfirm
+              title="Delete this timetable?"
+              onConfirm={() => handleDelete(record.timeTableId)}
+              okText="Delete"
+              okButtonProps={{ danger: true }}
+            >
+              <Button danger icon={<DeleteOutlined />} size="small" />
+            </Popconfirm>
+          )}
         </div>
       ),
     },
@@ -1241,14 +1599,17 @@ export default function TimeTable() {
                     size="small"
                     onClick={() => openEditDrawer(record)}
                   />
-                  <Popconfirm
-                    title="Delete this timetable?"
-                    onConfirm={() => handleDelete(record.timeTableId)}
-                    okText="Delete"
-                    okButtonProps={{ danger: true }}
-                  >
-                    <Button danger icon={<DeleteOutlined />} size="small" />
-                  </Popconfirm>
+                  {/* 🛠️ FIX — Delete is only shown for ADMIN / PRINCIPAL. */}
+                  {canDelete && (
+                    <Popconfirm
+                      title="Delete this timetable?"
+                      onConfirm={() => handleDelete(record.timeTableId)}
+                      okText="Delete"
+                      okButtonProps={{ danger: true }}
+                    >
+                      <Button danger icon={<DeleteOutlined />} size="small" />
+                    </Popconfirm>
+                  )}
                 </div>
               </div>
             ))}
@@ -1290,6 +1651,7 @@ export default function TimeTable() {
             staticData={staticData}
             teacherOptions={teacherOptions}
             subjectOptions={subjectOptions}
+            onClassChange={fetchTeachersForClass}
           />
         </Spin>
       </Drawer>
