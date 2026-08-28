@@ -272,7 +272,7 @@ export const getAllStudents = async (
 // Fee Details popup on the Student Profile screen.
 export const getStudentFeeById = async (studentFeeId: number | string) => {
   const { data } = await axiosInstance.get(
-    apiEndpoints.getStudentFee(studentFeeId)
+    apiEndpoints.getStudentFeeById(studentFeeId)
   );
   return data as {
     success: boolean;
