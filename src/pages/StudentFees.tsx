@@ -485,7 +485,7 @@ function StudentFeeForm({
 
                           <Form.Item
                             {...restField}
-                            name={[payName, "paymentId"]}
+                            name={[payName, "feePaymentId"]}
                             hidden
                           >
                             <Input />
@@ -661,7 +661,8 @@ function StudentFeesTable({ data, loading, pagination, onEdit }: StudentFeesTabl
         status: fee?.status, // 👈 NEW — fee-level status, pulled straight from the API response
         feePaymentDTOS: (fee?.feePaymentDTOS || []).map((p: any) => ({
           ...p,
-          receiptNo: p.receiptNo, // 👈 NEW — pulled straight from the API response
+          feePaymentId: p.feePaymentId,
+                receiptNo: p.receiptNo, // 👈 NEW — pulled straight from the API response
           paymentDate: p.paymentDate ? dayjs(p.paymentDate) : null,
         })),
       })),
@@ -901,6 +902,7 @@ export default function StudentFeesManagement() {
               status: fee?.status, // 👈 NEW — fee-level status, pulled straight from the API response
               feePaymentDTOS: (fee?.feePaymentDTOS || []).map((p: any) => ({
                 ...p,
+                feePaymentId: p.feePaymentId,
                 receiptNo: p.receiptNo, // 👈 NEW — pulled straight from the API response
                 paymentDate: p.paymentDate ? dayjs(p.paymentDate) : null,
               })),
@@ -948,7 +950,7 @@ export default function StudentFeesManagement() {
             // assigns it (e.g. "PENDING").
             ...(fee.status ? { status: fee.status } : {}),
             feePaymentDTOS: (fee.feePaymentDTOS || []).map((p: any) => ({
-              ...(p.paymentId ? { paymentId: p.paymentId } : {}),
+              ...(p.feePaymentId != null ? { feePaymentId: Number(p.feePaymentId) } : {}),
               // 👇 NEW — required by the backend: FEE_PAYMENT_ENTITY.STUDENT_FEE_ID
               // is NOT NULL, so every payment row (new or existing) needs it set
               // explicitly. Without this, adding a new payment while updating an
