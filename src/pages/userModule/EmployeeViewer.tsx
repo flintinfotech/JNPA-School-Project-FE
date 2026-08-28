@@ -1,4 +1,4 @@
-import { Tabs, Form, Input } from "antd";
+import { Tabs, Form, Input, Tag } from "antd";
 import { PaperClipOutlined } from "@ant-design/icons";
 import { useState } from "react";
 
@@ -8,6 +8,9 @@ export default function EmployeeViewer({ user }: any) {
   if (!user) return null;
 
   const documents = user.userDocumentDTOS || [];
+
+  const statusColor = (status?: string) =>
+    (status || "").toUpperCase() === "ACTIVE" ? "green" : "red";
 
   const cleanBase64 = (base64: string) => {
     return base64.replace(/^data:.*;base64,/, "").replace(/[\r\n\s]/g, "");
@@ -154,6 +157,15 @@ export default function EmployeeViewer({ user }: any) {
                 <div style={{ flex: "1 1 45%" }}>
                   <Form.Item label="Leaving Date">
                     <Input value={user.leavingDate} disabled styles={{ input: { color: "#000", }, }} />
+                  </Form.Item>
+                </div>
+                <div style={{ flex: "1 1 45%" }}>
+                  <Form.Item label="Status">
+                    <div>
+                      <Tag color={statusColor(user.status)}>
+                        {user.status || "-"}
+                      </Tag>
+                    </div>
                   </Form.Item>
                 </div>
                 <div style={{ flex: "1 1 100%" }}>

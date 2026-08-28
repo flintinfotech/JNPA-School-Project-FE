@@ -260,6 +260,21 @@ export default function User({
                   />
                 </Form.Item>
 
+                {/* 👇 NEW — Status. Defaults to ACTIVE for a brand-new
+                    employee (set in the parent's openAddDrawer); shows
+                    whatever was saved when editing. */}
+                <Form.Item
+                  label="Status"
+                  name="status"
+                  rules={[{ required: true, message: "Please select status" }]}
+                  initialValue="ACTIVE"
+                >
+                  <Select placeholder="Select Status">
+                    <Select.Option value="ACTIVE">Active</Select.Option>
+                    <Select.Option value="INACTIVE">Inactive</Select.Option>
+                  </Select>
+                </Form.Item>
+
                 <Form.Item
                   label="Blood Group"
                   name="bloodGroup"

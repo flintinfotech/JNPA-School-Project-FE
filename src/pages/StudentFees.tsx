@@ -113,6 +113,16 @@ function useIsMobile(breakpoint = 768) {
 const statusColor = (status?: string) =>
   (status || "").toUpperCase() === "ACTIVE" ? "green" : "red";
 
+// Color coding for a fee's own Status (e.g. "PENDING", "PAID"/"COMPLETED",
+// "FAILED"/"CANCELLED", "OVERDUE") as returned by the backend on save/update.
+const feeStatusColor = (status?: string) => {
+  const s = (status || "").toUpperCase();
+  if (s === "PAID" || s === "COMPLETED" || s === "SUCCESS") return "green";
+  if (s === "PENDING") return "orange";
+  if (s === "FAILED" || s === "CANCELLED" || s === "OVERDUE") return "red";
+  return "default";
+};
+
 // A student can now have MULTIPLE fees (Tuition, Transport, etc). This
 // returns all of them as an array, whichever key the backend actually uses.
 // Tighten this once you confirm the real key.
@@ -152,6 +162,7 @@ const emptyFeeBlock = () => ({
   paidAmount: 0,
   pendingAmount: 0,
   dueAmount: undefined,
+  status: undefined,
   feePaymentDTOS: [],
 });
 
@@ -175,26 +186,43 @@ function FeeAmountCalculator({
   const totalWatch = Form.useWatch(["studentFeeDTOS", name, "totalFeeAmount"], form) as
     | number
     | undefined;
+  // In view mode paidAmount/pendingAmount aren't recomputed (see below),
+  // so watch the already-fetched paidAmount instead — needed to derive
+  // Status in that mode.
+  const paidAmountWatch = Form.useWatch(
+    ["studentFeeDTOS", name, "paidAmount"],
+    form
+  ) as number | undefined;
 
   useEffect(() => {
-    // In view mode we display exactly what was saved/fetched — never
-    // recompute or overwrite it.
-    if (viewOnly) return;
     const total = Number(totalWatch) || 0;
-    const paid = (paymentsWatch || []).reduce(
-      (sum, p) => sum + (Number(p?.amount) || 0),
-      0
-    );
+
+    // In view mode we display Paid/Pending exactly as saved/fetched —
+    // never recompute or overwrite them. In edit mode they're derived
+    // live from the payments list.
+    const paid = viewOnly
+      ? Number(paidAmountWatch) || 0
+      : (paymentsWatch || []).reduce((sum, p) => sum + (Number(p?.amount) || 0), 0);
     const pending = Math.max(total - paid, 0);
+
+    // 👇 Status is derived on the frontend (the backend field is often
+    // empty/stale): fully paid -> "PAID", anything else -> "PENDING".
+    const status = total > 0 && paid >= total ? "PAID" : "PENDING";
+
     const current = form.getFieldValue(["studentFeeDTOS", name]) || {};
+    const nextValue: any = { ...current, status };
+    if (!viewOnly) {
+      nextValue.paidAmount = paid;
+      nextValue.pendingAmount = pending;
+    }
     form.setFields([
       {
         name: ["studentFeeDTOS", name],
-        value: { ...current, paidAmount: paid, pendingAmount: pending },
+        value: nextValue,
       },
     ]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewOnly, totalWatch, JSON.stringify(paymentsWatch)]);
+  }, [viewOnly, totalWatch, paidAmountWatch, JSON.stringify(paymentsWatch)]);
 
   return null;
 }
@@ -347,8 +375,10 @@ function StudentFeeForm({
                 </div>
 
                 {/* Row 2 — Paid & Pending stay auto-calculated/disabled.
-                    Due Amount is a plain editable field, starts empty. */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
+                    Due Amount is a plain editable field, starts empty.
+                    Status sits right after Due Amount — read-only, set by
+                    the backend (same pattern as Receipt No below). */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-x-4">
                   <Form.Item label="Paid Amount" name={[feeName, "paidAmount"]}>
                     <InputNumber style={{ width: "100%" }} disabled />
                   </Form.Item>
@@ -357,6 +387,50 @@ function StudentFeeForm({
                   </Form.Item>
                   <Form.Item label="Due Amount" name={[feeName, "dueAmount"]}>
                     <InputNumber style={{ width: "100%" }} min={0} placeholder="0" />
+                  </Form.Item>
+                  {/* The actual value lives here, hidden — nothing visual
+                      reads/writes status directly off this field. */}
+                  <Form.Item name={[feeName, "status"]} hidden>
+                    <Input />
+                  </Form.Item>
+                  {/* Display-only: just the Tag, so the value only ever
+                      renders once (previously the disabled Input's own
+                      text AND the addonAfter Tag both showed it). */}
+                  <Form.Item
+                    label="Status"
+                    shouldUpdate={(prev, cur) =>
+                      prev?.studentFeeDTOS?.[feeName]?.status !==
+                      cur?.studentFeeDTOS?.[feeName]?.status
+                    }
+                  >
+                    {() => {
+                      const currentStatus = form.getFieldValue([
+                        "studentFeeDTOS",
+                        feeName,
+                        "status",
+                      ]);
+                      return (
+                        <div
+                          style={{
+                            border: "1px solid #d9d9d9",
+                            borderRadius: 6,
+                            padding: "4px 11px",
+                            minHeight: 32,
+                            display: "flex",
+                            alignItems: "center",
+                            background: "#f5f5f5",
+                          }}
+                        >
+                          {currentStatus ? (
+                            <Tag color={feeStatusColor(currentStatus)} style={{ margin: 0 }}>
+                              {currentStatus}
+                            </Tag>
+                          ) : (
+                            <span style={{ color: "#999" }}>-</span>
+                          )}
+                        </div>
+                      );
+                    }}
                   </Form.Item>
                 </div>
 
@@ -582,6 +656,7 @@ function StudentFeesTable({ data, loading, pagination, onEdit }: StudentFeesTabl
         pendingAmount: fee?.pendingAmount,
         dueAmount: fee?.dueAmount,
         dueDate: fee?.dueDate ? dayjs(fee.dueDate) : null,
+        status: fee?.status, // 👈 NEW — fee-level status, pulled straight from the API response
         feePaymentDTOS: (fee?.feePaymentDTOS || []).map((p: any) => ({
           ...p,
           receiptNo: p.receiptNo, // 👈 NEW — pulled straight from the API response
@@ -821,6 +896,7 @@ export default function StudentFeesManagement() {
               // or empty if there's nothing saved yet.
               dueAmount: fee?.dueAmount ?? undefined,
               dueDate: fee?.dueDate ? dayjs(fee.dueDate) : null,
+              status: fee?.status, // 👈 NEW — fee-level status, pulled straight from the API response
               feePaymentDTOS: (fee?.feePaymentDTOS || []).map((p: any) => ({
                 ...p,
                 receiptNo: p.receiptNo, // 👈 NEW — pulled straight from the API response
@@ -865,6 +941,10 @@ export default function StudentFeesManagement() {
             paidAmount: fee.paidAmount,
             pendingAmount: fee.pendingAmount,
             dueAmount: fee.dueAmount,
+            // 👇 NEW — pass status through on update so it isn't wiped out;
+            // on a new fee this is undefined and the backend presumably
+            // assigns it (e.g. "PENDING").
+            ...(fee.status ? { status: fee.status } : {}),
             feePaymentDTOS: (fee.feePaymentDTOS || []).map((p: any) => ({
               ...(p.paymentId ? { paymentId: p.paymentId } : {}),
               // 👇 NEW — pass receiptNo through on update so it isn't wiped

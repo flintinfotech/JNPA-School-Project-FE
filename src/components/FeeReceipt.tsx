@@ -74,6 +74,18 @@ const formatCurrency = (value?: number | null): string => {
   return `\u20b9 ${Number(value).toLocaleString("en-IN")}`;
 };
 
+// Status text/color shown on the printed receipt for the FEE itself (e.g.
+// "PENDING", "PAID"/"COMPLETED", "OVERDUE"). Kept as plain inline-styled
+// text (not an antd Tag) so it prints cleanly.
+const feeStatusStyle = (status?: string) => {
+  const s = (status || "").toUpperCase();
+  if (s === "PAID" || s === "COMPLETED" || s === "SUCCESS")
+    return { color: "#237804", fontWeight: 700 };
+  if (s === "PENDING") return { color: "#ad6800", fontWeight: 700 };
+  if (s === "FAILED" || s === "CANCELLED" || s === "OVERDUE") return { color: "#a8071a", fontWeight: 700 };
+  return { color: "#1f1f1f", fontWeight: 700 };
+};
+
 // ===========================
 // Receipt No helpers
 // ===========================
@@ -303,6 +315,7 @@ export default function FeeReceiptModal({
               <th className="num">Total Fee</th>
               <th className="num">Paid</th>
               <th className="num">Balance</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody>
@@ -312,6 +325,7 @@ export default function FeeReceiptModal({
               <td className="num">{formatCurrency(fee.totalFeeAmount)}</td>
               <td className="num">{formatCurrency(receiptAmount)}</td>
               <td className="num">{formatCurrency(fee.pendingAmount ?? fee.dueAmount)}</td>
+              <td style={feeStatusStyle(fee.status)}>{fee.status || "-"}</td>
             </tr>
           </tbody>
         </table>

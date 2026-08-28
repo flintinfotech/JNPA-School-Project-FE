@@ -92,6 +92,7 @@ export interface StudentFeeDTO {
   paidAmount?: number;
   pendingAmount?: number;
   dueAmount?: number;
+  status?: string; // e.g. "PENDING" | "PAID" | "COMPLETED" | "OVERDUE" — comes from the backend
   feePaymentDTOS?: FeePaymentDTO[];
 }
 
