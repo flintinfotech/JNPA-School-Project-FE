@@ -371,7 +371,7 @@ export default function FeeReceiptModal({
             <span className="label">Class</span>: {className}
           </div>
 
-          {/* <div><span className="label">Fee Head</span>: {fee.feeName || "-"}</div> */}
+          <div><span className="label">Fee Head</span>: {fee.feeName || "-"}</div>
           <div>
             <span className="label">Roll No</span>: {academic?.rollNo ?? "-"}
           </div>
