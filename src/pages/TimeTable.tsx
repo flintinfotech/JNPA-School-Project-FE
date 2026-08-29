@@ -81,7 +81,7 @@ const getAllTimeTableByFilterEndpoint = (page: number, size: number) =>
   `/jnpa-school-project/timeTable/getAllTimeTableByFilter?page=${page}&size=${size}&paginate=true`;
 
 
-// 👇 NEW — how many period cards show per page inside Add/Edit.
+// 👇 how many period cards show per page inside Add/Edit.
 const PERIOD_PAGE_SIZE = 10;
 
 // ---------------------------------------------------------------
@@ -300,7 +300,7 @@ interface TimeTableFormProps {
   staticData: StaticDataMap | null;
   teacherOptions: TeacherOption[];
   subjectOptions: SubjectOption[];
-  // 👇 NEW — called whenever Standard/Division/Medium are all selected, so
+  // 👇 called whenever Standard/Division/Medium are all selected, so
   // the parent can refetch the teacher list filtered to that class.
   onClassChange?: (standard?: string, division?: string, medium?: string) => void;
 }
@@ -348,12 +348,12 @@ function TimeTableForm({
     }
   };
 
-  // 👇 NEW — pagination state for the period cards below. Watching the
+  // 👇 pagination state for the period cards below. Watching the
   // form's periods array lets us compute total pages even outside the
   // Form.List render callback.
   const [periodPage, setPeriodPage] = useState(1);
 
-  // 👇 NEW — watch Standard/Division/Medium so we can ask the parent to
+  // 👇 watch Standard/Division/Medium so we can ask the parent to
   // refetch the teacher list filtered to this class as soon as all three
   // are picked.
   const watchedStandard = Form.useWatch("standard", form);
@@ -382,7 +382,7 @@ function TimeTableForm({
     label: toLabel(m),
   }));
 
-  // 🛠️ NEW — if staticData loaded but Division/Medium came out empty, the
+  // 🛠️ if staticData loaded but Division/Medium came out empty, the
   // dropdown literally can't be filled in, which silently blocks
   // onClassChange from ever firing (it needs all three). This warns loudly
   // in devtools so it's obvious *why* the filtered-teacher-fetch payload
@@ -460,14 +460,27 @@ function TimeTableForm({
 
       <Form.List name="timeTablePeriods">
         {(fields, { add, remove }) => {
-          // 👇 NEW — only render 10 period cards at a time. `name`/`key`
-          // on each field still refer to its real index in the full
-          // array, so add/remove/validation all keep working normally —
-          // we're only slicing what's rendered, not the underlying data.
+          // ---------------------------------------------------------
+          // 🛠️ FIX — pagination bug that dropped periods 10, 11, 12...
+          // from the Add/Update payload.
+          //
+          // The old code did `fields.slice(startIdx, startIdx + PAGE_SIZE)`
+          // and only rendered THAT slice. Cards on other pages were
+          // completely removed from the DOM, which unmounts their
+          // Form.Item fields — and once unmounted, antd can fail to
+          // report their values back into `form.validateFields()`, so
+          // whatever you filled in on page 2/3 silently disappeared
+          // from the payload on Save/Update.
+          //
+          // Fix: render EVERY field/card all the time (so every
+          // Form.Item stays mounted and its value always stays part of
+          // the form), and only visually hide the cards that aren't on
+          // the current page with `display:none`. Hidden inputs are
+          // still fully part of the form and still get validated and
+          // submitted — nothing is ever silently dropped again.
+          // ---------------------------------------------------------
           const totalPages = Math.max(1, Math.ceil(fields.length / PERIOD_PAGE_SIZE));
           const safePage = Math.min(periodPage, totalPages);
-          const startIdx = (safePage - 1) * PERIOD_PAGE_SIZE;
-          const visibleFields = fields.slice(startIdx, startIdx + PERIOD_PAGE_SIZE);
 
           const handleAddPeriod = () => {
             add(emptyPeriod());
@@ -491,114 +504,129 @@ function TimeTableForm({
                 </div>
               )}
 
-              {visibleFields.map(({ key, name, ...restField }) => (
-              <div
-                key={key}
-                className="border-2 border-gray-400 rounded-lg p-4 mb-4 relative bg-white"
-              >
-                <Form.Item name={[name, "timeTablePeriodId"]} hidden>
-                  <Input />
-                </Form.Item>
+              {fields.map(({ key, name, ...restField }, idx) => {
+                // Which page this card belongs to, based on its real
+                // position in the underlying array (not on what's
+                // currently rendered) — this never changes just
+                // because you switch pages.
+                const fieldPage = Math.floor(idx / PERIOD_PAGE_SIZE) + 1;
+                const isOnCurrentPage = fieldPage === safePage;
 
-                <div className="flex justify-end mb-1">
-                  <Button
-                    danger
-                    type="text"
-                    htmlType="button"
-                    icon={<DeleteOutlined style={{ fontSize: 18 }} />}
-                    onClick={() => remove(name)}
-                  />
-                </div>
+                return (
+                  <div
+                    key={key}
+                    // Hidden (not removed!) when it's on a different
+                    // page. This keeps the field mounted & registered
+                    // in the form at all times.
+                    style={isOnCurrentPage ? undefined : { display: "none" }}
+                    aria-hidden={!isOnCurrentPage}
+                  >
+                    <div className="border-2 border-gray-400 rounded-lg p-4 mb-4 relative bg-white">
+                      <Form.Item name={[name, "timeTablePeriodId"]} hidden>
+                        <Input />
+                      </Form.Item>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
-                  <Form.Item
-                    {...restField}
-                    label="Day"
-                    name={[name, "day"]}
-                    rules={[{ required: true, message: "Day is required" }]}
-                  >
-                    <Select placeholder="Select day">
-                      {DAYS.map((d, idx) => (
-                        <Option key={d} value={d}>
-                          {idx + 1} - {d.charAt(0) + d.slice(1).toLowerCase()}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                  <Form.Item
-                    {...restField}
-                    label="Period"
-                    name={[name, "periodNumber"]}
-                    rules={[{ required: true, message: "Period is required" }]}
-                  >
-                    <Select placeholder="Select period" allowClear>
-                      {periodOptions.map((opt) => (
-                        <Option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                </div>
+                      <div className="flex justify-end mb-1">
+                        <Button
+                          danger
+                          type="text"
+                          htmlType="button"
+                          icon={<DeleteOutlined style={{ fontSize: 18 }} />}
+                          onClick={() => remove(name)}
+                        />
+                      </div>
 
-                {/* 🛠️ FIX — one combined Start/End time range picker,
-                    replacing the two separate Start Time / End Time
-                    pickers. Same 12-hour display + 5-min steps as before. */}
-                <Form.Item
-                  {...restField}
-                  label="Time"
-                  name={[name, "timeRange"]}
-                  rules={[{ required: true, message: "Start and end time are required" }]}
-                >
-                  <TimePicker.RangePicker
-                    className="w-full"
-                    format="hh:mm A"
-                    use12Hours
-                    minuteStep={5}
-                  />
-                </Form.Item>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                        <Form.Item
+                          {...restField}
+                          label="Day"
+                          name={[name, "day"]}
+                          rules={[{ required: true, message: "Day is required" }]}
+                        >
+                          <Select placeholder="Select day">
+                            {DAYS.map((d, dIdx) => (
+                              <Option key={d} value={d}>
+                                {dIdx + 1} - {d.charAt(0) + d.slice(1).toLowerCase()}
+                              </Option>
+                            ))}
+                          </Select>
+                        </Form.Item>
+                        <Form.Item
+                          {...restField}
+                          label="Period"
+                          name={[name, "periodNumber"]}
+                          rules={[{ required: true, message: "Period is required" }]}
+                        >
+                          <Select placeholder="Select period" allowClear>
+                            {periodOptions.map((opt) => (
+                              <Option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </Option>
+                            ))}
+                          </Select>
+                        </Form.Item>
+                      </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
-                  <Form.Item
-                    {...restField}
-                    label="Subject"
-                    name={[name, "subjectId"]}
-                  >
-                    <Select
-                      placeholder="Select subject"
-                      allowClear
-                      showSearch
-                      optionFilterProp="children"
-                    >
-                      {subjectOptions.map((s) => (
-                        <Option key={s.subjectMasterId} value={s.subjectMasterId}>
-                          {s.subjectName}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                  <Form.Item
-                    {...restField}
-                    label="Teacher"
-                    name={[name, "employeeDetailsId"]}
-                  >
-                    <Select
-                      placeholder="Select teacher"
-                      allowClear
-                      showSearch
-                      optionFilterProp="children"
-                    >
-                      {teacherOptions.map((t) => (
-                        <Option key={t.employeeDetailsId} value={t.employeeDetailsId}>
-                          {[t.firstName, t.lastName].filter(Boolean).join(" ")}
-                          {t.employeeCode ? ` (${t.employeeCode})` : ""}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                </div>
-              </div>
-              ))}
+                      {/* 🛠️ one combined Start/End time range picker,
+                          replacing the two separate Start Time / End Time
+                          pickers. Same 12-hour display + 5-min steps as before. */}
+                      <Form.Item
+                        {...restField}
+                        label="Time"
+                        name={[name, "timeRange"]}
+                        rules={[{ required: true, message: "Start and end time are required" }]}
+                      >
+                        <TimePicker.RangePicker
+                          className="w-full"
+                          format="hh:mm A"
+                          use12Hours
+                          minuteStep={5}
+                        />
+                      </Form.Item>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                        <Form.Item
+                          {...restField}
+                          label="Subject"
+                          name={[name, "subjectId"]}
+                        >
+                          <Select
+                            placeholder="Select subject"
+                            allowClear
+                            showSearch
+                            optionFilterProp="children"
+                          >
+                            {subjectOptions.map((s) => (
+                              <Option key={s.subjectMasterId} value={s.subjectMasterId}>
+                                {s.subjectName}
+                              </Option>
+                            ))}
+                          </Select>
+                        </Form.Item>
+                        <Form.Item
+                          {...restField}
+                          label="Teacher"
+                          name={[name, "employeeDetailsId"]}
+                        >
+                          <Select
+                            placeholder="Select teacher"
+                            allowClear
+                            showSearch
+                            optionFilterProp="children"
+                          >
+                            {teacherOptions.map((t) => (
+                              <Option key={t.employeeDetailsId} value={t.employeeDetailsId}>
+                                {[t.firstName, t.lastName].filter(Boolean).join(" ")}
+                                {t.employeeCode ? ` (${t.employeeCode})` : ""}
+                              </Option>
+                            ))}
+                          </Select>
+                        </Form.Item>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
 
               {fields.length > PERIOD_PAGE_SIZE && (
                 <div className="flex justify-end mb-3">
@@ -681,7 +709,7 @@ const initialsOf = (first?: string, last?: string) => {
   return combo || "—";
 };
 
-// 🛠️ FIX — accepts `any`, not just `string`, and coerces via toLabel
+// 🛠️ accepts `any`, not just `string`, and coerces via toLabel
 // first. Previously this called `.match()` directly on `label`; if
 // `label` was ever an object (mismatched static-data shape) this threw
 // and crashed the whole page. Now it's always operating on a string.
@@ -691,30 +719,75 @@ const railLabel = (label: any) => {
   return m ? `P${m[1]}` : str;
 };
 
-// 🛠️ NEW — detects Break/Lunch-type periods so they can get their own
+// 🛠️ detects Break/Lunch-type periods so they can get their own
 // simple card instead of an empty subject/teacher layout.
 const isBreakLabel = (label: any) => {
   const str = toLabel(label) || String(label ?? "");
   return /break|lunch|recess/i.test(str);
 };
 
+// ---------------------------------------------------------------
+// 🛠️ FIX — convert "HH:mm:ss" into minutes-since-midnight so period
+// rows can be sorted by their REAL configured time.
+// ---------------------------------------------------------------
+const timeToMinutes = (t?: string): number => {
+  if (!t) return Number.MAX_SAFE_INTEGER;
+  const parsed = dayjs(t, "HH:mm:ss");
+  if (!parsed.isValid()) return Number.MAX_SAFE_INTEGER;
+  return parsed.hour() * 60 + parsed.minute();
+};
+
 function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: string[] }) {
   const periods: any[] = Array.isArray(data?.timeTablePeriods) ? data.timeTablePeriods : [];
   const todayName = dayjs().format("dddd").toUpperCase();
 
-  // 🛠️ FIX — always compare on normalized strings, never raw values that
+  // 🛠️ always compare on normalized strings, never raw values that
   // might be objects.
   const normalizedOrder = (periodOrder || []).map((p) => toLabel(p) || String(p ?? ""));
 
+  // Used ONLY as a tiebreaker now (see periodStartMinutes below) — the
+  // static list position no longer decides row order by itself.
   const orderIndex = (label: any) => {
     const str = toLabel(label) || String(label ?? "");
     const idx = normalizedOrder.indexOf(str);
     return idx === -1 ? Number.MAX_SAFE_INTEGER : idx;
   };
 
+  // ---------------------------------------------------------------
+  // 🛠️ FIX — row ordering.
+  //
+  // Previously rows were ordered purely by where the period's label
+  // sat in the fixed static list (Period 1, Period 2, ..., Break 1,
+  // Lunch Break, ...). That meant a Break you actually scheduled for,
+  // say, 5 PM — sitting between a 2 PM "1st Period" and a 6 PM "2nd
+  // Period" — always rendered at the very bottom (or wherever "Break"
+  // happens to sit in the static list), instead of in its real
+  // chronological place between them.
+  //
+  // Fix: order every row by its REAL configured start time first. The
+  // static list order is now only a tiebreaker for the rare case where
+  // a period has no time set at all.
+  // ---------------------------------------------------------------
+  const periodStartMinutes = (label: string): number => {
+    const matches = periods.filter(
+      (p) => (toLabel(p.periodNumber) || String(p.periodNumber ?? "")) === label
+    );
+    const times = matches
+      .map((p) => timeToMinutes(p.startTime))
+      .filter((m) => m !== Number.MAX_SAFE_INTEGER);
+    return times.length ? Math.min(...times) : Number.MAX_SAFE_INTEGER;
+  };
+
   const periodNumbers: string[] = Array.from(
     new Set(periods.map((p) => (toLabel(p.periodNumber) || String(p.periodNumber ?? ""))))
-  ).sort((a: string, b: string) => orderIndex(a) - orderIndex(b));
+  ).sort((a: string, b: string) => {
+    const timeDiff = periodStartMinutes(a) - periodStartMinutes(b);
+    if (timeDiff !== 0) return timeDiff;
+    // Only reached when both periods have no usable time at all —
+    // fall back to the static list order so rows still show up in a
+    // stable, predictable sequence.
+    return orderIndex(a) - orderIndex(b);
+  });
 
   const periodTimeLabel = (num: string) => {
     const p = periods.find((pp) => (toLabel(pp.periodNumber) || String(pp.periodNumber ?? "")) === num);
@@ -780,7 +853,7 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
             );
           })}
 
-          {/* period rows */}
+          {/* period rows — now in real chronological order */}
           {periodNumbers.map((num) => {
             const isBreakRow = isBreakLabel(num);
             return (
@@ -802,7 +875,7 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
                     );
                   }
 
-                  // 🛠️ FIX — Break/Lunch periods get a dedicated simple
+                  // 🛠️ Break/Lunch periods get a dedicated simple
                   // card. Previously these fell through to the normal
                   // subject/teacher card, which just showed "-" / "-"
                   // and (before the toLabel fix) could crash on object
@@ -1139,7 +1212,7 @@ export default function TimeTable() {
   const [viewLoading, setViewLoading] = useState(false);
   const [viewData, setViewData] = useState<any>(null);
 
-  // 🛠️ FIX — same useAuth() hook Results.tsx already uses, instead of
+  // 🛠️ same useAuth() hook Results.tsx already uses, instead of
   // guessing at localStorage.
   const { user } = useAuth();
   const canDelete = isAdminOrPrincipal(user?.role);
@@ -1164,7 +1237,7 @@ export default function TimeTable() {
   }, []);
 
   useEffect(() => {
-    // 👇 NEW — teachers don't need the admin list at all; skip loading it.
+    // 👇 teachers don't need the admin list at all; skip loading it.
     if (!viewerIsTeacher) {
       fetchTimeTables(page, pageSize);
     }
@@ -1194,7 +1267,7 @@ export default function TimeTable() {
     })();
   }, [viewerIsTeacher]);
 
-  // 👇 FIX — fetches teachers filtered by the class/division/medium chosen
+  // 👇 fetches teachers filtered by the class/division/medium chosen
   // in the Add/Edit form, instead of always showing every teacher.
   // Your apiEndpoints.ts already has this exact endpoint under the name
   // `getAllemployeeDetails` (it builds
@@ -1392,10 +1465,10 @@ export default function TimeTable() {
       academicYear: data?.academicYear ?? getLoggedInAcademicYear(),
       timeTablePeriods: (data?.timeTablePeriods || []).map((p: any) => ({
         timeTablePeriodId: p.timeTablePeriodId,
-        // 🛠️ FIX — normalize in case a legacy record stored an object
+        // 🛠️ normalize in case a legacy record stored an object
         day: p.day,
         periodNumber: toLabel(p.periodNumber) || p.periodNumber,
-        // 🛠️ FIX — combine startTime/endTime into the single range field
+        // 🛠️ combine startTime/endTime into the single range field
         timeRange:
           p.startTime && p.endTime
             ? [dayjs(p.startTime, "HH:mm:ss"), dayjs(p.endTime, "HH:mm:ss")]
@@ -1488,7 +1561,7 @@ export default function TimeTable() {
     }
   };
 
-  // 👇 NEW — a teacher who logs in never sees the admin class list; they
+  // 👇 a teacher who logs in never sees the admin class list; they
   // land straight on their own merged weekly schedule (Vikas sees Vikas's
   // periods, Rahul sees Rahul's, automatically, based on the logged-in
   // user's employeeDetailsId). No Add/Edit/Delete controls here at all.
@@ -1539,7 +1612,7 @@ export default function TimeTable() {
             size="small"
             onClick={() => openEditDrawer(record)}
           />
-          {/* 🛠️ FIX — Delete is only shown for ADMIN / PRINCIPAL. */}
+          {/* 🛠️ Delete is only shown for ADMIN / PRINCIPAL. */}
           {canDelete && (
             <Popconfirm
               title="Delete this timetable?"
@@ -1599,7 +1672,7 @@ export default function TimeTable() {
                     size="small"
                     onClick={() => openEditDrawer(record)}
                   />
-                  {/* 🛠️ FIX — Delete is only shown for ADMIN / PRINCIPAL. */}
+                  {/* 🛠️ Delete is only shown for ADMIN / PRINCIPAL. */}
                   {canDelete && (
                     <Popconfirm
                       title="Delete this timetable?"
