@@ -9,6 +9,7 @@ import {
   Empty,
   message,
   Popconfirm,
+  Pagination,
 } from "antd";
 import { PlusOutlined, LeftOutlined, RightOutlined } from "@ant-design/icons";
 import dayjs, { Dayjs } from "dayjs";
@@ -49,10 +50,6 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const ACADEMIC_YEAR_STORAGE_KEY = "academicYear";
 
-// Same helper as the Student Fees page — reads the logged-in session's
-// startDate and returns it as a Dayjs, so the calendar opens on the year
-// the user is logged in under. Falls back to today's date if anything
-// is missing or unparseable — never throws.
 const getLoggedInSessionStartDate = (): Dayjs => {
   try {
     const stored = localStorage.getItem(ACADEMIC_YEAR_STORAGE_KEY);
@@ -75,13 +72,15 @@ interface EventFormValues {
   description?: string;
 }
 
-const BATCH_SIZE = 20;
+const PAGE_SIZE = 10;
 
 export default function AcademicCalendar() {
   const { user } = useAuth();
   const canManage = MANAGE_ROLES.includes((user?.role || "").toUpperCase());
 
   const [events, setEvents] = useState<AcademicCalendarEventDTO[]>([]);
+  const [totalEvents, setTotalEvents] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1); // 1-indexed for the UI
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -90,14 +89,14 @@ export default function AcademicCalendar() {
     useState<AcademicCalendarEventDTO | null>(null);
 
   const [visibleMonth, setVisibleMonth] = useState<Dayjs>(() =>
-    getLoggedInSessionStartDate()
+    getLoggedInSessionStartDate(),
   );
   const [selectedDate, setSelectedDate] = useState<Dayjs>(() =>
-    getLoggedInSessionStartDate()
+    getLoggedInSessionStartDate(),
   );
-  const [activeType, setActiveType] = useState<"ALL" | AcademicCalendarEventType>(
-    "ALL"
-  );
+  const [activeType, setActiveType] = useState<
+    "ALL" | AcademicCalendarEventType
+  >("ALL");
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const handleDelete = async (event: AcademicCalendarEventDTO) => {
@@ -106,7 +105,14 @@ export default function AcademicCalendar() {
       const res = await deleteAcademicCalendarEvent(event.academicCalendarId);
       if (res.success) {
         message.success(res.message || "Event deleted successfully");
-        fetchEvents();
+        // If this was the last item on the current page (and not page 1),
+        // step back a page so we don't land on an empty page.
+        const isLastItemOnPage = events.length === 1 && currentPage > 1;
+        if (isLastItemOnPage) {
+          setCurrentPage((p) => p - 1);
+        } else {
+          fetchEvents(currentPage);
+        }
       } else {
         message.error(res.message || "Failed to delete event");
       }
@@ -117,12 +123,13 @@ export default function AcademicCalendar() {
     }
   };
 
-  const fetchEvents = useCallback(async () => {
+  const fetchEvents = useCallback(async (page: number) => {
     setLoading(true);
     try {
-      const res = await getAllAcademicCalendarEvents(0, BATCH_SIZE);
+      const res = await getAllAcademicCalendarEvents(page - 1, PAGE_SIZE);
       if (res.success) {
         setEvents(res.data?.["Academic calendar events"] || []);
+        setTotalEvents(res.data?.["total events"] || 0);
       } else {
         message.error(res.message || "Failed to fetch events");
       }
@@ -134,8 +141,8 @@ export default function AcademicCalendar() {
   }, []);
 
   useEffect(() => {
-    fetchEvents();
-  }, [fetchEvents]);
+    fetchEvents(currentPage);
+  }, [fetchEvents, currentPage]);
 
   const openModal = () => {
     form.resetFields();
@@ -179,7 +186,7 @@ export default function AcademicCalendar() {
         if (res.success) {
           message.success(res.message || "Event updated successfully");
           closeModal();
-          fetchEvents();
+          fetchEvents(currentPage);
         } else {
           message.error(res.message || "Failed to update event");
         }
@@ -195,7 +202,11 @@ export default function AcademicCalendar() {
         if (res.success) {
           message.success(res.message || "Event saved successfully");
           closeModal();
-          fetchEvents();
+          // New events land wherever the backend places them; safest is to
+          // jump back to page 1 so the user sees it (adjust if your API
+          // sorts differently).
+          setCurrentPage(1);
+          fetchEvents(1);
         } else {
           message.error(res.message || "Failed to save event");
         }
@@ -215,9 +226,9 @@ export default function AcademicCalendar() {
           e.startDate &&
           e.endDate &&
           !day.isBefore(dayjs(e.startDate), "day") &&
-          !day.isAfter(dayjs(e.endDate), "day")
+          !day.isAfter(dayjs(e.endDate), "day"),
       ),
-    [events]
+    [events],
   );
 
   const calendarCells = useMemo(() => {
@@ -233,7 +244,9 @@ export default function AcademicCalendar() {
 
   const filteredEvents = useMemo(() => {
     const list =
-      activeType === "ALL" ? events : events.filter((e) => e.eventType === activeType);
+      activeType === "ALL"
+        ? events
+        : events.filter((e) => e.eventType === activeType);
     return [...list].sort((a, b) => (a.startDate < b.startDate ? -1 : 1));
   }, [events, activeType]);
 
@@ -290,13 +303,18 @@ export default function AcademicCalendar() {
               const isSelected = day.isSame(selectedDate, "day");
 
               return (
-                <div key={day.format("YYYY-MM-DD")} className="flex items-center justify-center">
+                <div
+                  key={day.format("YYYY-MM-DD")}
+                  className="flex items-center justify-center"
+                >
                   <button
                     onClick={() => setSelectedDate(day)}
                     className={[
                       "w-9 h-9 rounded-full text-sm flex items-center justify-center transition",
                       !inMonth ? "text-gray-300" : "text-gray-700",
-                      hasEvent && inMonth ? "bg-[#3B82F6] text-white font-medium" : "",
+                      hasEvent && inMonth
+                        ? "bg-[#3B82F6] text-white font-medium"
+                        : "",
                       isSelected && !hasEvent ? "ring-1 ring-[#93C5FD]" : "",
                       !hasEvent ? "hover:bg-gray-100" : "",
                     ].join(" ")}
@@ -368,7 +386,8 @@ export default function AcademicCalendar() {
                           <span
                             className="w-1.5 h-1.5 rounded-full"
                             style={{
-                              backgroundColor: TYPE_META[event.eventType]?.dot ?? "#94A3B8",
+                              backgroundColor:
+                                TYPE_META[event.eventType]?.dot ?? "#94A3B8",
                             }}
                           />
                           {TYPE_META[event.eventType]?.label ?? event.eventType}
@@ -390,7 +409,8 @@ export default function AcademicCalendar() {
                               okText="Delete"
                               okButtonProps={{
                                 danger: true,
-                                loading: deletingId === event.academicCalendarId,
+                                loading:
+                                  deletingId === event.academicCalendarId,
                               }}
                               cancelText="Cancel"
                             >
@@ -405,13 +425,27 @@ export default function AcademicCalendar() {
                   ))}
                 </tbody>
               </table>
+
+              <div className="flex justify-end mt-4">
+                <Pagination
+                  current={currentPage}
+                  pageSize={PAGE_SIZE}
+                  total={totalEvents}
+                  onChange={(page) => setCurrentPage(page)}
+                  showSizeChanger={false}
+                />
+              </div>
             </div>
           )}
         </div>
       </div>
 
       <Modal
-        title={editingEvent ? "Edit Academic Calendar Event" : "Add Academic Calendar Event"}
+        title={
+          editingEvent
+            ? "Edit Academic Calendar Event"
+            : "Add Academic Calendar Event"
+        }
         open={modalOpen}
         onCancel={closeModal}
         onOk={handleSave}
@@ -452,7 +486,9 @@ export default function AcademicCalendar() {
                   if (!value || value.length < 2) return Promise.resolve();
                   const [start, end] = value;
                   if (end.isBefore(start, "day")) {
-                    return Promise.reject(new Error("End date cannot be before start date"));
+                    return Promise.reject(
+                      new Error("End date cannot be before start date"),
+                    );
                   }
                   return Promise.resolve();
                 },
@@ -463,7 +499,10 @@ export default function AcademicCalendar() {
           </Form.Item>
 
           <Form.Item name="description" label="Description">
-            <Input.TextArea rows={3} placeholder="e.g. Mid-Term examination for all classes" />
+            <Input.TextArea
+              rows={3}
+              placeholder="e.g. Mid-Term examination for all classes"
+            />
           </Form.Item>
         </Form>
       </Modal>
