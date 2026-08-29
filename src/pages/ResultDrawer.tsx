@@ -1181,7 +1181,7 @@ export default function ResultDrawer({
                                           style={{ width: "100%" }}
                                           min={0}
                                           placeholder="Max"
-                                          disabled
+                                        
                                         />
                                       </Form.Item>
                                     </Col>
