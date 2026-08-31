@@ -102,7 +102,7 @@ const SubjectMaster: React.FC = () => {
           subjectName: values.subjectName,
         });
 
-        message.error(response.message);
+        message.success(response.message);
       }
 
       form.resetFields();

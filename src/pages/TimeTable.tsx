@@ -727,19 +727,88 @@ const isBreakLabel = (label: any) => {
 };
 
 // ---------------------------------------------------------------
-// 🛠️ FIX — convert "HH:mm:ss" into minutes-since-midnight so period
-// rows can be sorted by their REAL configured time.
+// 🛠️ FIX — resolve a period's start time from whichever field name the
+// backend actually returns. This app has been observed to send the
+// value under different keys in different places (startTime / fromTime
+// / start / timeFrom / periodStartTime, sometimes nested under a DTO
+// wrapper). If the sort only ever reads `p.startTime` and the real
+// response uses a different key, every period silently has "no usable
+// time", and the sort falls back to the static period-list order —
+// which is exactly the "still shows insertion/dropdown order" symptom.
 // ---------------------------------------------------------------
-const timeToMinutes = (t?: string): number => {
-  if (!t) return Number.MAX_SAFE_INTEGER;
-  const parsed = dayjs(t, "HH:mm:ss");
-  if (!parsed.isValid()) return Number.MAX_SAFE_INTEGER;
-  return parsed.hour() * 60 + parsed.minute();
+const extractStartTimeRaw = (p: any): any => {
+  if (!p) return undefined;
+  return (
+    p.startTime ??
+    p.fromTime ??
+    p.start ??
+    p.timeFrom ??
+    p.periodStartTime ??
+    p.startTimeStr ??
+    p?.timeTablePeriodDTO?.startTime ??
+    p?.periodDTO?.startTime ??
+    undefined
+  );
+};
+
+// ---------------------------------------------------------------
+// 🛠️ FIX — convert a start-time value into minutes-since-midnight so
+// period rows can be sorted by their REAL configured time. Handles the
+// formats this kind of API tends to send: "14:00", "14:00:00",
+// "14:00:00.123456" (fractional seconds), "02:00 PM"/"2:00:00 PM", or a
+// full ISO datetime like "1970-01-01T14:00:00" — without depending on
+// dayjs's customParseFormat plugin being loaded anywhere.
+// ---------------------------------------------------------------
+const timeToMinutes = (raw?: any): number => {
+  if (raw === null || raw === undefined || raw === "") return Number.MAX_SAFE_INTEGER;
+  const str = String(raw).trim();
+
+  const match = /^(\d{1,2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?\s*(AM|PM|am|pm)?$/.exec(str);
+  if (match) {
+    let hours = parseInt(match[1], 10);
+    const minutes = parseInt(match[2], 10);
+    const meridiem = match[4] ? match[4].toUpperCase() : undefined;
+    if (meridiem === "PM" && hours < 12) hours += 12;
+    if (meridiem === "AM" && hours === 12) hours = 0;
+    if (!Number.isNaN(hours) && !Number.isNaN(minutes)) {
+      return hours * 60 + minutes;
+    }
+  }
+
+  // Full date/datetime strings — dayjs parses ISO 8601 out of the box,
+  // no plugin required.
+  const isoParsed = dayjs(str);
+  if (isoParsed.isValid()) {
+    return isoParsed.hour() * 60 + isoParsed.minute();
+  }
+
+  return Number.MAX_SAFE_INTEGER;
 };
 
 function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: string[] }) {
   const periods: any[] = Array.isArray(data?.timeTablePeriods) ? data.timeTablePeriods : [];
   const todayName = dayjs().format("dddd").toUpperCase();
+
+  // 🛠️ dev diagnostic — if any period's start time can't be resolved
+  // into minutes, warn with the raw object so it's immediately visible
+  // in devtools which field/format your API actually uses, instead of
+  // silently falling back to static order with no clue why.
+  useEffect(() => {
+    if (!periods.length) return;
+    const unresolved = periods.filter(
+      (p) => timeToMinutes(extractStartTimeRaw(p)) === Number.MAX_SAFE_INTEGER
+    );
+    if (unresolved.length > 0) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        "TimeTable: could not resolve a usable start time for these periods, so they'll fall back" +
+          " to the static period-list order instead of sorting chronologically. Inspect the raw" +
+          " object below to find the actual field name/format your API returns for start time:",
+        unresolved
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [periods]);
 
   // 🛠️ always compare on normalized strings, never raw values that
   // might be objects.
@@ -764,18 +833,23 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
   // happens to sit in the static list), instead of in its real
   // chronological place between them.
   //
-  // Fix: order every row by its REAL configured start time first. The
-  // static list order is now only a tiebreaker for the rare case where
-  // a period has no time set at all.
+  // 🛠️ FIX (rail time vs. sort order could disagree) — the sort key used
+  // to be the MINIMUM start time across every day that happens to share
+  // this period label, while the rail time shown next to the row came
+  // from a *different* lookup (the first matching record). If two days
+  // saved slightly different times under the same label (e.g. "Period
+  // 5" at 12:15 on Monday but an earlier time on another day), the row
+  // could sort using one day's time while displaying another's — e.g. a
+  // 12:00 Lunch Break rendering AFTER a 12:15 period it should precede.
+  // Both now resolve through the exact same lookup, so the sort order
+  // and the displayed time can never contradict each other.
   // ---------------------------------------------------------------
+  const findFirstMatchingPeriod = (label: string) =>
+    periods.find((p) => (toLabel(p.periodNumber) || String(p.periodNumber ?? "")) === label);
+
   const periodStartMinutes = (label: string): number => {
-    const matches = periods.filter(
-      (p) => (toLabel(p.periodNumber) || String(p.periodNumber ?? "")) === label
-    );
-    const times = matches
-      .map((p) => timeToMinutes(p.startTime))
-      .filter((m) => m !== Number.MAX_SAFE_INTEGER);
-    return times.length ? Math.min(...times) : Number.MAX_SAFE_INTEGER;
+    const p = findFirstMatchingPeriod(label);
+    return p ? timeToMinutes(extractStartTimeRaw(p)) : Number.MAX_SAFE_INTEGER;
   };
 
   const periodNumbers: string[] = Array.from(
@@ -790,7 +864,7 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
   });
 
   const periodTimeLabel = (num: string) => {
-    const p = periods.find((pp) => (toLabel(pp.periodNumber) || String(pp.periodNumber ?? "")) === num);
+    const p = findFirstMatchingPeriod(num);
     if (!p) return "";
     const fmt = (t: string) => (t ? dayjs(t, "HH:mm:ss").format("hh:mm A") : "");
     return `${fmt(p.startTime)} – ${fmt(p.endTime)}`;
