@@ -95,13 +95,21 @@ export const adminNavItems: AdminNavEntry[] = [
         {label:"Results", path:"/results",icon:PiClipboardText},
         {label:"Achievements",path:"/achievements",icon:RiMedalLine },
         {label:"Academic calendar", path:"/academic-calender", icon:SlCalender},
-        {label:"Student Fees", path:"/student-fees",icon:BsCash},
         {label:"Time Table", path:"/time-table",icon:PiCalendarBlank}
     ],
   },
   {label: "Profile",path: "/profile",icon: ImProfile,hideInSidebar: true,},
   {
     label:"Student Profile", path:"/student-profile",icon:PiStudentFill
+  },
+   {
+    label: "Accounts",
+    icon: BsCash,
+    children: [
+    
+        {label:"Student Fees", path:"/student-fees",icon:BsCash},
+      
+    ],
   },
   
  
