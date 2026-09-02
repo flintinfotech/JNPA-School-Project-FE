@@ -674,6 +674,14 @@ function TimeTableForm({
 // each period is a clearly separated card. Break/Lunch periods get
 // their own simpler card (no subject/teacher line) instead of an
 // awkward "-"/"-" pair. Built entirely with CSS Grid (no <table>).
+//
+// 🛠️ RESPONSIVE FIX — nothing about the layout logic, data, or markup
+// structure changed. The only addition is a horizontally-scrollable
+// wrapper (`.sked-board-scroll`) around the existing `.sked-board` grid,
+// plus a few media queries. This makes the exact same grid usable on
+// phones/tablets (swipe sideways to see all 6 days) instead of getting
+// squished unreadably, while desktop is untouched (grid still fits the
+// full width with no scrolling needed).
 // ---------------------------------------------------------------
 const TAG_PALETTE: { bg: string; border: string; text: string }[] = [
   { bg: "#FCEEDA", border: "#E8A33D", text: "#8A5A12" }, // amber
@@ -788,6 +796,18 @@ const timeToMinutes = (raw?: any): number => {
 function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: string[] }) {
   const periods: any[] = Array.isArray(data?.timeTablePeriods) ? data.timeTablePeriods : [];
   const todayName = dayjs().format("dddd").toUpperCase();
+
+  // 🛠️ RESPONSIVE FIX (v2) — on phones, a 7-column grid is never going
+  // to look clean no matter how much it's shrunk, so below a breakpoint
+  // we switch to the pattern real calendar apps use: day tabs on top +
+  // a single vertical agenda list for the selected day. Tablet/desktop
+  // keep the exact same weekly grid as before (with the scroll wrapper
+  // already added). Nothing about the underlying data/sorting logic
+  // changes — this only changes which JSX is rendered.
+  const isMobile = useIsMobile(641);
+  const [selectedDay, setSelectedDay] = useState<string>(
+    DAYS.includes(todayName) ? todayName : DAYS[0]
+  );
 
   // 🛠️ dev diagnostic — if any period's start time can't be resolved
   // into minutes, warn with the raw object so it's immediately visible
@@ -904,94 +924,189 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
           <span className="sked-empty-icon">🗓</span>
           <p>No periods added yet.</p>
         </div>
-      ) : (
-        <div
-          className="sked-board"
-          style={{ gridTemplateColumns: `84px repeat(${DAYS.length}, 1fr)` }}
-        >
-          {/* corner cell */}
-          <div className="sked-corner" />
+      ) : isMobile ? (
+        // ---------------------------------------------------------
+        // 🛠️ RESPONSIVE FIX (v2) — mobile agenda view.
+        // Day tabs across the top (defaults to today), and a clean
+        // vertical list of that day's periods below — the same data,
+        // same sorting, same card styling, just laid out the way a
+        // phone screen actually reads well.
+        // ---------------------------------------------------------
+        <div className="sked-agenda">
+          <div className="sked-daytabs">
+            {DAYS.map((day) => {
+              const isToday = day === todayName;
+              const isActive = day === selectedDay;
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  className={`sked-daytab ${isActive ? "is-active" : ""} ${isToday ? "is-today" : ""}`}
+                  onClick={() => setSelectedDay(day)}
+                >
+                  {dayAbbrev(day)}
+                  {isToday && <span className="sked-daytab-dot" />}
+                </button>
+              );
+            })}
+          </div>
 
-          {/* day lane headers — full day name on desktop, short 3-letter
-              abbreviation on mobile (back to how it was originally). */}
-          {DAYS.map((day) => {
-            const isToday = day === todayName;
-            return (
-              <div key={day} className={`sked-daylabel ${isToday ? "is-today" : ""}`}>
-                <span className="sked-daylabel-full">
-                  {day.charAt(0) + day.slice(1).toLowerCase()}
-                </span>
-                <span className="sked-daylabel-short">{dayAbbrev(day)}</span>
-                {isToday && <span className="sked-today-badge">Today</span>}
-              </div>
-            );
-          })}
+          <div className="sked-agenda-list">
+            {periodNumbers.map((num) => {
+              const isBreakRow = isBreakLabel(num);
+              const cell = findCell(selectedDay, num);
 
-          {/* period rows — now in real chronological order */}
-          {periodNumbers.map((num) => {
-            const isBreakRow = isBreakLabel(num);
-            return (
-              <Fragment key={num}>
-                <div className={`sked-rail ${isBreakRow ? "is-break" : ""}`}>
-                  <span className="sked-rail-num">{railLabel(num)}</span>
-                  <span className="sked-rail-time">{periodTimeLabel(num)}</span>
-                </div>
-
-                {DAYS.map((day) => {
-                  const cell = findCell(day, num);
-                  const isToday = day === todayName;
-
-                  if (!cell) {
-                    return (
-                      <div key={day} className={`sked-slot ${isToday ? "is-today" : ""}`}>
-                        <div className="sked-empty-slot">Free</div>
-                      </div>
-                    );
-                  }
-
-                  // 🛠️ Break/Lunch periods get a dedicated simple
-                  // card. Previously these fell through to the normal
-                  // subject/teacher card, which just showed "-" / "-"
-                  // and (before the toLabel fix) could crash on object
-                  // shaped data.
-                  if (isBreakRow) {
-                    return (
-                      <div key={day} className={`sked-slot ${isToday ? "is-today" : ""}`}>
-                        <div className="sked-break-card">
-                          <span className="sked-break-label">{railLabel(num)}</span>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  const subjectName = cell?.subjectMasterDTO?.subjectName;
-                  const tag = getTagStyle(subjectName);
-                  const teacherFirst = cell?.employeeDetailsDTO?.firstName;
-                  const teacherLast = cell?.employeeDetailsDTO?.lastName;
-                  const teacherName = [teacherFirst, teacherLast].filter(Boolean).join(" ");
-
-                  return (
-                    <div key={day} className={`sked-slot ${isToday ? "is-today" : ""}`}>
-                      <div
-                        className="sked-card"
-                        style={{ background: tag?.bg, borderColor: tag?.border }}
-                      >
-                        <p className="sked-card-subject" style={{ color: tag?.text }}>
-                          {subjectName || "-"}
-                        </p>
-                        <div className="sked-card-teacher">
-                          <span className="sked-avatar" style={{ background: tag?.border }}>
-                            {initialsOf(teacherFirst, teacherLast)}
-                          </span>
-                          <span className="sked-teacher-name">{teacherName || "-"}</span>
-                        </div>
-                      </div>
+              if (!cell) {
+                return (
+                  <div key={num} className="sked-agenda-row is-free">
+                    <div className="sked-agenda-time">
+                      <span className="sked-agenda-num">{railLabel(num)}</span>
+                      <span className="sked-agenda-clock">{periodTimeLabel(num)}</span>
                     </div>
-                  );
-                })}
-              </Fragment>
-            );
-          })}
+                    <div className="sked-agenda-free">Free period</div>
+                  </div>
+                );
+              }
+
+              if (isBreakRow) {
+                return (
+                  <div key={num} className="sked-agenda-row">
+                    <div className="sked-agenda-time">
+                      <span className="sked-agenda-num">{railLabel(num)}</span>
+                      <span className="sked-agenda-clock">{periodTimeLabel(num)}</span>
+                    </div>
+                    <div className="sked-agenda-card sked-agenda-break">
+                      <span className="sked-break-label">{railLabel(num)}</span>
+                    </div>
+                  </div>
+                );
+              }
+
+              const subjectName = cell?.subjectMasterDTO?.subjectName;
+              const tag = getTagStyle(subjectName);
+              const teacherFirst = cell?.employeeDetailsDTO?.firstName;
+              const teacherLast = cell?.employeeDetailsDTO?.lastName;
+              const teacherName = [teacherFirst, teacherLast].filter(Boolean).join(" ");
+
+              return (
+                <div key={num} className="sked-agenda-row">
+                  <div className="sked-agenda-time">
+                    <span className="sked-agenda-num">{railLabel(num)}</span>
+                    <span className="sked-agenda-clock">{periodTimeLabel(num)}</span>
+                  </div>
+                  <div
+                    className="sked-agenda-card"
+                    style={{ background: tag?.bg, borderColor: tag?.border }}
+                  >
+                    <p className="sked-card-subject" style={{ color: tag?.text }}>
+                      {subjectName || "-"}
+                    </p>
+                    <div className="sked-card-teacher">
+                      <span className="sked-avatar" style={{ background: tag?.border }}>
+                        {initialsOf(teacherFirst, teacherLast)}
+                      </span>
+                      <span className="sked-teacher-name">{teacherName || "-"}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        // 🛠️ RESPONSIVE FIX — this outer div is new. It just makes the
+        // unchanged grid below horizontally scrollable on narrow screens
+        // (tablets) instead of squeezing 6 day-columns into a
+        // width they don't fit in. Nothing inside the grid changed.
+        <div className="sked-board-scroll">
+          <div
+            className="sked-board"
+            style={{ gridTemplateColumns: `84px repeat(${DAYS.length}, 1fr)` }}
+          >
+            {/* corner cell */}
+            <div className="sked-corner" />
+
+            {/* day lane headers — full day name on desktop, short 3-letter
+                abbreviation on mobile (back to how it was originally). */}
+            {DAYS.map((day) => {
+              const isToday = day === todayName;
+              return (
+                <div key={day} className={`sked-daylabel ${isToday ? "is-today" : ""}`}>
+                  <span className="sked-daylabel-full">
+                    {day.charAt(0) + day.slice(1).toLowerCase()}
+                  </span>
+                  <span className="sked-daylabel-short">{dayAbbrev(day)}</span>
+                  {isToday && <span className="sked-today-badge">Today</span>}
+                </div>
+              );
+            })}
+
+            {/* period rows — now in real chronological order */}
+            {periodNumbers.map((num) => {
+              const isBreakRow = isBreakLabel(num);
+              return (
+                <Fragment key={num}>
+                  <div className={`sked-rail ${isBreakRow ? "is-break" : ""}`}>
+                    <span className="sked-rail-num">{railLabel(num)}</span>
+                    <span className="sked-rail-time">{periodTimeLabel(num)}</span>
+                  </div>
+
+                  {DAYS.map((day) => {
+                    const cell = findCell(day, num);
+                    const isToday = day === todayName;
+
+                    if (!cell) {
+                      return (
+                        <div key={day} className={`sked-slot ${isToday ? "is-today" : ""}`}>
+                          <div className="sked-empty-slot">Free</div>
+                        </div>
+                      );
+                    }
+
+                    // 🛠️ Break/Lunch periods get a dedicated simple
+                    // card. Previously these fell through to the normal
+                    // subject/teacher card, which just showed "-" / "-"
+                    // and (before the toLabel fix) could crash on object
+                    // shaped data.
+                    if (isBreakRow) {
+                      return (
+                        <div key={day} className={`sked-slot ${isToday ? "is-today" : ""}`}>
+                          <div className="sked-break-card">
+                            <span className="sked-break-label">{railLabel(num)}</span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    const subjectName = cell?.subjectMasterDTO?.subjectName;
+                    const tag = getTagStyle(subjectName);
+                    const teacherFirst = cell?.employeeDetailsDTO?.firstName;
+                    const teacherLast = cell?.employeeDetailsDTO?.lastName;
+                    const teacherName = [teacherFirst, teacherLast].filter(Boolean).join(" ");
+
+                    return (
+                      <div key={day} className={`sked-slot ${isToday ? "is-today" : ""}`}>
+                        <div
+                          className="sked-card"
+                          style={{ background: tag?.bg, borderColor: tag?.border }}
+                        >
+                          <p className="sked-card-subject" style={{ color: tag?.text }}>
+                            {subjectName || "-"}
+                          </p>
+                          <div className="sked-card-teacher">
+                            <span className="sked-avatar" style={{ background: tag?.border }}>
+                              {initialsOf(teacherFirst, teacherLast)}
+                            </span>
+                            <span className="sked-teacher-name">{teacherName || "-"}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </Fragment>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -1069,7 +1184,21 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
           color: #1E2530;
         }
 
-        /* Board — CSS Grid, no table, no scrollbar */
+        /* 🛠️ RESPONSIVE FIX — scroll wrapper around the board. On
+           desktop this does nothing visible (board already fits). On
+           smaller screens it lets the (unchanged) grid scroll
+           horizontally with a smooth touch/swipe feel instead of
+           squeezing every column unreadably. */
+        .sked-board-scroll {
+          overflow-x: auto;
+          overflow-y: hidden;
+          -webkit-overflow-scrolling: touch;
+          padding-bottom: 6px;
+          scrollbar-width: thin;
+        }
+
+        /* Board — CSS Grid, no table, no scrollbar (unless scrolled
+           inside .sked-board-scroll on small screens, see below) */
         .sked-board {
           display: grid;
           gap: 6px;
@@ -1238,6 +1367,36 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
           font-size: 24px;
         }
 
+        /* ---------------------------------------------------------
+           🛠️ RESPONSIVE FIX — tablet breakpoint.
+           The weekly grid only needs to handle tablet width and up
+           now (phones use the agenda view above). It keeps its
+           original 7-column layout (rail + 6 days) but is given a
+           minimum width so columns don't get uncomfortably thin.
+           .sked-board-scroll supplies the horizontal scroll when this
+           min-width is wider than the viewport. The first column
+           (period rail) stays pinned while scrolling sideways so you
+           always know which period/time you're looking at.
+        ----------------------------------------------------------*/
+        @media (max-width: 1024px) {
+          .sked-board {
+            min-width: 760px;
+          }
+          .sked-corner {
+            position: sticky;
+            left: 0;
+            z-index: 3;
+            background: #fff;
+          }
+          .sked-rail {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+          }
+        }
+
+        /* Banner stacks to one column once the screen is narrow
+           enough that side-by-side chips would crowd the title. */
         @media (max-width: 640px) {
           .sked-banner {
             flex-direction: column;
@@ -1249,11 +1408,136 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
             gap: 12px;
           }
           .sked-chip { text-align: left; }
-          .sked-daylabel-full { display: none; }
-          .sked-daylabel-short { display: inline; }
-          .sked-card-subject { font-size: 12px; }
-          .sked-teacher-name { font-size: 10.5px; }
-          .sked-slot { min-height: 64px; }
+        }
+
+        /* Day tabs */
+        .sked-daytabs {
+          display: flex;
+          gap: 6px;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          padding-bottom: 4px;
+          margin-bottom: 14px;
+          scrollbar-width: none;
+        }
+        .sked-daytabs::-webkit-scrollbar { display: none; }
+        .sked-daytab {
+          flex: 1 0 auto;
+          min-width: 44px;
+          border: 1px solid #E3E8EE;
+          background: #fff;
+          color: #4A5262;
+          font-weight: 600;
+          font-size: 12.5px;
+          border-radius: 999px;
+          padding: 8px 0;
+          text-align: center;
+          position: relative;
+          cursor: pointer;
+          transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+        }
+        .sked-daytab.is-today {
+          border-color: #E8A33D;
+        }
+        .sked-daytab.is-active {
+          background: #1E2530;
+          border-color: #1E2530;
+          color: #fff;
+        }
+        .sked-daytab-dot {
+          position: absolute;
+          top: 5px;
+          right: 10px;
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background: #E8A33D;
+        }
+        .sked-daytab.is-active .sked-daytab-dot {
+          background: #fff;
+        }
+
+        /* Agenda list */
+        .sked-agenda-list {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .sked-agenda-row {
+          display: grid;
+          grid-template-columns: 64px 1fr;
+          gap: 12px;
+          align-items: stretch;
+        }
+        .sked-agenda-time {
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: flex-end;
+          text-align: right;
+          padding-right: 4px;
+        }
+        .sked-agenda-num {
+          font-weight: 700;
+          font-size: 12.5px;
+          color: #1E2530;
+        }
+        .sked-agenda-clock {
+          font-size: 10px;
+          color: #8D96A6;
+          margin-top: 2px;
+          line-height: 1.25;
+        }
+        .sked-agenda-card {
+          border: 1px solid transparent;
+          border-left: 4px solid;
+          border-radius: 10px;
+          padding: 12px 14px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          gap: 6px;
+          min-height: 56px;
+        }
+        .sked-agenda-card .sked-card-subject {
+          white-space: normal;
+          font-size: 14px;
+        }
+        .sked-agenda-card .sked-teacher-name {
+          font-size: 12px;
+        }
+        .sked-agenda-break {
+          background: repeating-linear-gradient(
+            135deg,
+            #FBE6DE,
+            #FBE6DE 8px,
+            #FCEEDA 8px,
+            #FCEEDA 16px
+          );
+          border: 1px dashed #D9633B;
+          border-left: 1px dashed #D9633B;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+        }
+        .sked-agenda-row.is-free {
+          opacity: 0.65;
+        }
+        .sked-agenda-free {
+          border: 1px dashed #E3E8EE;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #C3CAD6;
+          font-size: 12.5px;
+          min-height: 56px;
+        }
+
+        @media (max-width: 380px) {
+          .sked-agenda-row { grid-template-columns: 52px 1fr; }
+          .sked-agenda-num { font-size: 11.5px; }
+          .sked-agenda-clock { font-size: 9px; }
         }
       `}</style>
     </div>

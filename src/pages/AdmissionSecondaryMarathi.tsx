@@ -211,6 +211,83 @@ export default function AdmissionSecondarMarathi() {
           .adm-sec-page .adm-bottom-cta { padding: 36px 20px !important; }
           .adm-sec-page .adm-Inquiry-cta { padding: 40px 20px !important; }
           .adm-sec-page .adm-Inquiry-cta h2 { font-size: 24px !important; }
+
+          /* Admission Inquiry modal - responsive */
+          .adm-sec-page .adm-inquiry-overlay {
+            padding: 10px !important;
+            align-items: flex-start !important;
+            overflow-y: auto !important;
+          }
+
+          .adm-sec-page .adm-inquiry-modal {
+            width: 100% !important;
+            max-width: 100% !important;
+            max-height: calc(100vh - 20px) !important;
+            margin: auto 0 !important;
+          }
+
+          .adm-sec-page .adm-inquiry-modal-header {
+            padding: 18px 20px !important;
+          }
+
+          .adm-sec-page .adm-inquiry-modal-header h2 {
+            font-size: 18px !important;
+            padding-right: 28px !important;
+          }
+
+          .adm-sec-page .adm-inquiry-modal-header p {
+            font-size: 12px !important;
+            line-height: 1.5 !important;
+            padding-right: 20px !important;
+          }
+
+          .adm-sec-page .adm-inquiry-modal-form {
+            padding: 20px !important;
+          }
+
+          .adm-sec-page .adm-inquiry-row {
+            grid-template-columns: 1fr !important;
+            gap: 14px !important;
+            margin-bottom: 14px !important;
+          }
+
+          .adm-sec-page .adm-inquiry-field,
+          .adm-sec-page .adm-inquiry-medium {
+            width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+          }
+
+          .adm-sec-page .adm-inquiry-field input,
+          .adm-sec-page .adm-inquiry-medium select {
+            width: 100% !important;
+            min-height: 44px !important;
+            box-sizing: border-box !important;
+            font-size: 14px !important;
+          }
+
+          .adm-sec-page .adm-inquiry-submit {
+            min-height: 46px !important;
+            width: 100% !important;
+          }
+
+          @media (max-width: 380px) {
+            .adm-sec-page .adm-inquiry-overlay {
+              padding: 6px !important;
+            }
+
+            .adm-sec-page .adm-inquiry-modal {
+              max-height: calc(100vh - 12px) !important;
+            }
+
+            .adm-sec-page .adm-inquiry-modal-form {
+              padding: 16px !important;
+            }
+
+            .adm-sec-page .adm-inquiry-modal-header {
+              padding: 16px 18px !important;
+            }
+          }
         }
       `}</style>
 
@@ -387,6 +464,7 @@ export default function AdmissionSecondarMarathi() {
       {showInquiryModal && (
         <div
           onClick={() => setShowInquiryModal(false)}
+          className="adm-inquiry-overlay"
           style={{
             position: "fixed",
             inset: 0,
@@ -400,6 +478,7 @@ export default function AdmissionSecondarMarathi() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
+            className="adm-inquiry-modal"
             style={{
               background: "#fff",
               borderRadius: "10px",
@@ -413,6 +492,7 @@ export default function AdmissionSecondarMarathi() {
           >
             {/* Header */}
             <div
+              className="adm-inquiry-modal-header"
               style={{
                 background: "#1f4d3d",
                 padding: "24px 32px",
@@ -446,10 +526,10 @@ export default function AdmissionSecondarMarathi() {
             </div>
 
             {/* Form */}
-            <div style={{ padding: "28px 32px 32px" }}>
+            <div className="adm-inquiry-modal-form" style={{ padding: "28px 32px 32px" }}>
               <form onSubmit={handleInquirySubmit}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
-                  <div style={{ display: "flex", flexDirection: "column" }}>
+                <div className="adm-inquiry-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+                  <div className="adm-inquiry-field" style={{ display: "flex", flexDirection: "column" }}>
                     <label style={{ fontSize: "11px", fontWeight: 700, color: "#555", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: "6px" }}>
                       First Name
                     </label>
@@ -462,7 +542,7 @@ export default function AdmissionSecondarMarathi() {
                       style={{ border: "1.5px solid #e0e0e0", borderRadius: "6px", padding: "10px 12px", fontSize: "13px", outline: "none" }}
                     />
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column" }}>
+                  <div className="adm-inquiry-field" style={{ display: "flex", flexDirection: "column" }}>
                     <label style={{ fontSize: "11px", fontWeight: 700, color: "#555", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: "6px" }}>
                       Last Name
                     </label>
@@ -477,8 +557,8 @@ export default function AdmissionSecondarMarathi() {
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
-                  <div style={{ display: "flex", flexDirection: "column" }}>
+                <div className="adm-inquiry-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+                  <div className="adm-inquiry-field" style={{ display: "flex", flexDirection: "column" }}>
                     <label style={{ fontSize: "11px", fontWeight: 700, color: "#555", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: "6px" }}>
                       Contact Number
                     </label>
@@ -493,7 +573,7 @@ export default function AdmissionSecondarMarathi() {
                       style={{ border: "1.5px solid #e0e0e0", borderRadius: "6px", padding: "10px 12px", fontSize: "13px", outline: "none" }}
                     />
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column" }}>
+                  <div className="adm-inquiry-field" style={{ display: "flex", flexDirection: "column" }}>
                     <label style={{ fontSize: "11px", fontWeight: 700, color: "#555", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: "6px" }}>
                       Standard
                     </label>
@@ -524,7 +604,7 @@ export default function AdmissionSecondarMarathi() {
                   </div>
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", marginBottom: "22px" }}>
+                <div className="adm-inquiry-medium" style={{ display: "flex", flexDirection: "column", marginBottom: "22px" }}>
                   <label style={{ fontSize: "11px", fontWeight: 700, color: "#555", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: "6px" }}>
                     Medium
                   </label>
@@ -542,6 +622,7 @@ export default function AdmissionSecondarMarathi() {
                 </div>
 
                 <button
+                  className="adm-inquiry-submit"
                   type="submit"
                   disabled={InquiryStatus === "sending"}
                   style={{
