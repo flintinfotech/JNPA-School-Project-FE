@@ -82,7 +82,11 @@ const getAllTimeTableByFilterEndpoint = (page: number, size: number) =>
 
 
 // 👇 how many period cards show per page inside Add/Edit.
-const PERIOD_PAGE_SIZE = 10;
+// 🛠️ FIX — bumped from 10 to 12 per request; this is now the max
+// number of period cards shown at once WITHIN a single selected day
+// tab (see the day-tab pagination replacement below), not a page size
+// across the whole mixed list.
+const PERIOD_PAGE_SIZE = 12;
 
 // ---------------------------------------------------------------
 // 🛠️ FIX — static-data normalization helpers.
@@ -246,9 +250,14 @@ interface TeacherOption {
 // the point of use so either shape works safely.
 type StaticDataMap = Record<string, any[]>;
 
-const emptyPeriod = () => ({
+// 🛠️ FIX — accepts an optional day so a period card added while a
+// specific day-tab is active (see the Add/Edit form's new day tabs
+// below) is created already assigned to that day, instead of landing
+// with day: undefined and not showing up under any tab until the user
+// manually picks a day from the dropdown.
+const emptyPeriod = (day?: string) => ({
   timeTablePeriodId: undefined,
-  day: undefined,
+  day,
   periodNumber: undefined,
   // 🛠️ FIX — one combined range field instead of separate startTime /
   // endTime fields. Holds a dayjs [start, end] tuple from the RangePicker.
@@ -348,10 +357,26 @@ function TimeTableForm({
     }
   };
 
-  // 👇 pagination state for the period cards below. Watching the
-  // form's periods array lets us compute total pages even outside the
-  // Form.List render callback.
+  // 🛠️ FIX — the old "Page 1 / Page 2 / Page 3" numeric pagination
+  // (grouping period cards 10-at-a-time regardless of which day they
+  // belonged to) is replaced with day tabs — Mon / Tue / Wed / Thu /
+  // Fri / Sat — so you only ever look at one day's periods at a time,
+  // the same way the read-only View grid's mobile agenda already
+  // works. `activeDayTab` is which day is currently selected;
+  // `periodPage` is now a secondary, WITHIN-a-day page (only shown if
+  // a single day somehow has more than PERIOD_PAGE_SIZE periods).
+  const [activeDayTab, setActiveDayTab] = useState<string>(DAYS[0]);
   const [periodPage, setPeriodPage] = useState(1);
+
+  // Reset to page 1 of the newly selected day whenever the tab changes.
+  useEffect(() => {
+    setPeriodPage(1);
+  }, [activeDayTab]);
+
+  // 👇 watch every period's current value so a card's tab membership
+  // updates live the instant its Day <Select> is changed, and so tab
+  // badge counts stay accurate — not just at add/remove time.
+  const watchedPeriods = (Form.useWatch("timeTablePeriods", form) as any[]) || [];
 
   // 👇 watch Standard/Division/Medium so we can ask the parent to
   // refetch the teacher list filtered to this class as soon as all three
@@ -472,31 +497,73 @@ function TimeTableForm({
           // whatever you filled in on page 2/3 silently disappeared
           // from the payload on Save/Update.
           //
-          // Fix: render EVERY field/card all the time (so every
+          // Fix (kept): render EVERY field/card all the time (so every
           // Form.Item stays mounted and its value always stays part of
-          // the form), and only visually hide the cards that aren't on
-          // the current page with `display:none`. Hidden inputs are
-          // still fully part of the form and still get validated and
-          // submitted — nothing is ever silently dropped again.
+          // the form), and only visually hide the cards that shouldn't
+          // show right now with `display:none`. Hidden inputs are still
+          // fully part of the form and still get validated and
+          // submitted — nothing is ever silently dropped.
+          //
+          // 🛠️ FIX (v2) — replaced generic "Page 1 / Page 2 / Page 3"
+          // numeric pagination with day tabs (Mon/Tue/Wed/Thu/Fri/Sat),
+          // matching the read-only View's mobile agenda. A card is only
+          // shown when its own "Day" value matches the active tab. The
+          // per-day count badge and the (rare) within-a-day numeric
+          // pagination both stay in sync live, because they're derived
+          // from `watchedPeriods` on every render, not just on
+          // add/remove.
           // ---------------------------------------------------------
-          const totalPages = Math.max(1, Math.ceil(fields.length / PERIOD_PAGE_SIZE));
+          const dayOf = (name: number): string =>
+            (watchedPeriods?.[name]?.day as string) || DAYS[0];
+
+          const countForDay = (day: string): number =>
+            fields.reduce((count, f) => count + (dayOf(f.name) === day ? 1 : 0), 0);
+
+          const matchingForActiveDay = fields.filter((f) => dayOf(f.name) === activeDayTab);
+          const matchingCount = matchingForActiveDay.length;
+          const totalPages = Math.max(1, Math.ceil(matchingCount / PERIOD_PAGE_SIZE));
           const safePage = Math.min(periodPage, totalPages);
 
           const handleAddPeriod = () => {
-            add(emptyPeriod());
-            // jump to whichever page the newly added card will land on
-            const newTotal = fields.length + 1;
-            setPeriodPage(Math.ceil(newTotal / PERIOD_PAGE_SIZE));
+            add(emptyPeriod(activeDayTab));
+            // jump to whichever page (within the active day) the newly
+            // added card will land on
+            const newCountForActiveDay = matchingCount + 1;
+            setPeriodPage(Math.ceil(newCountForActiveDay / PERIOD_PAGE_SIZE));
           };
 
           return (
             <>
-              {fields.length > PERIOD_PAGE_SIZE && (
+              {/* 🛠️ Day tabs — replaces the old numeric Pagination as
+                  the primary way to move between groups of period
+                  cards. Each tab shows how many periods are currently
+                  saved for that day. */}
+              <div className="tt-daytabs">
+                {DAYS.map((day) => {
+                  const count = countForDay(day);
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      className={`tt-daytab ${day === activeDayTab ? "is-active" : ""}`}
+                      onClick={() => setActiveDayTab(day)}
+                    >
+                      {day.charAt(0) + day.slice(1, 3).toLowerCase()}
+                      {count > 0 && <span className="tt-daytab-count">{count}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Secondary numeric pagination — only appears if a
+                  single day somehow has more than PERIOD_PAGE_SIZE
+                  (12) periods, which should be rare. */}
+              {matchingCount > PERIOD_PAGE_SIZE && (
                 <div className="flex justify-end mb-3">
                   <Pagination
                     current={safePage}
                     pageSize={PERIOD_PAGE_SIZE}
-                    total={fields.length}
+                    total={matchingCount}
                     onChange={(p) => setPeriodPage(p)}
                     showSizeChanger={false}
                     size="small"
@@ -504,22 +571,38 @@ function TimeTableForm({
                 </div>
               )}
 
-              {fields.map(({ key, name, ...restField }, idx) => {
-                // Which page this card belongs to, based on its real
-                // position in the underlying array (not on what's
-                // currently rendered) — this never changes just
-                // because you switch pages.
-                const fieldPage = Math.floor(idx / PERIOD_PAGE_SIZE) + 1;
-                const isOnCurrentPage = fieldPage === safePage;
+              {matchingCount === 0 && (
+                <div className="tt-daytab-empty">
+                  No periods added for{" "}
+                  {activeDayTab.charAt(0) + activeDayTab.slice(1).toLowerCase()} yet.
+                </div>
+              )}
+
+              {fields.map(({ key, name, ...restField }) => {
+                const fieldDay = dayOf(name);
+                const isActiveDay = fieldDay === activeDayTab;
+
+                // Which page (within the active day only) this card
+                // belongs to, based on its real position among cards
+                // for that same day — not its position in the whole
+                // mixed list.
+                let isOnCurrentPage = false;
+                if (isActiveDay) {
+                  const posInDay = matchingForActiveDay.findIndex((f) => f.name === name);
+                  const fieldSubPage = Math.floor(posInDay / PERIOD_PAGE_SIZE) + 1;
+                  isOnCurrentPage = fieldSubPage === safePage;
+                }
+                const isVisible = isActiveDay && isOnCurrentPage;
 
                 return (
                   <div
                     key={key}
                     // Hidden (not removed!) when it's on a different
-                    // page. This keeps the field mounted & registered
-                    // in the form at all times.
-                    style={isOnCurrentPage ? undefined : { display: "none" }}
-                    aria-hidden={!isOnCurrentPage}
+                    // day tab or a different within-day page. This
+                    // keeps the field mounted & registered in the form
+                    // at all times.
+                    style={isVisible ? undefined : { display: "none" }}
+                    aria-hidden={!isVisible}
                   >
                     <div className="border-2 border-gray-400 rounded-lg p-4 mb-4 relative bg-white">
                       <Form.Item name={[name, "timeTablePeriodId"]} hidden>
@@ -628,12 +711,12 @@ function TimeTableForm({
                 );
               })}
 
-              {fields.length > PERIOD_PAGE_SIZE && (
+              {matchingCount > PERIOD_PAGE_SIZE && (
                 <div className="flex justify-end mb-3">
                   <Pagination
                     current={safePage}
                     pageSize={PERIOD_PAGE_SIZE}
-                    total={fields.length}
+                    total={matchingCount}
                     onChange={(p) => setPeriodPage(p)}
                     showSizeChanger={false}
                     size="small"
@@ -649,8 +732,62 @@ function TimeTableForm({
                 block
                 className="mb-4"
               >
-                Add Period
+                Add Period{" "}
+                {activeDayTab.charAt(0) + activeDayTab.slice(1).toLowerCase()}
               </Button>
+
+              <style>{`
+                .tt-daytabs {
+                  display: flex;
+                  flex-wrap: wrap;
+                  gap: 8px;
+                  margin-bottom: 14px;
+                }
+                .tt-daytab {
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                  border: 1px solid #E3E8EE;
+                  background: #fff;
+                  color: #4A5262;
+                  font-weight: 600;
+                  font-size: 12.5px;
+                  border-radius: 999px;
+                  padding: 7px 14px;
+                  cursor: pointer;
+                  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+                }
+                .tt-daytab.is-active {
+                  background: #1E2530;
+                  border-color: #1E2530;
+                  color: #fff;
+                }
+                .tt-daytab-count {
+                  display: inline-flex;
+                  align-items: center;
+                  justify-content: center;
+                  min-width: 18px;
+                  height: 18px;
+                  padding: 0 5px;
+                  border-radius: 999px;
+                  font-size: 10.5px;
+                  font-weight: 700;
+                  background: rgba(0, 0, 0, 0.08);
+                  color: inherit;
+                }
+                .tt-daytab.is-active .tt-daytab-count {
+                  background: rgba(255, 255, 255, 0.18);
+                }
+                .tt-daytab-empty {
+                  border: 1px dashed #E3E8EE;
+                  border-radius: 10px;
+                  padding: 20px;
+                  text-align: center;
+                  color: #A9A28F;
+                  font-size: 13px;
+                  margin-bottom: 16px;
+                }
+              `}</style>
             </>
           );
         }}

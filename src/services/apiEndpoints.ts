@@ -201,4 +201,16 @@ deleteStudentAchievement: (
   getAllTimeTables: (page: number, size: number) =>
     `/jnpa-school-project/timeTable/getAllTimeTableByFilter?page=${page}&size=${size}&paginate=true`,
 
+  // ===============================
+  // Purchase Master
+  // ===============================
+  savePurchase: () => `/jnpa-school-project/purchase/savePurchase`,
+  updatePurchase: () => `/jnpa-school-project/purchase/updatePurchase`,
+  getPurchaseById: (purchaseId: number | string) =>
+    `/jnpa-school-project/purchase/getPurchase/${purchaseId}`,
+  deletePurchase: (purchaseId: number | string) =>
+    `/jnpa-school-project/purchase/deletePurchase/${purchaseId}`,
+  getAllPurchaseByFilter: (page: number, size: number) =>
+    `/jnpa-school-project/purchase/getAllPurchaseByFilter?page=${page}&size=${size}&desc&paginate=true`,
+
 };
