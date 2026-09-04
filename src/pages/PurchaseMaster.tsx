@@ -101,7 +101,23 @@ const extractListAndTotal = (raw: any): { list: PurchaseRow[]; total: number } =
 
 const emptyValues = { purchaseId: undefined, category: undefined, productCode: "", productName: "" };
 
+// 🛠️ Same responsive hook used on the Student Fees screen — flips to the
+// mobile card layout below `breakpoint`px and back to the table above it.
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth < breakpoint : false
+  );
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < breakpoint);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 export default function PurchaseMaster() {
+  const isMobile = useIsMobile();
+
   const [rows, setRows] = useState<PurchaseRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -284,14 +300,14 @@ export default function PurchaseMaster() {
       key: "productCode",
       render: (v: string) => v || "-",
     },
-   
+
     {
       title: "Category",
       dataIndex: "category",
       key: "category",
       render: (v: string) => v || "-",
     },
-     {
+    {
       title: "Product Name",
       dataIndex: "productName",
       key: "productName",
@@ -324,33 +340,105 @@ export default function PurchaseMaster() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold">Purchase Master</h2>
+      {/* 🛠️ FIX — "justify-between" with a single child has nothing to push
+          against, so the button sat on the left. "justify-end" moves it to
+          the right, matching the other screens. */}
+      <div className="flex justify-end items-center mb-4">
         <Button type="primary" icon={<PlusOutlined />} onClick={openAddModal}>
           Add Purchase
         </Button>
       </div>
 
-      <div className="overflow-x-auto">
-        {!tableLoading && rows.length === 0 ? (
-          <Empty description="No purchases found" style={{ padding: "40px 0" }} />
-        ) : (
-          <CommonTable
-            data={rows}
-            columns={columns}
-            loading={tableLoading}
-            pagination={{
-              current: page + 1,
-              pageSize,
-              total,
-              onChange: (newPage: number, newPageSize: number) => {
-                setPage(newPage - 1);
-                setPageSize(newPageSize);
-              },
-            }}
-          />
-        )}
-      </div>
+      {isMobile ? (
+        <div className="space-y-3">
+          {tableLoading && (
+            <div className="text-center text-sm text-gray-400 py-6">Loading...</div>
+          )}
+          {!tableLoading && rows.length === 0 && (
+            <Empty description="No purchases found" style={{ padding: "40px 0" }} />
+          )}
+          {!tableLoading &&
+            rows.map((record) => (
+              <div
+                key={record.purchaseId}
+                className="bg-white rounded-xl shadow-sm border border-gray-100 p-4"
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {record.productName || "-"}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Code: {record.productCode ?? "-"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-xs text-gray-500 space-y-1 mb-3">
+                  <p>Category: {record.category ?? "-"}</p>
+                </div>
+
+                <div className="flex gap-2 justify-end pt-2 border-t border-gray-50">
+                  <Button
+                    type="primary"
+                    icon={<EditOutlined />}
+                    size="small"
+                    onClick={() => openEditModal(record)}
+                  />
+                  <Popconfirm
+                    title="Delete this purchase?"
+                    onConfirm={() => handleDelete(record.purchaseId)}
+                    okText="Delete"
+                    okButtonProps={{ danger: true }}
+                  >
+                    <Button danger icon={<DeleteOutlined />} size="small" />
+                  </Popconfirm>
+                </div>
+              </div>
+            ))}
+
+          <div className="flex items-center justify-between pt-2">
+            <span className="text-xs text-gray-500">Total: {total}</span>
+            <div className="flex gap-2">
+              <Button
+                size="small"
+                disabled={page + 1 <= 1}
+                onClick={() => setPage(page - 1)}
+              >
+                Prev
+              </Button>
+              <Button
+                size="small"
+                disabled={(page + 1) * pageSize >= total}
+                onClick={() => setPage(page + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          {!tableLoading && rows.length === 0 ? (
+            <Empty description="No purchases found" style={{ padding: "40px 0" }} />
+          ) : (
+            <CommonTable
+              data={rows}
+              columns={columns}
+              loading={tableLoading}
+              pagination={{
+                current: page + 1,
+                pageSize,
+                total,
+                onChange: (newPage: number, newPageSize: number) => {
+                  setPage(newPage - 1);
+                  setPageSize(newPageSize);
+                },
+              }}
+            />
+          )}
+        </div>
+      )}
 
       <Modal
         title={isEditing ? "Update Purchase" : "Add Purchase"}
@@ -373,10 +461,8 @@ export default function PurchaseMaster() {
               <Input placeholder="e.g. PDC-01" />
             </Form.Item>
 
-           
-
             <Form.Item
-              label="Category" 
+              label="Category"
               name="category"
               rules={[{ required: true, message: "Category is required" }]}
             >
@@ -388,7 +474,7 @@ export default function PurchaseMaster() {
                 ))}
               </Select>
             </Form.Item>
-             <Form.Item
+            <Form.Item
               label="Product Name"
               name="productName"
               rules={[{ required: true, message: "Product name is required" }]}

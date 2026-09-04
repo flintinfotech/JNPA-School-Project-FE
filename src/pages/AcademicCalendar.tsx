@@ -48,22 +48,20 @@ const TYPE_META: Record<string, { label: string; dot: string }> = {
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-const ACADEMIC_YEAR_STORAGE_KEY = "academicYear";
-
-const getLoggedInSessionStartDate = (): Dayjs => {
-  try {
-    const stored = localStorage.getItem(ACADEMIC_YEAR_STORAGE_KEY);
-    if (!stored) return dayjs();
-
-    const { startDate } = JSON.parse(stored) as { startDate?: string };
-    if (!startDate) return dayjs();
-
-    const parsed = dayjs(startDate);
-    return parsed.isValid() ? parsed : dayjs();
-  } catch {
-    return dayjs();
-  }
-};
+// Same responsive hook used on the Student Fees / Purchase screens — only
+// used here to switch the events LIST (right side) between the table and
+// a stacked card layout; the calendar grid itself is untouched.
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth < breakpoint : false,
+  );
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < breakpoint);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [breakpoint]);
+  return isMobile;
+}
 
 interface EventFormValues {
   eventTitle: string;
@@ -72,11 +70,36 @@ interface EventFormValues {
   description?: string;
 }
 
+// 🛠️ Academic-year-aware "today". If the user is logged into a PAST
+// academic year (e.g. 2025-2026, while the real calendar date is already
+// in 2026-2027), the calendar should still open on the current month/day
+// — just placed on that academic year's own timeline instead of the real
+// current year. Example: academic year 2025-2026 starts June 2025; if
+// today is really 4 Sept 2026, this returns 4 Sept 2025 (Sept belongs to
+// the FIRST calendar year of that academic year, since it's on/after the
+// start month). If today were, say, 4 Feb (which belongs to the SECOND
+// calendar year of an AY that starts in June), it returns 4 Feb (start
+// year + 1). For the currently-ongoing academic year this naturally
+// resolves back to the real today, so one formula covers both cases.
+const getAcademicYearAwareToday = (
+  academicYear: { startDate: string; endDate: string } | null,
+): Dayjs => {
+  const today = dayjs();
+  const start = academicYear?.startDate ? dayjs(academicYear.startDate) : null;
+  if (!start || !start.isValid()) return today;
+
+  const targetYear =
+    today.month() >= start.month() ? start.year() : start.year() + 1;
+
+  return today.year(targetYear);
+};
+
 const PAGE_SIZE = 10;
 
 export default function AcademicCalendar() {
-  const { user } = useAuth();
+  const { user, academicYear } = useAuth();
   const canManage = MANAGE_ROLES.includes((user?.role || "").toUpperCase());
+  const isMobile = useIsMobile();
 
   const [events, setEvents] = useState<AcademicCalendarEventDTO[]>([]);
   const [totalEvents, setTotalEvents] = useState(0);
@@ -88,11 +111,15 @@ export default function AcademicCalendar() {
   const [editingEvent, setEditingEvent] =
     useState<AcademicCalendarEventDTO | null>(null);
 
+  // 🛠️ FIX — the calendar was defaulting to the academic year's stored
+  // start date (via getLoggedInSessionStartDate), not today, which is why
+  // it opened on a different month/date than expected. It now always
+  // opens on the current month with today selected.
   const [visibleMonth, setVisibleMonth] = useState<Dayjs>(() =>
-    getLoggedInSessionStartDate(),
+    getAcademicYearAwareToday(academicYear),
   );
   const [selectedDate, setSelectedDate] = useState<Dayjs>(() =>
-    getLoggedInSessionStartDate(),
+    getAcademicYearAwareToday(academicYear),
   );
   const [activeType, setActiveType] = useState<
     "ALL" | AcademicCalendarEventType
@@ -251,9 +278,9 @@ export default function AcademicCalendar() {
   }, [events, activeType]);
 
   return (
-    <div className="bg-[#F3F4F7] p-6 rounded-2xl">
-      <div className="flex items-center justify-between mb-5">
-        <h1 className="text-2xl font-bold text-gray-900">Calendar</h1>
+    <div className="bg-[#F3F4F7] p-3 sm:p-6 rounded-2xl">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Calendar</h1>
         {canManage && (
           <Button
             type="primary"
@@ -267,7 +294,7 @@ export default function AcademicCalendar() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-5 items-start">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 w-full lg:w-[420px] shrink-0">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-5 w-full lg:w-[420px] shrink-0">
           <div className="flex items-center justify-between mb-4">
             <button
               aria-label="Previous month"
@@ -279,13 +306,25 @@ export default function AcademicCalendar() {
             <span className="font-semibold text-gray-800 tracking-wide">
               {visibleMonth.format("MMMM YYYY")}
             </span>
-            <button
-              aria-label="Next month"
-              onClick={() => setVisibleMonth((m) => m.add(1, "month"))}
-              className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition"
-            >
-              <RightOutlined style={{ fontSize: 12 }} />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => {
+                  const target = getAcademicYearAwareToday(academicYear);
+                  setVisibleMonth(target);
+                  setSelectedDate(target);
+                }}
+                className="text-xs font-medium text-[#3B82F6] hover:underline px-1"
+              >
+                Today
+              </button>
+              <button
+                aria-label="Next month"
+                onClick={() => setVisibleMonth((m) => m.add(1, "month"))}
+                className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition"
+              >
+                <RightOutlined style={{ fontSize: 12 }} />
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-7 mb-2">
@@ -327,7 +366,7 @@ export default function AcademicCalendar() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex-1 w-full">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-5 flex-1 w-full">
           <div className="flex flex-wrap gap-2 mb-4">
             <button
               onClick={() => setActiveType("ALL")}
@@ -358,6 +397,86 @@ export default function AcademicCalendar() {
 
           {!loading && filteredEvents.length === 0 ? (
             <Empty description="No events added yet" />
+          ) : isMobile ? (
+            /* 🆕 Mobile card list — replaces the 4-column table below,
+               which needed horizontal scrolling to see Type/Edit/Delete
+               on a phone. Each event is now a self-contained card with
+               everything visible at once, no side-scrolling needed. */
+            <div className="space-y-3">
+              {filteredEvents.map((event) => (
+                <div
+                  key={event.academicCalendarId}
+                  className="bg-white rounded-xl border border-gray-100 shadow-sm p-4"
+                >
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <p className="text-sm font-semibold text-gray-800 leading-snug">
+                      {event.eventTitle}
+                    </p>
+                    <span
+                      className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full"
+                      style={{
+                        backgroundColor: `${TYPE_META[event.eventType]?.dot ?? "#94A3B8"}1A`,
+                        color: TYPE_META[event.eventType]?.dot ?? "#64748B",
+                      }}
+                    >
+                      <span
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{
+                          backgroundColor:
+                            TYPE_META[event.eventType]?.dot ?? "#94A3B8",
+                        }}
+                      />
+                      {TYPE_META[event.eventType]?.label ?? event.eventType}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-gray-500 mb-3">
+                    {dayjs(event.startDate).format("DD MMM, YYYY")}
+                    {event.endDate &&
+                    !dayjs(event.endDate).isSame(dayjs(event.startDate), "day")
+                      ? ` - ${dayjs(event.endDate).format("DD MMM, YYYY")}`
+                      : ""}
+                  </p>
+
+                  {canManage && (
+                    <div className="flex items-center gap-5 pt-2 border-t border-gray-50">
+                      <button
+                        onClick={() => openEditModal(event)}
+                        className="text-xs font-medium text-[#3B82F6] hover:underline"
+                      >
+                        Edit
+                      </button>
+                      <Popconfirm
+                        title="Delete this event?"
+                        description={`"${event.eventTitle}" will be permanently removed.`}
+                        onConfirm={() => handleDelete(event)}
+                        okText="Delete"
+                        okButtonProps={{
+                          danger: true,
+                          loading: deletingId === event.academicCalendarId,
+                        }}
+                        cancelText="Cancel"
+                      >
+                        <button className="text-xs font-medium text-red-500 hover:underline">
+                          Delete
+                        </button>
+                      </Popconfirm>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              <div className="flex justify-center pt-1">
+                <Pagination
+                  current={currentPage}
+                  pageSize={PAGE_SIZE}
+                  total={totalEvents}
+                  onChange={(page) => setCurrentPage(page)}
+                  showSizeChanger={false}
+                  simple
+                />
+              </div>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm border-separate border-spacing-0">
@@ -452,6 +571,7 @@ export default function AcademicCalendar() {
         okText={editingEvent ? "Update" : "Save"}
         confirmLoading={saving}
         destroyOnHidden
+        style={{ maxWidth: "95vw", top: 24 }}
       >
         <Form form={form} layout="vertical">
           <Form.Item

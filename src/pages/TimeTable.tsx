@@ -2136,8 +2136,8 @@ export default function TimeTable() {
         }
       `}</style>
 
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold">Time Table</h2>
+      <div className="flex justify-end    items-center mb-4">
+        {/* <h2 className="text-lg font-semibold">Time Table</h2> */}
         <Button type="primary" icon={<PlusOutlined />} onClick={openAddDrawer}>
           Add Time Table
         </Button>

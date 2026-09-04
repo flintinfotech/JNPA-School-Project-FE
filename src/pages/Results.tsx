@@ -311,20 +311,21 @@ export default function Results() {
                 </div>
 
                 <div className="flex justify-end gap-2 mt-3">
-                  <Button
-                    size="small"
-                    icon={<EyeOutlined />}
-                    onClick={() => openDrawer(record, "view")}
-                  >
-                    View
-                  </Button>
-                  <Button
-                    size="small"
-                    icon={<EditOutlined />}
-                    onClick={() => openDrawer(record, "edit")}
-                  >
-                    Edit
-                  </Button>
+                  <Tooltip title="View Result">
+                    <Button
+                      size="small"
+                      icon={<EyeOutlined />}
+                      onClick={() => openDrawer(record, "view")}
+                    />
+                  </Tooltip>
+                  <Tooltip title="Edit Result">
+                    <Button
+                      size="small"
+                      type="primary"
+                      icon={<EditOutlined />}
+                      onClick={() => openDrawer(record, "edit")}
+                    />
+                  </Tooltip>
                 </div>
               </div>
             ))}
