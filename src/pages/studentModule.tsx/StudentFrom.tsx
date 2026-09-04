@@ -723,7 +723,7 @@ export default function StudentForm({
                         {...restField}
                         label="Roll No"
                         name={[name, "rollNo"]}
-                        rules={[{ required: true, message: "Roll no required" }]}
+                        // rules={[{ required: true, message: "Roll no required" }]}
                       >
                         <Input placeholder="e.g. 05" />
                       </Form.Item>

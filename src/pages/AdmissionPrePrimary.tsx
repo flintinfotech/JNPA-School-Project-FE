@@ -205,6 +205,92 @@ export default function AdmissionPrePrimary() {
           .adm-pp-page .adm-bottom-cta { padding: 36px 20px !important; }
           .adm-pp-page .adm-Inquiry-cta { padding: 40px 20px !important; }
           .adm-pp-page .adm-Inquiry-cta h2 { font-size: 24px !important; }
+
+          /* Mobile responsive Admission Inquiry form */
+          .adm-pp-page .adm-inquiry-overlay {
+            padding: 10px !important;
+            align-items: flex-start !important;
+            overflow-y: auto !important;
+          }
+
+          .adm-pp-page .adm-inquiry-modal {
+            width: 100% !important;
+            max-width: 100% !important;
+            max-height: calc(100vh - 20px) !important;
+            margin: 0 auto !important;
+            border-radius: 10px !important;
+          }
+
+          .adm-pp-page .adm-inquiry-modal-header {
+            padding: 18px 48px 18px 20px !important;
+          }
+
+          .adm-pp-page .adm-inquiry-modal-header h2 {
+            font-size: 18px !important;
+          }
+
+          .adm-pp-page .adm-inquiry-modal-header p {
+            font-size: 12px !important;
+            line-height: 1.5 !important;
+            margin-bottom: 0 !important;
+          }
+
+          .adm-pp-page .adm-inquiry-modal-form {
+            padding: 20px !important;
+          }
+
+          .adm-pp-page .adm-inquiry-row {
+            grid-template-columns: 1fr !important;
+            gap: 14px !important;
+            margin-bottom: 14px !important;
+          }
+
+          .adm-pp-page .adm-inquiry-field input,
+          .adm-pp-page .adm-inquiry-field select,
+          .adm-pp-page .adm-inquiry-medium select {
+            width: 100% !important;
+            min-height: 44px !important;
+            box-sizing: border-box !important;
+            font-size: 14px !important;
+            padding: 10px 12px !important;
+          }
+
+          .adm-pp-page .adm-inquiry-field label,
+          .adm-pp-page .adm-inquiry-medium label {
+            font-size: 11px !important;
+          }
+
+          .adm-pp-page .adm-inquiry-medium {
+            margin-bottom: 18px !important;
+          }
+
+          .adm-pp-page .adm-inquiry-submit {
+            min-height: 46px !important;
+            padding: 12px 20px !important;
+            font-size: 13px !important;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .adm-pp-page .adm-inquiry-overlay {
+            padding: 6px !important;
+          }
+
+          .adm-pp-page .adm-inquiry-modal {
+            max-height: calc(100vh - 12px) !important;
+          }
+
+          .adm-pp-page .adm-inquiry-modal-form {
+            padding: 16px !important;
+          }
+
+          .adm-pp-page .adm-inquiry-modal-header {
+            padding: 16px 44px 16px 16px !important;
+          }
+
+          .adm-pp-page .adm-inquiry-modal-header h2 {
+            font-size: 17px !important;
+          }
         }
       `}</style>
 
@@ -451,6 +537,7 @@ export default function AdmissionPrePrimary() {
       {/* ── Admission Inquiry Modal ────────────────────────────────────── */}
       {showInquiryModal && (
         <div
+          className="adm-inquiry-overlay"
           onClick={() => setShowInquiryModal(false)}
           style={{
             position: "fixed",
@@ -464,6 +551,7 @@ export default function AdmissionPrePrimary() {
           }}
         >
           <div
+            className="adm-inquiry-modal"
             onClick={(e) => e.stopPropagation()}
             style={{
               background: "#fff",
@@ -478,6 +566,7 @@ export default function AdmissionPrePrimary() {
           >
             {/* Header */}
             <div
+              className="adm-inquiry-modal-header"
               style={{
                 background: "#c0392b",
                 padding: "24px 32px",
@@ -511,10 +600,10 @@ export default function AdmissionPrePrimary() {
             </div>
 
             {/* Form */}
-            <div style={{ padding: "28px 32px 32px" }}>
+            <div className="adm-inquiry-modal-form" style={{ padding: "28px 32px 32px" }}>
               <form onSubmit={handleInquirySubmit}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
-                  <div style={{ display: "flex", flexDirection: "column" }}>
+                <div className="adm-inquiry-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+                  <div className="adm-inquiry-field" style={{ display: "flex", flexDirection: "column" }}>
                     <label style={{ fontSize: "11px", fontWeight: 700, color: "#555", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: "6px" }}>
                       First Name
                     </label>
@@ -527,7 +616,7 @@ export default function AdmissionPrePrimary() {
                       style={{ border: "1.5px solid #e0e0e0", borderRadius: "6px", padding: "10px 12px", fontSize: "13px", outline: "none" }}
                     />
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column" }}>
+                  <div className="adm-inquiry-field" style={{ display: "flex", flexDirection: "column" }}>
                     <label style={{ fontSize: "11px", fontWeight: 700, color: "#555", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: "6px" }}>
                       Last Name
                     </label>
@@ -542,8 +631,8 @@ export default function AdmissionPrePrimary() {
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
-                  <div style={{ display: "flex", flexDirection: "column" }}>
+                <div className="adm-inquiry-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+                  <div className="adm-inquiry-field" style={{ display: "flex", flexDirection: "column" }}>
                     <label style={{ fontSize: "11px", fontWeight: 700, color: "#555", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: "6px" }}>
                       Contact Number
                     </label>
@@ -558,7 +647,7 @@ export default function AdmissionPrePrimary() {
                       style={{ border: "1.5px solid #e0e0e0", borderRadius: "6px", padding: "10px 12px", fontSize: "13px", outline: "none" }}
                     />
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column" }}>
+                  <div className="adm-inquiry-field" style={{ display: "flex", flexDirection: "column" }}>
                     <label style={{ fontSize: "11px", fontWeight: 700, color: "#555", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: "6px" }}>
                       Standard
                     </label>
@@ -589,7 +678,7 @@ export default function AdmissionPrePrimary() {
                   </div>
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", marginBottom: "22px" }}>
+                <div className="adm-inquiry-medium" style={{ display: "flex", flexDirection: "column", marginBottom: "22px" }}>
                   <label style={{ fontSize: "11px", fontWeight: 700, color: "#555", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: "6px" }}>
                     Medium
                   </label>
@@ -607,6 +696,7 @@ export default function AdmissionPrePrimary() {
                 </div>
 
                 <button
+                  className="adm-inquiry-submit"
                   type="submit"
                   disabled={InquiryStatus === "sending"}
                   style={{

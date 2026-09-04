@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import SchoolLogo from "../assets/SchoolLogo.avif";
 import Admission1 from "../assets/Admission1.jpg";
 import { useNavigate } from "react-router-dom";
+import { message } from "antd";
 import { getAllAdmissionsByFilter } from "../services/AdmissionService";
 import { saveAdmissionInquiry } from "../services/InquiryService";
-import { message } from "antd";
 
 // ---------------------------------------------------------------------------
 // base64 -> blob preview helpers (same approach as AdmissionAdmin)
@@ -43,7 +43,7 @@ export default function AdmissionSecondaryEnglish() {
   const [documents, setDocuments] = useState<string[]>([]);
   const [brochure, setBrochure] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  // const [successMessage, setSuccessMessage] = useState("");
+
   // ── Inquiry modal state ──────────────────────────────────────────────
   const [showInquiryModal, setShowInquiryModal] = useState(false);
   const [InquiryForm, setInquiryForm] = useState({
@@ -89,10 +89,7 @@ export default function AdmissionSecondaryEnglish() {
         status: "NEW",
       });
 
-      // Show success message
-      message.success("Inquiry submitted successfully!");
-
-      // Reset form
+      // Clear the form
       setInquiryForm({
         firstName: "",
         lastName: "",
@@ -101,18 +98,18 @@ export default function AdmissionSecondaryEnglish() {
         medium: "",
       });
 
-      setInquiryStatus("sent");
+      // Reset status
+      setInquiryStatus("idle");
 
-      // Close modal after 1 second
-      setTimeout(() => {
-        setShowInquiryModal(false);
-        setInquiryStatus("idle");
-      }, 1000);
+      // Close the popup
+      setShowInquiryModal(false);
 
+      // Show success message
+      message.success("Inquiry submitted successfully!");
     } catch (err) {
       console.error("Failed to send Inquiry:", err);
-      message.error("Failed to submit inquiry.");
       setInquiryStatus("error");
+      alert("Something went wrong. Please try again.");
     }
   };
   // ──────────────────────────────────────────────────────────────────────
@@ -213,6 +210,83 @@ export default function AdmissionSecondaryEnglish() {
           .adm-sec-page .adm-bottom-cta { padding: 36px 20px !important; }
           .adm-sec-page .adm-Inquiry-cta { padding: 40px 20px !important; }
           .adm-sec-page .adm-Inquiry-cta h2 { font-size: 24px !important; }
+
+          /* Admission Inquiry modal - responsive */
+          .adm-sec-page .adm-inquiry-overlay {
+            padding: 10px !important;
+            align-items: flex-start !important;
+            overflow-y: auto !important;
+          }
+
+          .adm-sec-page .adm-inquiry-modal {
+            width: 100% !important;
+            max-width: 100% !important;
+            max-height: calc(100vh - 20px) !important;
+            margin: auto 0 !important;
+          }
+
+          .adm-sec-page .adm-inquiry-modal-header {
+            padding: 18px 20px !important;
+          }
+
+          .adm-sec-page .adm-inquiry-modal-header h2 {
+            font-size: 18px !important;
+            padding-right: 28px !important;
+          }
+
+          .adm-sec-page .adm-inquiry-modal-header p {
+            font-size: 12px !important;
+            line-height: 1.5 !important;
+            padding-right: 20px !important;
+          }
+
+          .adm-sec-page .adm-inquiry-modal-form {
+            padding: 20px !important;
+          }
+
+          .adm-sec-page .adm-inquiry-row {
+            grid-template-columns: 1fr !important;
+            gap: 14px !important;
+            margin-bottom: 14px !important;
+          }
+
+          .adm-sec-page .adm-inquiry-field,
+          .adm-sec-page .adm-inquiry-medium {
+            width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+          }
+
+          .adm-sec-page .adm-inquiry-field input,
+          .adm-sec-page .adm-inquiry-medium select {
+            width: 100% !important;
+            min-height: 44px !important;
+            box-sizing: border-box !important;
+            font-size: 14px !important;
+          }
+
+          .adm-sec-page .adm-inquiry-submit {
+            min-height: 46px !important;
+            width: 100% !important;
+          }
+
+          @media (max-width: 380px) {
+            .adm-sec-page .adm-inquiry-overlay {
+              padding: 6px !important;
+            }
+
+            .adm-sec-page .adm-inquiry-modal {
+              max-height: calc(100vh - 12px) !important;
+            }
+
+            .adm-sec-page .adm-inquiry-modal-form {
+              padding: 16px !important;
+            }
+
+            .adm-sec-page .adm-inquiry-modal-header {
+              padding: 16px 18px !important;
+            }
+          }
         }
       `}</style>
 
@@ -399,6 +473,7 @@ export default function AdmissionSecondaryEnglish() {
       {showInquiryModal && (
         <div
           onClick={() => setShowInquiryModal(false)}
+          className="adm-inquiry-overlay"
           style={{
             position: "fixed",
             inset: 0,
@@ -412,6 +487,7 @@ export default function AdmissionSecondaryEnglish() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
+            className="adm-inquiry-modal"
             style={{
               background: "#fff",
               borderRadius: "10px",
@@ -425,6 +501,7 @@ export default function AdmissionSecondaryEnglish() {
           >
             {/* Header */}
             <div
+              className="adm-inquiry-modal-header"
               style={{
                 background: "#1f4d3d",
                 padding: "24px 32px",
@@ -458,10 +535,10 @@ export default function AdmissionSecondaryEnglish() {
             </div>
 
             {/* Form */}
-            <div style={{ padding: "28px 32px 32px" }}>
+            <div className="adm-inquiry-modal-form" style={{ padding: "28px 32px 32px" }}>
               <form onSubmit={handleInquirySubmit}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
-                  <div style={{ display: "flex", flexDirection: "column" }}>
+                <div className="adm-inquiry-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+                  <div className="adm-inquiry-field" style={{ display: "flex", flexDirection: "column" }}>
                     <label style={{ fontSize: "11px", fontWeight: 700, color: "#555", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: "6px" }}>
                       First Name
                     </label>
@@ -474,7 +551,7 @@ export default function AdmissionSecondaryEnglish() {
                       style={{ border: "1.5px solid #e0e0e0", borderRadius: "6px", padding: "10px 12px", fontSize: "13px", outline: "none" }}
                     />
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column" }}>
+                  <div className="adm-inquiry-field" style={{ display: "flex", flexDirection: "column" }}>
                     <label style={{ fontSize: "11px", fontWeight: 700, color: "#555", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: "6px" }}>
                       Last Name
                     </label>
@@ -489,8 +566,8 @@ export default function AdmissionSecondaryEnglish() {
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
-                  <div style={{ display: "flex", flexDirection: "column" }}>
+                <div className="adm-inquiry-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+                  <div className="adm-inquiry-field" style={{ display: "flex", flexDirection: "column" }}>
                     <label style={{ fontSize: "11px", fontWeight: 700, color: "#555", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: "6px" }}>
                       Contact Number
                     </label>
@@ -505,7 +582,7 @@ export default function AdmissionSecondaryEnglish() {
                       style={{ border: "1.5px solid #e0e0e0", borderRadius: "6px", padding: "10px 12px", fontSize: "13px", outline: "none" }}
                     />
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column" }}>
+                  <div className="adm-inquiry-field" style={{ display: "flex", flexDirection: "column" }}>
                     <label style={{ fontSize: "11px", fontWeight: 700, color: "#555", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: "6px" }}>
                       Standard
                     </label>
@@ -536,7 +613,7 @@ export default function AdmissionSecondaryEnglish() {
                   </div>
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", marginBottom: "22px" }}>
+                <div className="adm-inquiry-medium" style={{ display: "flex", flexDirection: "column", marginBottom: "22px" }}>
                   <label style={{ fontSize: "11px", fontWeight: 700, color: "#555", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: "6px" }}>
                     Medium
                   </label>
@@ -554,24 +631,37 @@ export default function AdmissionSecondaryEnglish() {
                 </div>
 
                 <button
+                  className="adm-inquiry-submit"
                   type="submit"
                   disabled={InquiryStatus === "sending"}
+                  style={{
+                    background: "#1f4d3d",
+                    color: "#fff",
+                    border: "none",
+                    padding: "12px 28px",
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    letterSpacing: "0.5px",
+                    textTransform: "uppercase",
+                    borderRadius: "6px",
+                    cursor: InquiryStatus === "sending" ? "not-allowed" : "pointer",
+                    opacity: InquiryStatus === "sending" ? 0.6 : 1,
+                    width: "100%",
+                  }}
                 >
-                  {InquiryStatus === "sending"
-                    ? "Submitting..."
-                    : "Submit Inquiry"}
+                  {InquiryStatus === "sending" ? "Submitting..." : "Submit Inquiry"}
                 </button>
 
                 {/* {InquiryStatus === "sent" && (
                   <div style={{ marginTop: "14px", fontSize: "12px", fontWeight: 600, color: "#2e7d32", textAlign: "center" }}>
                     Inquiry submitted successfully! We'll be in touch soon.
                   </div>
-                )} */}
+                )}
                 {InquiryStatus === "error" && (
                   <div style={{ marginTop: "14px", fontSize: "12px", fontWeight: 600, color: "#c62828", textAlign: "center" }}>
                     Something went wrong. Please try again.
                   </div>
-                )}
+                )} */}
               </form>
             </div>
           </div>

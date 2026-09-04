@@ -9,6 +9,7 @@ import { MdAssignmentTurnedIn } from "react-icons/md";
 import { GrCircleInformation } from "react-icons/gr";
 import { RiMedalLine } from "react-icons/ri";
 import { SlCalender } from "react-icons/sl";
+import { RiShoppingBagFill } from "react-icons/ri";
 import {
   PiBookOpenText,
   PiCalendarBlank,
@@ -23,6 +24,8 @@ import { MdClass } from "react-icons/md";
 
 import { ImProfile } from "react-icons/im";
 import { Label } from "recharts";
+
+
 
 // A single flat/clickable nav link
 export interface AdminNavLink {
@@ -72,7 +75,8 @@ export const adminNavItems: AdminNavEntry[] = [
     icon: BsFillClipboard2DataFill,
     children: [
       { label: "Subject Master", path: "/subjects-master", icon: MdOutlineSubject },
-      { label: "Class Master", path: "/class-master", icon: MdClass },     
+      { label: "Class Master", path: "/class-master", icon: MdClass },   
+       {label:"Purchase Master", path:"/purchase-master",icon:RiShoppingBagFill}  
     ],
   },
     {
@@ -95,7 +99,6 @@ export const adminNavItems: AdminNavEntry[] = [
         {label:"Results", path:"/results",icon:PiClipboardText},
         {label:"Achievements",path:"/achievements",icon:RiMedalLine },
         {label:"Academic calendar", path:"/academic-calender", icon:SlCalender},
-        {label:"Student Fees", path:"/student-fees",icon:BsCash},
         {label:"Time Table", path:"/time-table",icon:PiCalendarBlank}
     ],
   },
@@ -103,7 +106,20 @@ export const adminNavItems: AdminNavEntry[] = [
   {
     label:"Student Profile", path:"/student-profile",icon:PiStudentFill
   },
-  
+   {
+    label: "Accounts",
+    icon: BsCash,
+    children: [
+    
+        {label:"Student Fees", path:"/student-fees",icon:BsCash},
+         
+       
+      
+    ],
+    
+    
+  },
+ 
  
  
 ];
