@@ -76,7 +76,8 @@ export const adminNavItems: AdminNavEntry[] = [
     children: [
       { label: "Subject Master", path: "/subjects-master", icon: MdOutlineSubject },
       { label: "Class Master", path: "/class-master", icon: MdClass },   
-       {label:"Purchase Master", path:"/purchase-master",icon:RiShoppingBagFill}  
+       {label:"Purchase Master", path:"/purchase-master",icon:RiShoppingBagFill},
+      
     ],
   },
     {
@@ -112,7 +113,7 @@ export const adminNavItems: AdminNavEntry[] = [
     children: [
     
         {label:"Student Fees", path:"/student-fees",icon:BsCash},
-         
+          {label:"School Expenses", path:"/school-expenses",icon:RiShoppingBagFill}
        
       
     ],

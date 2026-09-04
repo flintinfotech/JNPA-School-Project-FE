@@ -213,4 +213,22 @@ deleteStudentAchievement: (
   getAllPurchaseByFilter: (page: number, size: number) =>
     `/jnpa-school-project/purchase/getAllPurchaseByFilter?page=${page}&size=${size}&desc&paginate=true`,
 
+  // ===============================
+// School Expenses
+// ===============================
+saveSchoolExpenses: () =>
+  `/jnpa-school-project/schoolExpenses/saveSchoolExpenses`,
+
+updateSchoolExpenses: () =>
+  `/jnpa-school-project/schoolExpenses/updateSchoolExpenses`,
+
+getSchoolExpensesById: (schoolExpenseId: number | string) =>
+  `/jnpa-school-project/schoolExpenses/getSchoolExpenses/${schoolExpenseId}`,
+
+deleteSchoolExpenses: (schoolExpenseId: number | string) =>
+  `/jnpa-school-project/schoolExpenses/deleteSchoolExpenses/${schoolExpenseId}`,
+
+getAllSchoolExpensesByFilter: (page: number, size: number) =>
+  `/jnpa-school-project/schoolExpenses/getAllSchoolExpensesByFilter?page=${page}&size=${size}&desc&paginate=true`,
+
 };

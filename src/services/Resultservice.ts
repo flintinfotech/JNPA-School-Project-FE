@@ -23,11 +23,27 @@ export interface ResultStudentDTO {
   academicInformation?: AcademicInformationDTO[];
 }
 
-// Payload the API expects — only these 3 fields
+// Payload sent to the API.
+// standard/division/medium = class-scope filters (locked for teachers).
+// firstName/lastName/rollNo = free-text search filters.
+// ⚠️ FIXED — this interface used to only declare standard/division/medium,
+// even though Results.tsx's search bar was reading/writing
+// filters.firstName / filters.lastName / filters.rollNo. Those fields
+// were silently missing a type, which is exactly the kind of mismatch
+// that makes a "working-looking" search box do nothing.
+// ⚠️ CONFIRM WITH BACKEND: if getAllCurrentYearStudentsData does NOT
+// actually filter on firstName/lastName/rollNo (only on
+// standard/division/medium), Results.tsx now also applies a
+// client-side fallback filter on top of whatever the API returns, so
+// search still works either way. Once the backend supports these
+// fields server-side, the fallback becomes a harmless no-op.
 export interface ResultFilters {
   standard?: string;
   division?: string;
   medium?: string;
+  firstName?: string;
+  lastName?: string;
+  rollNo?: string;
 }
 
 export interface CurrentYearStudentsResponse {

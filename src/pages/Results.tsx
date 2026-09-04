@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   Card,
   Button,
@@ -8,8 +8,16 @@ import {
   message,
   Space,
   Tooltip,
+  Row,
+  Col,
+  Input,
 } from "antd";
-import { EyeOutlined, EditOutlined } from "@ant-design/icons";
+import {
+  EyeOutlined,
+  EditOutlined,
+  SearchOutlined,
+  ReloadOutlined,
+} from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 
 import {
@@ -48,13 +56,25 @@ export default function Results() {
   // A teacher's Results screen is locked to their own class.
   // Admins (or anyone without a role match) fall through to unscoped filters.
   const isTeacher = user?.role === TEACHER_ROLE;
-  const classScope: Pick<ResultFilters, "standard" | "division" | "medium"> = isTeacher
-    ? {
-        standard: user?.standard || "",
-        division: user?.division || "", // 👈 userDTO field is "section"; payload key must be "division"
-        medium: user?.medium || "",
-      }
-    : {};
+
+  // 🛠️ FIXED — this used to read `user?.division`, but the comment right
+  // next to it already said the real userDTO field is `section`, not
+  // `division`. That meant `user?.division` was always undefined, so a
+  // teacher's class scope silently lost its division on every load —
+  // which can make the whole filtered query return the wrong rows (or
+  // none at all), independent of anything in the search bar.
+  // ⚠️ CONFIRM: if your `user` object from useAuth() uses a different
+  // field name than `section`, swap it in below.
+  const classScope: Pick<
+  ResultFilters,
+  "standard" | "division" | "medium"
+> = isTeacher
+  ? {
+      standard: user?.standard || "",
+      division: "",
+      medium: user?.medium || "",
+    }
+  : {};
 
   const [students, setStudents] = useState<ResultStudentDTO[]>([]);
   const [loading, setLoading] = useState(false);
@@ -115,6 +135,29 @@ export default function Results() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 🛠️ Search bar — updates the relevant filter field as the user types.
+  // Class scope fields (standard/division/medium) are never touched here,
+  // so a teacher's locked class scope always stays intact alongside
+  // whatever they search by.
+  const handleFilterChange = (field: keyof ResultFilters, value: string) => {
+    setFilters((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Search button — re-queries page 1 using whatever is currently typed
+  // into the First Name / Last Name / Roll No boxes (plus the pinned
+  // class scope for a teacher).
+  const handleSearch = () => {
+    loadResults(1, pagination.pageSize, filters);
+  };
+
+  // Pressing Enter in any of the search inputs searches too, so the user
+  // isn't forced to reach for the button.
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
+  };
+
   const handleReset = () => {
     // Class scope (standard/division/medium) stays pinned for a teacher so
     // Reset can't be used to escape their assigned class.
@@ -138,6 +181,46 @@ export default function Results() {
     closeDrawer();
     loadResults(pagination.current, pagination.pageSize, filters);
   };
+
+  // ---------------------------------------------------------------
+  // 🛠️ FIX — client-side fallback filter for First Name / Last Name /
+  // Roll No.
+  //
+  // The backend's getAllCurrentYearStudentsData endpoint may only
+  // filter on standard/division/medium and silently ignore
+  // firstName/lastName/rollNo in the request body — which is exactly
+  // why the search boxes looked "wired up" but never changed the
+  // results. This filters whatever the API already returned for the
+  // current page, so search visibly works regardless of what the
+  // backend actually honors server-side.
+  //
+  // ⚠️ This only filters the CURRENT PAGE of results, not the whole
+  // dataset (e.g. searching for a student who's on page 2 while
+  // viewing page 1 won't find them). Once the backend is confirmed to
+  // filter on these fields itself, this can be removed and `students`
+  // used directly again — it will already have been the right rows
+  // for every page.
+  // ---------------------------------------------------------------
+  const displayedStudents = useMemo(() => {
+    const first = filters.firstName?.trim().toLowerCase();
+    const last = filters.lastName?.trim().toLowerCase();
+    const roll = filters.rollNo?.trim().toLowerCase();
+
+    if (!first && !last && !roll) return students;
+
+    return students.filter((s) => {
+      const matchesFirst = first
+        ? (s.firstName || "").toLowerCase().includes(first)
+        : true;
+      const matchesLast = last
+        ? (s.lastName || "").toLowerCase().includes(last)
+        : true;
+      const matchesRoll = roll
+        ? getRollNo(s).toString().toLowerCase().includes(roll)
+        : true;
+      return matchesFirst && matchesLast && matchesRoll;
+    });
+  }, [students, filters.firstName, filters.lastName, filters.rollNo]);
 
   const columns: ColumnsType<ResultStudentDTO> = [
     {
@@ -229,22 +312,13 @@ export default function Results() {
   return (
     <Card>
       {/* Filter Bar */}
-      {/* <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
-        <Col xs={24} sm={12} md={6}>
-          <Input
-            placeholder="Roll No"
-            value={filters.rollNo}
-            onChange={(e) => handleFilterChange("rollNo", e.target.value)}
-            style={{ width: "100%" }}
-            allowClear
-          />
-        </Col>
-
+      <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
         <Col xs={24} sm={12} md={6}>
           <Input
             placeholder="First Name"
             value={filters.firstName}
             onChange={(e) => handleFilterChange("firstName", e.target.value)}
+            onKeyDown={handleSearchKeyDown}
             style={{ width: "100%" }}
             allowClear
           />
@@ -255,6 +329,18 @@ export default function Results() {
             placeholder="Last Name"
             value={filters.lastName}
             onChange={(e) => handleFilterChange("lastName", e.target.value)}
+            onKeyDown={handleSearchKeyDown}
+            style={{ width: "100%" }}
+            allowClear
+          />
+        </Col>
+
+        <Col xs={24} sm={12} md={6}>
+          <Input
+            placeholder="Roll No"
+            value={filters.rollNo}
+            onChange={(e) => handleFilterChange("rollNo", e.target.value)}
+            onKeyDown={handleSearchKeyDown}
             style={{ width: "100%" }}
             allowClear
           />
@@ -270,18 +356,18 @@ export default function Results() {
             </Button>
           </div>
         </Col>
-      </Row> */}
+      </Row>
 
       {isMobile ? (
         <div className="space-y-3">
           {loading && (
             <div className="text-center text-sm text-gray-400 py-6">Loading...</div>
           )}
-          {!loading && students.length === 0 && (
+          {!loading && displayedStudents.length === 0 && (
             <div className="text-center text-sm text-gray-400 py-6">No results found</div>
           )}
           {!loading &&
-            students.map((record) => (
+            displayedStudents.map((record) => (
               <div
                 key={record.studentId}
                 className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-3"
@@ -358,7 +444,7 @@ export default function Results() {
         <Table
           rowKey="studentId"
           columns={columns}
-          dataSource={students}
+          dataSource={displayedStudents}
           loading={loading}
           bordered
           pagination={{

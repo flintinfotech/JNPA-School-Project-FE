@@ -1,18 +1,5 @@
 import React, { useState, useEffect, useCallback, Fragment } from "react";
-import {
-  Form,
-  Input,
-  Select,
-  TimePicker,
-  Button,
-  Drawer,
-  Modal,
-  Spin,
-  Popconfirm,
-  Empty,
-  message,
-  ConfigProvider,
-  Pagination,
+import {Form,Input,Select,TimePicker,Button,Drawer,Modal,Spin,Popconfirm,Empty,message,ConfigProvider,Pagination,
 } from "antd";
 import {
   PlusOutlined,
@@ -1713,35 +1700,110 @@ export default function TimeTable() {
   const canDelete = isAdminOrPrincipal(user?.role);
   const viewerIsTeacher = isTeacherRole(user?.role);
 
+  // ---------------------------------------------------------------
+  // 🆕 NEW — Search filter bar (Standard / Division / Medium dropdowns)
+  // for the admin/principal LIST VIEW only. Options are sourced from
+  // the SAME getAllStaticData() call/cache used by the Add/Edit
+  // drawer (`staticData`), so both places always show identical
+  // dropdown values — nothing separate is fetched for the filter bar.
+  // ---------------------------------------------------------------
+  const [filters, setFilters] = useState<TimeTableFilters>({});
+
+  // Same normalization pattern used inside TimeTableForm — reused here
+  // so the filter dropdowns match the Add/Edit dropdowns exactly.
+  const standardOptions = (staticData?.["standard"] ?? STANDARD_FALLBACK).map((s: any) => ({
+    value: toValue(s),
+    label: toLabel(s),
+  }));
+  const divisionOptions = (staticData?.["division"] ?? []).map((d: any) => ({
+    value: toValue(d),
+    label: toLabel(d),
+  }));
+  const mediumOptions = (staticData?.["medium"] ?? []).map((m: any) => ({
+    value: toValue(m),
+    label: toLabel(m),
+  }));
+
+  const handleFilterChange = (key: keyof TimeTableFilters, value?: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
 
   const [myScheduleLoading, setMyScheduleLoading] = useState(false);
   const [mySchedule, setMySchedule] = useState<any>(null);
 
-  const fetchTimeTables = useCallback(async (pageNum: number, size: number) => {
-    setTableLoading(true);
+  // 🛠️ UPDATED — now accepts an optional filters object. When any of
+  // standard/division/medium is set, it calls the SAME filtered
+  // endpoint the Teacher view already uses (getAllTimeTableByFilter),
+  // whose response shape ("Time TableDTOS") extractListAndTotal
+  // already knows how to read. With no filters set, it falls back to
+  // the original unfiltered getAllTimeTables call — existing pagination
+  // behavior is unchanged.
+  const fetchTimeTables = useCallback(
+    async (pageNum: number, size: number, activeFilters: TimeTableFilters = {}) => {
+      setTableLoading(true);
+      try {
+        const hasFilters = !!(activeFilters.standard || activeFilters.division || activeFilters.medium);
+        const res = hasFilters
+          ? await api.post(getAllTimeTableByFilterEndpoint(pageNum, size), {
+              standard: activeFilters.standard,
+              division: activeFilters.division,
+              medium: activeFilters.medium,
+            })
+          : await api.post(apiEndpoints.getAllTimeTables(pageNum, size), {});
+        const { list, total: t } = extractListAndTotal(res);
+        setRows(list);
+        setTotal(t);
+      } catch (error: any) {
+        message.error(error?.response?.data?.message || "Failed to load timetables");
+      } finally {
+        setTableLoading(false);
+      }
+    },
+    []
+  );
+
+  // getAllStaticData is called on-demand only, the first time the
+  // Add/Edit/View is opened. Once loaded it's cached in state, so opening
+  // Add/Edit/View again won't call the API again.
+  const ensureStaticData = useCallback(async () => {
+    if (staticData) return; // already loaded — don't refetch
     try {
-      const res = await api.post(apiEndpoints.getAllTimeTables(pageNum, size), {});
-      const { list, total: t } = extractListAndTotal(res);
-      setRows(list);
-      setTotal(t);
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || "Failed to load timetables");
-    } finally {
-      setTableLoading(false);
+      const res = await api.get(apiEndpoints.getAllStaticData());
+      const data = res.data?.data ?? res.data ?? {};
+      setStaticData(data);
+    } catch {
+      // non-fatal — Standard/Division/Medium/Period dropdowns fall back/empty
     }
-  }, []);
+  }, [staticData]);
 
   useEffect(() => {
     // 👇 teachers don't need the admin list at all; skip loading it.
     if (!viewerIsTeacher) {
-      fetchTimeTables(page, pageSize);
+      fetchTimeTables(page, pageSize, filters);
+      // 🆕 also load static data eagerly here (instead of only lazily
+      // on Add/Edit/View open) so the filter bar's dropdowns are ready
+      // as soon as the list page loads.
+      ensureStaticData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, pageSize, fetchTimeTables, viewerIsTeacher]);
+
+  // 🆕 Search / Reset handlers for the filter bar.
+  const handleSearch = () => {
+    setPage(0);
+    fetchTimeTables(0, pageSize, filters);
+  };
+
+  const handleResetFilters = () => {
+    setFilters({});
+    setPage(0);
+    fetchTimeTables(0, pageSize, {});
+  };
 
   // Teacher/Subject dropdown data — fetched once on mount (unchanged).
   // Static data (Standard/Division/Medium/Period lists) is NOT fetched here
-  // — it's loaded lazily by ensureStaticData(), only when Add/Edit/View
-  // is actually opened. See ensureStaticData below.
+  // — it's loaded via ensureStaticData() above (eagerly for admin list +
+  // filter bar, lazily for Add/Edit/View). See ensureStaticData below.
   useEffect(() => {
     if (viewerIsTeacher) return; // teachers never open Add/Edit
     (async () => {
@@ -1790,20 +1852,6 @@ export default function TimeTable() {
     },
     []
   );
-
-  // getAllStaticData is called on-demand only, the first time the
-  // Add/Edit/View is opened. Once loaded it's cached in state, so opening
-  // Add/Edit/View again won't call the API again.
-  const ensureStaticData = useCallback(async () => {
-    if (staticData) return; // already loaded — don't refetch
-    try {
-      const res = await api.get(apiEndpoints.getAllStaticData());
-      const data = res.data?.data ?? res.data ?? {};
-      setStaticData(data);
-    } catch {
-      // non-fatal — Standard/Division/Medium/Period dropdowns fall back/empty
-    }
-  }, [staticData]);
 
   // ---------------------------------------------------------------
   // Teacher timetable
@@ -2038,7 +2086,7 @@ export default function TimeTable() {
         message.success("Time table added successfully");
       }
       closeDrawer();
-      fetchTimeTables(page, pageSize);
+      fetchTimeTables(page, pageSize, filters);
     } catch (error: any) {
       message.error(error?.response?.data?.message || "Failed to save timetable");
     } finally {
@@ -2050,7 +2098,7 @@ export default function TimeTable() {
     try {
       await api.delete(apiEndpoints.deleteTimeTable(timeTableId));
       message.success("Time table deleted successfully");
-      fetchTimeTables(page, pageSize);
+      fetchTimeTables(page, pageSize, filters);
     } catch (error: any) {
       message.error(error?.response?.data?.message || "Failed to delete timetable");
     }
@@ -2060,6 +2108,9 @@ export default function TimeTable() {
   // land straight on their own merged weekly schedule (Vikas sees Vikas's
   // periods, Rahul sees Rahul's, automatically, based on the logged-in
   // user's employeeDetailsId). No Add/Edit/Delete controls here at all.
+  // 🆕 The Standard/Division/Medium search filter bar below is ONLY
+  // rendered further down, in the admin/principal branch — teachers
+  // never reach that code because this early return happens first.
   if (viewerIsTeacher) {
     return (
       <div>
@@ -2136,11 +2187,69 @@ export default function TimeTable() {
         }
       `}</style>
 
-      <div className="flex justify-end    items-center mb-4">
-        {/* <h2 className="text-lg font-semibold">Time Table</h2> */}
-        <Button type="primary" icon={<PlusOutlined />} onClick={openAddDrawer}>
-          Add Time Table
-        </Button>
+      {/* 🆕 Header row — title removed. Filter dropdowns + Search/Reset
+          + Add Time Table button all grouped together on the right.
+          Admin/Principal list view ONLY (teachers never render this
+          branch). */}
+      {/* 🆕 Header row — title removed. Standard/Division/Medium filter
+          dropdowns sit on the left; Search, Reset, and Add Time Table
+          are grouped together on the right. Admin/Principal list view
+          ONLY (teachers never render this branch). */}
+      <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Select
+            placeholder="Standard"
+            allowClear
+            style={{ width: 150 }}
+            value={filters.standard}
+            onChange={(v) => handleFilterChange("standard", v)}
+          >
+            {standardOptions.map((opt) => (
+              <Option key={opt.value} value={opt.value}>
+                {opt.label}
+              </Option>
+            ))}
+          </Select>
+
+          <Select
+            placeholder="Division"
+            allowClear
+            style={{ width: 130 }}
+            value={filters.division}
+            onChange={(v) => handleFilterChange("division", v)}
+          >
+            {divisionOptions.map((opt) => (
+              <Option key={opt.value} value={opt.value}>
+                {opt.label}
+              </Option>
+            ))}
+          </Select>
+
+          <Select
+            placeholder="Medium"
+            allowClear
+            style={{ width: 130 }}
+            value={filters.medium}
+            onChange={(v) => handleFilterChange("medium", v)}
+          >
+            {mediumOptions.map((opt) => (
+              <Option key={opt.value} value={opt.value}>
+                {opt.label}
+              </Option>
+            ))}
+          </Select>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button type="primary" onClick={handleSearch}>
+            Search
+          </Button>
+          <Button onClick={handleResetFilters}>Reset</Button>
+
+          <Button type="primary" icon={<PlusOutlined />} onClick={openAddDrawer}>
+            Add Time Table
+          </Button>
+        </div>
       </div>
 
       {isMobile ? (
