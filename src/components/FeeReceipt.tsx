@@ -220,6 +220,8 @@ export default function FeeReceiptModal({
       open={open}
       onCancel={onClose}
       width={640}
+      style={{ maxWidth: "95vw", top: 16 }}
+      styles={{ body: { maxHeight: "80vh", overflowY: "auto", padding: 0 } }}
       footer={[
         <Button key="close" onClick={onClose}>
           Close
@@ -322,6 +324,50 @@ export default function FeeReceiptModal({
               border: none;
             }
           }
+
+          /* 🛠️ FIX — on phones the fixed two-column info grid and the
+             wide fee-breakdown table were both wider than the screen,
+             so the receipt overflowed sideways and the right-hand
+             columns (Receipt No, Admission No, Class, Roll No, Balance)
+             got cut off. Below 480px: stack the info grid into a single
+             column, shrink text/padding, and let the tables scroll
+             horizontally inside their own wrapper (see .fr-table-wrap)
+             instead of the whole modal overflowing. */
+          @media (max-width: 480px) {
+            .fee-receipt .fr-header { gap: 8px; padding: 12px 10px 8px; }
+            .fee-receipt .fr-header img { width: 40px; height: 40px; }
+            .fee-receipt .fr-header h1 { font-size: 15px; }
+            .fee-receipt .fr-header p { font-size: 10px; }
+            .fee-receipt .fr-band { font-size: 12px; padding: 3px 0; }
+            .fee-receipt .fr-info {
+              grid-template-columns: 1fr;
+              gap: 3px;
+              padding: 10px 12px;
+              font-size: 12px;
+            }
+            .fee-receipt .fr-info span.label { width: 78px; }
+            .fee-receipt .fr-items th, .fee-receipt .fr-items td {
+              padding: 4px 6px;
+              font-size: 11px;
+            }
+            .fee-receipt .fr-paymode {
+              grid-template-columns: 1fr;
+              gap: 3px;
+              padding: 8px 12px;
+              font-size: 12px;
+            }
+            .fee-receipt .fr-total-row { padding: 6px 12px; font-size: 13px; }
+            .fee-receipt .fr-words { padding: 8px 12px; font-size: 12px; }
+            .fee-receipt .fr-footer { padding: 8px 12px 12px; font-size: 10px; }
+          }
+
+          /* Lets a table scroll horizontally on its own, on the rare
+             device narrow enough that it still doesn't fit, instead of
+             pushing the whole receipt/modal off-screen. */
+          .fee-receipt .fr-table-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+          }
         `}</style>
 
         {/* Header */}
@@ -378,30 +424,32 @@ export default function FeeReceiptModal({
         </div>
 
         {/* Fee breakdown */}
-        <table className="fr-items">
-          <thead>
-            <tr>
-              <th style={{ width: 40 }}>Sl.No</th>
-              <th>Description</th>
-              <th className="num">Total Fee</th>
-              <th className="num">Paid</th>
-              <th className="num">Balance</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>1</td>
-              <td>{fee.feeName || "-"}</td>
-              <td className="num">{formatCurrency(fee.totalFeeAmount)}</td>
-              <td className="num">{formatCurrency(receiptAmount)}</td>
-              <td className="num">
-                {formatCurrency(fee.pendingAmount ?? fee.dueAmount)}
-              </td>
-              <td style={feeStatusStyle(fee.status)}>{fee.status || "-"}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div className="fr-table-wrap">
+          <table className="fr-items">
+            <thead>
+              <tr>
+                <th style={{ width: 40 }}>Sl.No</th>
+                <th>Description</th>
+                <th className="num">Total Fee</th>
+                <th className="num">Paid</th>
+                <th className="num">Balance</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>{fee.feeName || "-"}</td>
+                <td className="num">{formatCurrency(fee.totalFeeAmount)}</td>
+                <td className="num">{formatCurrency(receiptAmount)}</td>
+                <td className="num">
+                  {formatCurrency(fee.pendingAmount ?? fee.dueAmount)}
+                </td>
+                <td style={feeStatusStyle(fee.status)}>{fee.status || "-"}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
         {isCardLevel ? (
           <>
@@ -413,32 +461,34 @@ export default function FeeReceiptModal({
               PAYMENTS RECEIVED
             </div>
             {allPayments.length > 0 ? (
-              <table className="fr-items">
-                <thead>
-                  <tr>
-                    <th>Receipt No</th>
-                    <th>Date</th>
-                    <th>Mode</th>
-                    {/* <th>Txn / Ref No</th> */}
-                    <th className="num">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {allPayments.map((p, i) => (
-                    <tr key={p.feePaymentId ?? i}>
-                      <td>{getPaymentReceiptNo(p)}</td>
-                      <td>
-                        {p.paymentDate
-                          ? dayjs(p.paymentDate).format("DD/MM/YYYY")
-                          : "-"}
-                      </td>
-                      <td>{p.paymentMode || "-"}</td>
-                      {/* <td>{p.transactionId || "-"}</td> */}
-                      <td className="num">{formatCurrency(p.amount)}</td>
+              <div className="fr-table-wrap">
+                <table className="fr-items">
+                  <thead>
+                    <tr>
+                      <th>Receipt No</th>
+                      <th>Date</th>
+                      <th>Mode</th>
+                      {/* <th>Txn / Ref No</th> */}
+                      <th className="num">Amount</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {allPayments.map((p, i) => (
+                      <tr key={p.feePaymentId ?? i}>
+                        <td>{getPaymentReceiptNo(p)}</td>
+                        <td>
+                          {p.paymentDate
+                            ? dayjs(p.paymentDate).format("DD/MM/YYYY")
+                            : "-"}
+                        </td>
+                        <td>{p.paymentMode || "-"}</td>
+                        {/* <td>{p.transactionId || "-"}</td> */}
+                        <td className="num">{formatCurrency(p.amount)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ) : (
               <div className="fr-paymode">
                 <div>No payments recorded yet.</div>

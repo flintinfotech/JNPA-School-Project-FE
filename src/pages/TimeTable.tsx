@@ -2187,69 +2187,11 @@ export default function TimeTable() {
         }
       `}</style>
 
-      {/* 🆕 Header row — title removed. Filter dropdowns + Search/Reset
-          + Add Time Table button all grouped together on the right.
-          Admin/Principal list view ONLY (teachers never render this
-          branch). */}
-      {/* 🆕 Header row — title removed. Standard/Division/Medium filter
-          dropdowns sit on the left; Search, Reset, and Add Time Table
-          are grouped together on the right. Admin/Principal list view
-          ONLY (teachers never render this branch). */}
-      <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Select
-            placeholder="Standard"
-            allowClear
-            style={{ width: 150 }}
-            value={filters.standard}
-            onChange={(v) => handleFilterChange("standard", v)}
-          >
-            {standardOptions.map((opt) => (
-              <Option key={opt.value} value={opt.value}>
-                {opt.label}
-              </Option>
-            ))}
-          </Select>
-
-          <Select
-            placeholder="Division"
-            allowClear
-            style={{ width: 130 }}
-            value={filters.division}
-            onChange={(v) => handleFilterChange("division", v)}
-          >
-            {divisionOptions.map((opt) => (
-              <Option key={opt.value} value={opt.value}>
-                {opt.label}
-              </Option>
-            ))}
-          </Select>
-
-          <Select
-            placeholder="Medium"
-            allowClear
-            style={{ width: 130 }}
-            value={filters.medium}
-            onChange={(v) => handleFilterChange("medium", v)}
-          >
-            {mediumOptions.map((opt) => (
-              <Option key={opt.value} value={opt.value}>
-                {opt.label}
-              </Option>
-            ))}
-          </Select>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button type="primary" onClick={handleSearch}>
-            Search
-          </Button>
-          <Button onClick={handleResetFilters}>Reset</Button>
-
-          <Button type="primary" icon={<PlusOutlined />} onClick={openAddDrawer}>
-            Add Time Table
-          </Button>
-        </div>
+      <div className="flex justify-end    items-center mb-4">
+        {/* <h2 className="text-lg font-semibold">Time Table</h2> */}
+        <Button type="primary" icon={<PlusOutlined />} onClick={openAddDrawer}>
+          Add Time Table
+        </Button>
       </div>
 
       {isMobile ? (

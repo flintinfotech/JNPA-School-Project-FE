@@ -574,6 +574,7 @@ export default function Achievements() {
                 <div className="flex justify-end mt-3">
                   <Button
                     size="small"
+                    type="primary"
                     icon={
                       <EditOutlined />
                     }
@@ -583,7 +584,7 @@ export default function Achievements() {
                       )
                     }
                   >
-                    Achievement
+                    {/* Achievement */}
                   </Button>
                 </div>
               </div>
