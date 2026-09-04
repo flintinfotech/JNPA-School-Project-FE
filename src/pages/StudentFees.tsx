@@ -13,6 +13,8 @@ import {
   Popconfirm,
   Empty,
   message,
+  Row,
+  Col,
 } from "antd";
 import {
   PlusOutlined,
@@ -20,6 +22,8 @@ import {
   EditOutlined,
   EyeOutlined,
   PrinterOutlined,
+  SearchOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import type { FormInstance } from "antd/es/form";
@@ -92,6 +96,9 @@ interface StudentRow {
   status?: string;
   caste?: string;
   religion?: string;
+  totalFeeAmount?: number;
+  pendingFeeAmount?: number;
+  paymentStatus?: string;
   // 👇 assumed nested on the student record from getAllStudentsByFilter —
   // swap this out once a dedicated get-fee-by-studentId endpoint exists
   studentFee?: any;
@@ -122,6 +129,12 @@ const feeStatusColor = (status?: string) => {
   if (s === "FAILED" || s === "CANCELLED" || s === "OVERDUE") return "red";
   return "default";
 };
+
+// Options shown in the "Payment Status" filter dropdown. Kept as a plain
+// array (rather than pulled from staticDataService) since fee status isn't
+// currently part of that master-data endpoint — swap this out if/when the
+// backend exposes it there.
+const PAYMENT_STATUS_OPTIONS = ["PENDING", "PAID"];
 
 // A student can now have MULTIPLE fees (Tuition, Transport, etc). This
 // returns all of them as an array, whichever key the backend actually uses.
@@ -701,10 +714,6 @@ function StudentFeesTable({ data, loading, pagination, onEdit }: StudentFeesTabl
       key: "studentCode",
       render: (value: string) => value || "-",
     },
-    { title: "First Name", dataIndex: "firstName", key: "firstName" },
-    { title: "Last Name", dataIndex: "lastName", key: "lastName" },
-    { title: "Gender", dataIndex: "gender", key: "gender" },
-    { title: "Category", dataIndex: "category", key: "category" },
     {
       title: "Status",
       dataIndex: "status",
@@ -712,8 +721,32 @@ function StudentFeesTable({ data, loading, pagination, onEdit }: StudentFeesTabl
       render: (status: string) =>
         status ? <Tag color={statusColor(status)}>{status}</Tag> : "-",
     },
-    { title: "Caste", dataIndex: "caste", key: "caste" },
+    { title: "First Name", dataIndex: "firstName", key: "firstName" },
+    { title: "Last Name", dataIndex: "lastName", key: "lastName" },
+    { title: "Gender", dataIndex: "gender", key: "gender" },
     { title: "Religion", dataIndex: "religion", key: "religion" },
+    { title: "Category", dataIndex: "category", key: "category" },
+    { title: "Caste", dataIndex: "caste", key: "caste" },
+    
+    {
+      title: "Total Fee Amount",
+      dataIndex: "totalFeeAmount",
+      key: "totalFeeAmount",
+      render: (value: number) => (value !== undefined && value !== null ? value : "-"),
+    },
+    {
+      title: "Pending Fee Amount",
+      dataIndex: "pendingFeeAmount",
+      key: "pendingFeeAmount",
+      render: (value: number) => (value !== undefined && value !== null ? value : "-"),
+    },
+    {
+      title: "Payment Status",
+      dataIndex: "paymentStatus",
+      key: "paymentStatus",
+      render: (status: string) =>
+        status ? <Tag color={feeStatusColor(status)}>{status}</Tag> : "-",
+    },
     {
       title: "Action",
       key: "action",
@@ -761,6 +794,18 @@ function StudentFeesTable({ data, loading, pagination, onEdit }: StudentFeesTabl
                     Category: {record.category ?? "-"} | Caste: {record.caste ?? "-"}
                   </p>
                   <p>Religion: {record.religion ?? "-"}</p>
+                  <p>Total Fee Amount: {record.totalFeeAmount ?? "-"}</p>
+                  <p>Pending Fee Amount: {record.pendingFeeAmount ?? "-"}</p>
+                  <p>
+                    Payment Status:{" "}
+                    {record.paymentStatus ? (
+                      <Tag color={feeStatusColor(record.paymentStatus)}>
+                        {record.paymentStatus}
+                      </Tag>
+                    ) : (
+                      "-"
+                    )}
+                  </p>
                 </div>
 
                 <div className="flex gap-2 justify-end pt-2 border-t border-gray-50">
@@ -841,12 +886,25 @@ function StudentFeesTable({ data, loading, pagination, onEdit }: StudentFeesTabl
 // ===============================
 // Page (list + edit drawer)
 // ===============================
+interface StudentFeesSearchFilters {
+  firstName?: string;
+  lastName?: string;
+  paymentStatus?: string;
+}
+
 export default function StudentFeesManagement() {
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [tableLoading, setTableLoading] = useState(false);
+
+  // Search bar state
+  const [searchFilters, setSearchFilters] = useState<StudentFeesSearchFilters>({
+    firstName: "",
+    lastName: "",
+    paymentStatus: "",
+  });
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentRow | null>(null);
@@ -855,24 +913,57 @@ export default function StudentFeesManagement() {
   const [drawerLoading, setDrawerLoading] = useState(false);
   const [form] = Form.useForm();
 
-  const fetchStudents = useCallback(async (pageNum: number, size: number) => {
-    setTableLoading(true);
-    try {
-      // POST http://flintinfotech-dev.in:8443/jnpa-school-project/student/getAllStudentsByFilter?page=..&size=..&paginate=true
-      const res = await api.post(apiEndpoints.getAllStudents(pageNum, size), {});
-      const data = res.data?.data ?? {};
-      setStudents(data.Data ?? []);
-      setTotal(data.Total ?? 0);
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || "Failed to load students");
-    } finally {
-      setTableLoading(false);
-    }
-  }, []);
+  const fetchStudents = useCallback(
+    async (pageNum: number, size: number, filters?: StudentFeesSearchFilters) => {
+      setTableLoading(true);
+      try {
+        // POST http://flintinfotech-dev.in:8443/jnpa-school-project/student/getAllStudentsByFilter?page=..&size=..&paginate=true
+        // Filters go in the request body — same endpoint/pattern used by
+        // StudentManagement's search bar. paymentStatus assumes the backend
+        // accepts it as a filter key on this endpoint (it lives on the
+        // nested fee record); confirm with the API team and rename here if
+        // it expects a different key (e.g. "status" or "feeStatus").
+        const res = await api.post(apiEndpoints.getAllStudents(pageNum, size), {
+          firstName: filters?.firstName || undefined,
+          lastName: filters?.lastName || undefined,
+          paymentStatus: filters?.paymentStatus || undefined,
+        });
+        const data = res.data?.data ?? {};
+        setStudents(data.Data ?? []);
+        setTotal(data.Total ?? 0);
+      } catch (error: any) {
+        message.error(error?.response?.data?.message || "Failed to load students");
+      } finally {
+        setTableLoading(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
-    fetchStudents(page, pageSize);
+    fetchStudents(page, pageSize, searchFilters);
+    // searchFilters intentionally left out of deps — search only fires on button click, not per keystroke
   }, [page, pageSize, fetchStudents]);
+
+  const handleFilterChange = (field: keyof StudentFeesSearchFilters, value: string) => {
+    setSearchFilters((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSearch = () => {
+    setPage(0);
+    fetchStudents(0, pageSize, searchFilters);
+  };
+
+  const handleResetFilters = () => {
+    const cleared: StudentFeesSearchFilters = {
+      firstName: "",
+      lastName: "",
+      paymentStatus: "",
+    };
+    setSearchFilters(cleared);
+    setPage(0);
+    fetchStudents(0, pageSize, cleared);
+  };
 
   const openEditDrawer = async (record: StudentRow) => {
     setSelectedStudent(record);
@@ -976,7 +1067,7 @@ export default function StudentFeesManagement() {
 
       message.success(hasExistingFees ? "Fee records updated successfully" : "Fee records saved successfully");
       closeDrawer();
-      fetchStudents(page, pageSize);
+      fetchStudents(page, pageSize, searchFilters);
     } catch (error: any) {
       message.error(error?.response?.data?.message || "Failed to save fee record");
     } finally {
@@ -991,7 +1082,7 @@ export default function StudentFeesManagement() {
       if (selectedStudent) {
         openEditDrawer(selectedStudent);
       }
-      fetchStudents(page, pageSize);
+      fetchStudents(page, pageSize, searchFilters);
     } catch (error: any) {
       message.error(error?.response?.data?.message || "Failed to delete fee record");
     }
@@ -1024,6 +1115,56 @@ export default function StudentFeesManagement() {
           color: rgba(0, 0, 0, 0.88) !important;
         }
       `}</style>
+
+      {/* Search Bar */}
+      <Row gutter={[12, 12]} style={{ padding: "16px 0" }}>
+        <Col xs={24} sm={12} md={6} lg={5}>
+          <Input
+            placeholder="First Name"
+            value={searchFilters.firstName}
+            onChange={(e) => handleFilterChange("firstName", e.target.value)}
+            style={{ width: "100%" }}
+            allowClear
+          />
+        </Col>
+
+        <Col xs={24} sm={12} md={6} lg={5}>
+          <Input
+            placeholder="Last Name"
+            value={searchFilters.lastName}
+            onChange={(e) => handleFilterChange("lastName", e.target.value)}
+            style={{ width: "100%" }}
+            allowClear
+          />
+        </Col>
+
+        <Col xs={24} sm={12} md={6} lg={5}>
+          <Select
+            placeholder="Payment Status"
+            value={searchFilters.paymentStatus || undefined}
+            onChange={(value) => handleFilterChange("paymentStatus", value || "")}
+            style={{ width: "100%" }}
+            allowClear
+          >
+            {PAYMENT_STATUS_OPTIONS.map((status) => (
+              <Option key={status} value={status}>
+                {status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()}
+              </Option>
+            ))}
+          </Select>
+        </Col>
+
+        <Col xs={24} sm={24} md={24} lg={9}>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
+              Search
+            </Button>
+            <Button icon={<ReloadOutlined />} onClick={handleResetFilters}>
+              Reset
+            </Button>
+          </div>
+        </Col>
+      </Row>
 
       <StudentFeesTable
         data={students}
