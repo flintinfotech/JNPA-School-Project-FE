@@ -716,6 +716,9 @@ const TeacherSubject: React.FC = () => {
 
         {isMobile ? (
           <>
+            <div style={{ margin: "8px 2px", fontSize: 12, color: "#888" }}>
+              Total: {pagination.total}
+            </div>
             {teachers.map((teacher, index) => (
               <Card
                 key={teacher.employeeDetailsId}
@@ -783,23 +786,26 @@ const TeacherSubject: React.FC = () => {
             ))}
           </>
         ) : (
-          <Table
-            rowKey="employeeDetailsId"
-            columns={columns}
-            dataSource={teachers}
-            loading={loading}
-            bordered
-            pagination={{
-              current: pagination.current,
-              pageSize: pagination.pageSize,
-              total: pagination.total,
-              showSizeChanger: true,
+          <div className="table-wrapper">
+            <Table
+              rowKey="employeeDetailsId"
+              columns={columns}
+              dataSource={teachers}
+              loading={loading}
+              bordered
+              pagination={{
+                current: pagination.current,
+                pageSize: pagination.pageSize,
+                total: pagination.total,
+                showSizeChanger: true,
+                showTotal: (total) => `Total: ${total}`,
 
-              onChange: (page, pageSize) => {
-                loadTeachers(page, pageSize);
-              },
-            }}
-          />
+                onChange: (page, pageSize) => {
+                  loadTeachers(page, pageSize);
+                },
+              }}
+            />
+          </div>
         )}
       </Card>
 

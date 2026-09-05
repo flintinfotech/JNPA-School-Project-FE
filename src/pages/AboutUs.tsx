@@ -1,20 +1,134 @@
-import { useState } from 'react';
-import schoolLogo from '../assets/SchoolLogo.avif';
-import schoolBuilding from '../assets/Img1.webp';
+import { useState } from "react";
+import schoolLogo from "../assets/SchoolLogo.avif";
+import schoolBuilding from "../assets/Img1.webp";
+import inspirationImage from "../assets/Img2.webp"; // TODO: replace with the real "Our Inspiration" image
 
 const sidebarItems = [
-  'About Us',
-  'Our Inspiration',
-  'Message from Founder & Chairperson and Vice-Chairperson',
-  'Vision, Mission, Motto, Values & Objectives',
-  'JNPV Philosophy',
-  'JNPV Strategic Plan',
-  'Unique Features',
+  "About Us",
+  "Our Inspiration",
+  "Message from Founder & Chairperson and Vice-Chairperson",
+  "Vision, Mission, Motto, Values & Objectives",
+  "JNPV Philosophy",
+  "JNPV Strategic Plan",
+  "Unique Features",
 ];
 
+// Dummy content per sidebar item — replace each "title" and "columns" text
+// with the real content later. Each entry maps 1:1 with an item in sidebarItems.
+const sectionContent: Record<
+  string,
+  { title: string; image?: string; columns: string[][] }
+> = {
+  "About Us": {
+    title: "THE SCHOOL",
+    columns: [
+      [
+        `Jawaharlal Nehru Port Vidyalaya is co-educational International Day School established in 2003, with a view to offering world-class educational opportunities in the city of Mumbai.`,
+        `The School is affiliated to the CISCE (Council for the Indian School Certificate Examinations) and CAIE (Cambridge Assessment International Education), and prepares students for the ICSE (Indian Certificate of Secondary Education) and the IGCSE (International General Certificate of Secondary Education) Year 10 examinations. For Years 11 and 12, we are authorised by the IB (International Baccalaureate) to offer the IB Diploma Programme.`,
+      ],
+      [
+        `JNPV is recognised as a Microsoft Showcase School, thus joining a select league of schools globally for their vision and innovation in teaching, learning, and preparing students for the future.`,
+        `The student body, comprising 1,087 students, reflects the cultural diversity of India. The school has 187 teachers, with 27 being expatriates. With a teacher-student ratio of 1:6, every child enjoys individualised attention.`,
+        `The School is recognised as India's premier international school, and is also among the top IB schools globally.`,
+      ],
+    ],
+  },
+  "Our Inspiration": {
+    title: "OUR INSPIRATION",
+    image: inspirationImage,
+    columns: [
+      [
+        `At JNPV School, our inspiration comes from the belief that every child is unique, capable, and full of possibilities. Education is not simply about achieving high marks or completing a syllabus; it is about discovering one's strengths, developing confidence, building strong values, and preparing young minds to face the future with courage and responsibility.
+
+         We believe that every student deserves an environment where they feel encouraged to ask questions, explore new ideas, express themselves freely, and learn from their experiences. Our aim is to transform natural curiosity into meaningful learning and help students understand that mistakes are not failures, but valuable opportunities to learn and grow.
+
+         Our inspiration is deeply rooted in the idea of holistic education. Along with academic knowledge, we focus on developing creativity, critical thinking, communication skills, discipline, teamwork, leadership, empathy, and respect for others. We encourage our students to look beyond textbooks and connect their learning with the world around them.`,
+      ],
+      [
+        `At JNPV School, we are inspired by the dreams and aspirations of our students. Every achievement, every new idea, every question, and every small step forward motivates us to create better learning opportunities. We strive to guide students not only toward academic success but also toward becoming confident individuals, responsible citizens, compassionate human beings, and future leaders.
+
+        Our teachers play an important role in this journey. With dedication, patience, and continuous encouragement, they create a supportive atmosphere where students can recognize their potential and work toward their goals. We believe that a great teacher does more than teach a lesson—they inspire a student to believe in themselves.
+
+        We are also inspired by the partnership between students, parents, teachers, and the community. When these four pillars work together, children receive the support and encouragement they need to flourish. Through this strong partnership, we aim to build a school culture based on trust, respect, collaboration, and continuous improvement.`,
+      ],
+    ],
+  },
+  "Message from Founder & Chairperson and Vice-Chairperson": {
+    title: "MESSAGE FROM FOUNDER & CHAIRPERSON AND VICE-CHAIRPERSON",
+    columns: [
+      [
+        `At JNPV School, we believe that every child has unique potential and deserves the right environment to learn, grow, and succeed. Our aim is to provide quality education along with strong values, confidence, creativity, discipline, and leadership skills.
+
+        We strive to create a learning environment where students are encouraged to explore, think independently, overcome challenges, and develop a lifelong love for learning.`,
+      ],
+      [
+        `We believe that true education goes beyond academics—it shapes character and prepares students to become responsible and compassionate citizens.
+
+          With the dedicated efforts of our teachers, the support of parents, and the enthusiasm of our students, we are committed to building a brighter future for every child.
+
+          Together, let us inspire our students to dream big, learn continuously, and confidently shape a better tomorrow.`,
+      ],
+    ],
+  },
+  "Vision, Mission, Motto, Values & Objectives": {
+    title: "VISION, MISSION, MOTTO, VALUES & OBJECTIVES",
+    columns: [
+      [
+        ` Our vision is to create a learning environment where every child is encouraged to discover their potential, develop confidence, and grow into a knowledgeable, responsible, and compassionate individual. We aim to prepare students to face the future with courage, creativity, and a strong sense of purpose. 
+        Our mission is to provide quality and holistic education that develops students academically, socially, emotionally, and morally. We focus on creating a safe and supportive environment where students can learn with curiosity, think independently, develop essential skills, and build strong values for life.
+        Our motto reflects our commitment to helping students gain knowledge, grow as individuals, develop leadership qualities, and inspire others through their actions and achievements.`,
+      ],
+      [
+        `We believe that education must be built on strong values. Honesty, integrity, respect, discipline, compassion, teamwork, creativity, and excellence guide our students in their everyday learning and interactions. These values help them become not only successful learners but also responsible and caring members of society.
+        Our objective is to provide students with opportunities to explore their interests, develop their talents, improve their communication and critical-thinking skills, and build confidence. We aim to encourage academic excellence while nurturing character, leadership, creativity, responsibility, and lifelong learning, preparing every student to contribute positively to society.`,
+      ],
+    ],
+  },
+  "JNPV Philosophy": {
+    title: "JNPV PHILOSOPHY",
+    columns: [
+      [
+        `At JNPV School, we believe that every child is unique and has the potential to achieve great things. Our philosophy is centered on holistic education, where academic knowledge is combined with strong values, creativity, confidence, discipline, and life skills.
+
+        We believe that education should encourage students to think, explore, question, create, and learn from their experiences.`,
+      ],
+      [
+        `Our teachers guide and inspire students to discover their strengths while providing a safe, supportive, and inclusive environment for their overall development.
+
+        We focus on developing knowledgeable minds, strong character, compassionate hearts, and responsible attitudes. Through collaboration between students, teachers, parents, and the community, we aim to prepare young learners to face future challenges with confidence and contribute positively to society. `,
+      ],
+    ],
+  },
+  "JNPV Strategic Plan": {
+    title: "JNPV STRATEGIC PLAN",
+    columns: [
+      [
+        `The JNPV Strategic Plan is designed to provide a clear direction for the school’s continuous growth and development. Our focus is on creating a strong educational foundation that combines academic excellence, holistic development, innovation, values, and future-ready skills.
+
+          We aim to improve teaching and learning through modern educational approaches, encourage the effective use of technology, and provide students with opportunities to develop their creativity, communication, leadership, and critical-thinking abilities. At the same time, we are committed to supporting our teachers through continuous professional development and creating a positive environment for their growth.`,
+      ],
+      [
+        `Strong collaboration between students, teachers, parents, and the wider community remains an important part of our plan. Through shared responsibility and continuous improvement, we strive to build a school culture based on respect, discipline, integrity, inclusion, and excellence.
+
+        Our strategic plan ultimately aims to ensure that every student receives the guidance, opportunities, and encouragement needed to discover their strengths, overcome challenges, and become confident, responsible, compassionate, and successful individuals prepared for the future.`,
+      ],
+    ],
+  },
+  "Unique Features": {
+    title: "UNIQUE FEATURES",
+    columns: [
+      [`At JNPV School, we are committed to providing an educational experience that goes beyond conventional classroom learning. Our approach focuses on the overall development of every child, combining academic excellence with creativity, technology, values, life skills, and personal growth. We believe that every student has unique abilities and deserves the right opportunities, guidance, and encouragement to discover and develop those strengths.
+
+        Our learning environment encourages students to think independently, ask questions, explore new ideas, solve problems, and learn through practical experiences. With dedicated teachers, modern teaching methods, technology-enabled learning, and a strong focus on co-curricular activities, we provide students with opportunities to develop confidence, communication, teamwork, leadership, and creativity.`],
+      [`Along with academic knowledge, we emphasize discipline, honesty, respect, compassion, responsibility, and integrity. We believe these values help students become not only successful in their studies and careers but also responsible and caring members of society.
+
+Through strong collaboration between students, teachers, parents, and the community, JNPV School strives to create a safe, inclusive, supportive, and inspiring atmosphere where every child can learn and grow. Our ultimate goal is to prepare students with the knowledge, skills, confidence, character, and adaptability they need to face the future and make a meaningful contribution to the world.`],
+    ],
+  },
+};
 
 export default function AboutUs() {
-  const [activeItem, setActiveItem] = useState('About Us');
+  const [activeItem, setActiveItem] = useState("About Us");
 
   return (
     <div className="dais-about">
@@ -308,7 +422,6 @@ export default function AboutUs() {
               className="brand-logo"
             />
           </div>
-
         </div>
 
         <div className="breadcrumb-wrap">
@@ -318,8 +431,8 @@ export default function AboutUs() {
 
       <div className="hero-image">
         <img
-          src={schoolBuilding}
-          alt="Dhirubhai Ambani International School building"
+          src={sectionContent[activeItem].image ?? schoolBuilding}
+          alt={sectionContent[activeItem].title}
         />
       </div>
 
@@ -328,7 +441,7 @@ export default function AboutUs() {
           {sidebarItems.map((item) => (
             <button
               key={item}
-              className={`sidebar-item ${item === activeItem ? 'active' : ''}`}
+              className={`sidebar-item ${item === activeItem ? "active" : ""}`}
               onClick={() => setActiveItem(item)}
             >
               <span className="chevron">›</span>
@@ -338,50 +451,16 @@ export default function AboutUs() {
         </aside>
 
         <main className="main-content">
-          <h2 className="section-title">THE SCHOOL</h2>
+          <h2 className="section-title">{sectionContent[activeItem].title}</h2>
 
           <div className="text-columns">
-            <div>
-              <p>
-                Jawaharlal Nehru Port Vidyalaya is
-                co-educational International Day School established in 2003,
-                with a view to offering world-class educational opportunities
-                in the city of Mumbai.
-              </p>
-              <p>
-                The School is affiliated to the CISCE{' '}
-                <em>(Council for the Indian School Certificate Examinations)</em>{' '}
-                and CAIE <em>(Cambridge Assessment International Education)</em>,
-                and prepares students for the ICSE{' '}
-                <em>(Indian Certificate of Secondary Education)</em> and the
-                IGCSE{' '}
-                <em>
-                  (International General Certificate of Secondary Education)
-                </em>{' '}
-                Year 10 examinations. For Years 11 and 12, we are authorised
-                by the IB <em>(International Baccalaureate)</em> to offer the
-                IB Diploma Programme.
-              </p>
-            </div>
-
-            <div>
-              <p>
-                JNPV is recognised as a Microsoft Showcase School, thus
-                joining a select league of schools globally for their vision
-                and innovation in teaching, learning, and preparing students
-                for the future.
-              </p>
-              <p>
-                The student body, comprising 1,087 students, reflects the
-                cultural diversity of India. The school has 187 teachers,
-                with 27 being expatriates. With a teacher-student ratio of
-                1:6, every child enjoys individualised attention.
-              </p>
-              <p>
-                The School is recognised as India's premier international
-                school, and is also among the top IB schools globally.
-              </p>
-            </div>
+            {sectionContent[activeItem].columns.map((column, colIndex) => (
+              <div key={colIndex}>
+                {column.map((paragraph, pIndex) => (
+                  <p key={pIndex}>{paragraph}</p>
+                ))}
+              </div>
+            ))}
           </div>
         </main>
       </div>

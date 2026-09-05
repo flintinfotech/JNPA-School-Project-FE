@@ -3,6 +3,7 @@ import {
   Button,
   Card,
   Col,
+  DatePicker,
   Divider,
   Drawer,
   Empty,
@@ -20,6 +21,7 @@ import {
   EditOutlined,
   PlusOutlined,
 } from "@ant-design/icons";
+import dayjs, { Dayjs } from "dayjs";
 
 import CommonTable from "../components/commonTable";
 import api from "../lib/axios";
@@ -51,6 +53,8 @@ interface SchoolExpenseRow {
   quantity: number;
   price: number;
   total: number | null;
+  // 🆕 New field, inserted before "status" everywhere in this screen.
+  purchaseDate?: string;
   status: string;
   [key: string]: any;
 }
@@ -326,6 +330,8 @@ export default function SchoolExpenses() {
       quantity: 1,
       price: 0,
       total: 0,
+      // 🆕 Defaults to today — the user can still change it.
+      purchaseDate: dayjs(),
       status: "PAID",
     });
 
@@ -398,6 +404,11 @@ export default function SchoolExpenses() {
             ? record.total
             : Number(record.quantity || 0) *
               Number(record.price || 0),
+
+        // 🆕 DatePicker needs a Dayjs instance, not a plain string.
+        purchaseDate: record.purchaseDate
+          ? dayjs(record.purchaseDate)
+          : undefined,
 
         status: record.status,
       });
@@ -502,6 +513,12 @@ export default function SchoolExpenses() {
         const total =
           quantity * price;
 
+        // 🆕 Format the Dayjs value from the DatePicker into a plain
+        // "YYYY-MM-DD" string for the backend.
+        const purchaseDate: string | undefined = values.purchaseDate
+          ? (values.purchaseDate as Dayjs).format("YYYY-MM-DD")
+          : undefined;
+
         // ======================================================
         // UPDATE
         // ======================================================
@@ -515,11 +532,21 @@ export default function SchoolExpenses() {
 
             quantity,
 
+            // 🛠️ FIX — total was missing from the UPDATE payload, so the
+            // backend stored it as null on every edit. That null total is
+            // why the dashboard's "Total Count Expenses" and "Paid
+            // Expense / Total Expense" cards were showing 0 — they sum
+            // this column server-side, and null rows don't contribute.
+            total,
+
             schoolExpenseId:
               editingExpenseId,
 
             purchaseId:
               Number(values.purchaseId),
+
+            // 🆕
+            purchaseDate,
 
             status: values.status,
           };
@@ -575,6 +602,9 @@ export default function SchoolExpenses() {
 
           purchaseId:
             Number(values.purchaseId),
+
+          // 🆕
+          purchaseDate,
 
           status: values.status,
         };
@@ -781,6 +811,16 @@ export default function SchoolExpenses() {
           total || 0
         ).toFixed(2)}`;
       },
+    },
+
+    // 🆕 New column — inserted right before "Status".
+    {
+      title: "Purchase Date",
+      dataIndex: "purchaseDate",
+      key: "purchaseDate",
+
+      render: (value: string) =>
+        value ? dayjs(value).format("DD MMM, YYYY") : "-",
     },
 
     {
@@ -1068,6 +1108,26 @@ export default function SchoolExpenses() {
                           ).toFixed(2)}
                         </div>
 
+                      </div>
+
+                    </div>
+
+                    {/* 🆕 Purchase Date — placed right before the Total /
+                        Status block, mirroring the table where the column
+                        sits immediately before "Status". */}
+
+                    <div className="mt-3">
+
+                      <div className="text-xs text-gray-500">
+                        Purchase Date
+                      </div>
+
+                      <div className="font-medium">
+                        {record.purchaseDate
+                          ? dayjs(record.purchaseDate).format(
+                              "DD MMM, YYYY"
+                            )
+                          : "-"}
                       </div>
 
                     </div>
@@ -1436,7 +1496,7 @@ export default function SchoolExpenses() {
             </Row>
 
             {/* ==================================================
-                TOTAL / STATUS
+                TOTAL / PURCHASE DATE
             =================================================== */}
 
             <Row gutter={12}>
@@ -1459,7 +1519,41 @@ export default function SchoolExpenses() {
 
               </Col>
 
+              {/* 🆕 Purchase Date — placed here, directly before the
+                  Status field below, per the requested field order. */}
               <Col span={12}>
+
+                <Form.Item
+                  label="Purchase Date"
+                  name="purchaseDate"
+                  rules={[
+                    {
+                      required: true,
+                      message:
+                        "Please select purchase date",
+                    },
+                  ]}
+                >
+
+                  <DatePicker
+                    className="w-full"
+                    format="DD/MM/YYYY"
+                    placeholder="Select date"
+                  />
+
+                </Form.Item>
+
+              </Col>
+
+            </Row>
+
+            {/* ==================================================
+                STATUS
+            =================================================== */}
+
+            <Row gutter={12}>
+
+              <Col span={24}>
 
                 <Form.Item
                   label="Status"

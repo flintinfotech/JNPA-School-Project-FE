@@ -427,32 +427,44 @@ const SubjectAssignment: React.FC = () => {
             </Card>
           ))}
 
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "8px 2px" }}>
+            <span style={{ fontSize: 12, color: "#888" }}>Total: {pagination.total}</span>
+            <div style={{ display: "flex", gap: 8 }}>
+              <Button
+                size="small"
+                disabled={pagination.current <= 1}
+                onClick={() => loadClassMaster(pagination.current - 1, pagination.pageSize)}
+              >
+                Prev
+              </Button>
+              <Button
+                size="small"
+                disabled={pagination.current * pagination.pageSize >= pagination.total}
+                onClick={() => loadClassMaster(pagination.current + 1, pagination.pageSize)}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="table-wrapper">
           <Table
-            style={{ display: "none" }}
+            rowKey="classMasterId"
+            loading={loading}
+            columns={columns}
+            dataSource={classList}
+            bordered
             pagination={{
               current: pagination.current,
               pageSize: pagination.pageSize,
               total: pagination.total,
               showSizeChanger: true,
+              showTotal: (total) => `Total: ${total}`,
               onChange: (page, pageSize) => loadClassMaster(page, pageSize),
             }}
           />
         </div>
-      ) : (
-        <Table
-          rowKey="classMasterId"
-          loading={loading}
-          columns={columns}
-          dataSource={classList}
-          bordered
-          pagination={{
-            current: pagination.current,
-            pageSize: pagination.pageSize,
-            total: pagination.total,
-            showSizeChanger: true,
-            onChange: (page, pageSize) => loadClassMaster(page, pageSize),
-          }}
-        />
       )}
 
       <Drawer
