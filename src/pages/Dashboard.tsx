@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { Briefcase, UserCheck, Calculator } from "lucide-react";
+import {
+  Briefcase,
+  UserCheck,
+  Calculator,
+  Receipt,
+  Wallet,
+  ListChecks,
+} from "lucide-react";
 import {
   PieChart,
   Pie,
@@ -17,7 +24,17 @@ import {
   getAllStudentsCount,
   getAllUsersCount,
   getAllAdmissionInquiryCount,
+  getAllExpensesCount,
+  getAllPaidExpensesTotal,
+  getAllExpensesTotal,
+  getAllTotalPaidExpensesCountAndTotalExpensesCount,
 } from "../services/dashboardService";
+
+// ── Currency formatter (₹ with Indian digit grouping) ───
+const formatCurrency = (value?: number | null): string => {
+  if (value === undefined || value === null || isNaN(value)) return "-";
+  return `\u20b9${Number(value).toLocaleString("en-IN")}`;
+};
 
 // ── Stat card (Teacher / Parent / Accountant) ───────────
 interface StatCardProps {
@@ -326,6 +343,41 @@ const Dashboard = () => {
   const [inquiryLoading, setInquiryLoading] = useState(true);
   const [inquiryError, setInquiryError] = useState<string | null>(null);
 
+  // ── Expenses ─────────────────────────────────────────────
+  // "Total Count Expenses" card — the NUMBER of expense records
+  // (getAllExpensesCount), not a rupee amount.
+  const [expensesCount, setExpensesCount] = useState<number | null>(null);
+  const [expensesCountLoading, setExpensesCountLoading] = useState(true);
+  const [expensesCountError, setExpensesCountError] = useState<string | null>(
+    null
+  );
+
+  // "Paid Expense / Total Expense" card — paid amount (getAllPaidExpensesTotal)
+  // and total amount (getAllExpensesTotal) shown together.
+  const [paidExpensesAmount, setPaidExpensesAmount] = useState<number | null>(
+    null
+  );
+  const [totalExpensesAmount, setTotalExpensesAmount] = useState<
+    number | null
+  >(null);
+  const [expensesAmountLoading, setExpensesAmountLoading] = useState(true);
+  const [expensesAmountError, setExpensesAmountError] = useState<
+    string | null
+  >(null);
+
+  // 🆕 "Paid vs Total" card — expense record COUNTS (not amounts), from
+  // the combined endpoint: totalPaidExpensesCount / totalExpensesCount.
+  const [paidExpensesCount, setPaidExpensesCount] = useState<number | null>(
+    null
+  );
+  const [totalExpensesCountBreakdown, setTotalExpensesCountBreakdown] =
+    useState<number | null>(null);
+  const [expensesBreakdownLoading, setExpensesBreakdownLoading] =
+    useState(true);
+  const [expensesBreakdownError, setExpensesBreakdownError] = useState<
+    string | null
+  >(null);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -405,9 +457,74 @@ const Dashboard = () => {
       }
     };
 
+    const fetchExpensesCount = async () => {
+      try {
+        setExpensesCountLoading(true);
+        setExpensesCountError(null);
+
+        const res = await getAllExpensesCount();
+
+        if (isMounted) {
+          const data = res.data?.data;
+          setExpensesCount(data?.["Total Count"] ?? 0);
+        }
+      } catch (error) {
+        if (isMounted) setExpensesCountError("Failed to load expenses count");
+      } finally {
+        if (isMounted) setExpensesCountLoading(false);
+      }
+    };
+
+    const fetchExpensesAmounts = async () => {
+      try {
+        setExpensesAmountLoading(true);
+        setExpensesAmountError(null);
+
+        const [paidRes, totalRes] = await Promise.all([
+          getAllPaidExpensesTotal(),
+          getAllExpensesTotal(),
+        ]);
+
+        if (isMounted) {
+          setPaidExpensesAmount(
+            paidRes.data?.data?.["Total Paid Expenses"] ?? 0
+          );
+          setTotalExpensesAmount(totalRes.data?.data?.["Total Expenses"] ?? 0);
+        }
+      } catch (error) {
+        if (isMounted)
+          setExpensesAmountError("Failed to load expense amounts");
+      } finally {
+        if (isMounted) setExpensesAmountLoading(false);
+      }
+    };
+
+    const fetchExpensesBreakdown = async () => {
+      try {
+        setExpensesBreakdownLoading(true);
+        setExpensesBreakdownError(null);
+
+        const res = await getAllTotalPaidExpensesCountAndTotalExpensesCount();
+
+        if (isMounted) {
+          const data = res.data?.data;
+          setPaidExpensesCount(data?.totalPaidExpensesCount ?? 0);
+          setTotalExpensesCountBreakdown(data?.totalExpensesCount ?? 0);
+        }
+      } catch (error) {
+        if (isMounted)
+          setExpensesBreakdownError("Failed to load expenses breakdown");
+      } finally {
+        if (isMounted) setExpensesBreakdownLoading(false);
+      }
+    };
+
     fetchStudentsCount();
     fetchDashboardRoles();
     fetchInquiryCount();
+    fetchExpensesCount();
+    fetchExpensesAmounts();
+    fetchExpensesBreakdown();
 
     return () => {
       isMounted = false;
@@ -420,6 +537,9 @@ const Dashboard = () => {
     parentsError,
     accountantsError,
     inquiryError,
+    expensesCountError,
+    expensesAmountError,
+    expensesBreakdownError,
   ].filter(Boolean);
 
   return (
@@ -434,8 +554,8 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Stat cards row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
+      {/* Stat cards — row 1: roles */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-3 sm:mb-4">
         <StatCard
           label="Total Teachers"
           value={employeesCount ?? "-"}
@@ -456,6 +576,50 @@ const Dashboard = () => {
           loading={accountantsLoading}
           icon={<Calculator size={20} />}
           colorClasses="bg-gradient-to-br from-teal-500 to-teal-600 text-white"
+        />
+      </div>
+
+      {/* Stat cards — row 2: expenses */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
+        {/* 🆕 Total Count Expenses — shows the COUNT of expense records
+            (getAllExpensesCount → "Total Count"), not a rupee amount. */}
+        <StatCard
+          label="Total Count Expenses"
+          value={expensesCount ?? "-"}
+          loading={expensesCountLoading}
+          icon={<Receipt size={20} />}
+          colorClasses="bg-gradient-to-br from-blue-500 to-blue-600 text-white"
+        />
+        {/* 🆕 Paid Expense / Total Expense — the old "Total Paid Amount"
+            heading is gone; the label now reads "Paid Expense / Total
+            Expense" and the value shows both amounts as paid / total,
+            sourced from getAllPaidExpensesTotal + getAllExpensesTotal. */}
+        <StatCard
+          label=" Total Expense Amount / Paid Expense Amount "
+          value={
+            expensesAmountLoading
+              ? "-"
+              : `${formatCurrency(totalExpensesAmount)} / ${formatCurrency(
+                   paidExpensesAmount
+                )}`
+          }
+          loading={expensesAmountLoading}
+          icon={<Wallet size={20} />}
+          colorClasses="bg-gradient-to-br from-pink-500 to-rose-500 text-white"
+        />
+        {/* 🆕 Paid vs Total — expense record COUNTS (not amounts), from
+            the combined getAllTotalPaidExpensesCountAndTotalExpensesCount
+            endpoint: totalPaidExpensesCount / totalExpensesCount. */}
+        <StatCard
+          label=" Total Expense vs Paid Expense"
+          value={
+            expensesBreakdownLoading
+              ? "-"
+              : `${totalExpensesCountBreakdown ?? 0} / ${  paidExpensesCount?? 0}`
+          }
+          loading={expensesBreakdownLoading}
+          icon={<ListChecks size={20} />}
+          colorClasses="bg-gradient-to-br from-green-500 to-emerald-600 text-white"
         />
       </div>
 

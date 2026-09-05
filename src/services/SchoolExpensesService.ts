@@ -1,4 +1,3 @@
-
 import axiosInstance from "../lib/axios";
 import { apiEndpoints } from "../services/apiEndpoints";
 
@@ -20,6 +19,8 @@ export interface SchoolExpensesDTO {
   quantity: number;
   price: number;
   total: number | null;
+  // 🆕 New field, inserted before "status".
+  purchaseDate: string;
   status: string;
 }
 
@@ -50,6 +51,8 @@ export const saveSchoolExpenses = async (
     quantity: number;
     total: number;
     purchaseId: number;
+    // 🆕
+    purchaseDate: string;
     status: string;
   }
 ): Promise<SchoolExpensesResponse> => {
@@ -83,8 +86,13 @@ export const updateSchoolExpenses = async (
   payload: {
     price: number;
     quantity: number;
+    // 🛠️ FIX — total must be sent on update too, or the backend stores
+    // it as null and dashboard expense totals come out wrong.
+    total: number;
     schoolExpenseId: number;
     purchaseId: number;
+    // 🆕
+    purchaseDate: string;
     status: string;
   }
 ): Promise<SchoolExpensesResponse> => {
@@ -126,4 +134,3 @@ export const getAllSchoolExpensesByFilter = async (
 
   return response.data;
 };
-

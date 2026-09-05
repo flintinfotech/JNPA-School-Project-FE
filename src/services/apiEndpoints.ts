@@ -142,6 +142,19 @@ getStudentByUserId: (userId: number | string) =>
 getAllCurrentYearStudentsData: (page: number, size: number) =>
   `/jnpa-school-project/student/getAllCurrentYearStudentsData?page=${page}&size=${size}&sort=studentId,desc&paginate=true`,
 
+  // Dashboard — Expenses
+  getAllExpensesCount: () =>
+    "/jnpa-school-project/dashboard/getAllExpensesCount",
+
+  getAllPaidExpensesTotal: () =>
+    "/jnpa-school-project/dashboard/getAllPaidExpensesTotal",
+
+  getAllExpensesTotal: () =>
+    "/jnpa-school-project/dashboard/getAllExpensesTotal",
+
+  getAllTotalPaidExpensesCountAndTotalExpensesCount: () =>
+    "/jnpa-school-project/dashboard/getAllTotalPaidExpensesCountAndTotalExpensesCount",
+
   // ===============================
   // Student Result
   // ===============================

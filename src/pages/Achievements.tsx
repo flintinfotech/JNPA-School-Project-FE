@@ -702,36 +702,40 @@ export default function Achievements() {
       <Card >
         {renderFilterBar()}
 
-        <Table
-          rowKey="studentId"
-          columns={columns}
-          dataSource={displayedStudents}
-          loading={loading}
-          bordered
-          pagination={{
-            current:
-              pagination.current,
+        <div className="table-wrapper">
+          <Table
+            rowKey="studentId"
+            columns={columns}
+            dataSource={displayedStudents}
+            loading={loading}
+            bordered
+            pagination={{
+              current:
+                pagination.current,
 
-            pageSize:
-              pagination.pageSize,
+              pageSize:
+                pagination.pageSize,
 
-            total:
-              pagination.total,
+              total:
+                pagination.total,
 
-            showSizeChanger: true,
+              showSizeChanger: true,
 
-            onChange: (
-              page,
-              pageSize
-            ) => {
-              loadAchievements(
+              showTotal: (total) => `Total: ${total}`,
+
+              onChange: (
                 page,
-                pageSize,
-                filters
-              );
-            },
-          }}
-        />
+                pageSize
+              ) => {
+                loadAchievements(
+                  page,
+                  pageSize,
+                  filters
+                );
+              },
+            }}
+          />
+        </div>
       </Card>
 
       {/* ---------------------------------------------

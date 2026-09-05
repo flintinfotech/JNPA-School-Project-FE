@@ -441,22 +441,25 @@ export default function Results() {
           </div>
         </div>
       ) : (
-        <Table
-          rowKey="studentId"
-          columns={columns}
-          dataSource={displayedStudents}
-          loading={loading}
-          bordered
-          pagination={{
-            current: pagination.current,
-            pageSize: pagination.pageSize,
-            total: pagination.total,
-            showSizeChanger: true,
-            onChange: (page, pageSize) => {
-              loadResults(page, pageSize, filters);
-            },
-          }}
-        />
+        <div className="table-wrapper">
+          <Table
+            rowKey="studentId"
+            columns={columns}
+            dataSource={displayedStudents}
+            loading={loading}
+            bordered
+            pagination={{
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              total: pagination.total,
+              showSizeChanger: true,
+              showTotal: (total) => `Total: ${total}`,
+              onChange: (page, pageSize) => {
+                loadResults(page, pageSize, filters);
+              },
+            }}
+          />
+        </div>
       )}
 
       <ResultDrawer

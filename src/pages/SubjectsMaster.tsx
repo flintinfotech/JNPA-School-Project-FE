@@ -217,21 +217,24 @@ const SubjectMaster: React.FC = () => {
         }
       >
         {screens.md ? (
-          <Table
-            rowKey="subjectMasterId"
-            columns={columns}
-            dataSource={subjects}
-            loading={loading}
-            pagination={{
-              current: pagination.current,
-              pageSize: pagination.pageSize,
-              total: pagination.total,
-              showSizeChanger: true,
-              onChange: (page, pageSize) => {
-                loadSubjects(page, pageSize);
-              },
-            }}
-          />
+          <div className="table-wrapper">
+            <Table
+              rowKey="subjectMasterId"
+              columns={columns}
+              dataSource={subjects}
+              loading={loading}
+              pagination={{
+                current: pagination.current,
+                pageSize: pagination.pageSize,
+                total: pagination.total,
+                showSizeChanger: true,
+                showTotal: (total) => `Total: ${total}`,
+                onChange: (page, pageSize) => {
+                  loadSubjects(page, pageSize);
+                },
+              }}
+            />
+          </div>
         ) : (
           <>
             {subjects.map((subject, index) => (
@@ -296,24 +299,29 @@ const SubjectMaster: React.FC = () => {
             <div
               style={{
                 display: "flex",
-                justifyContent: "center",
+                justifyContent: "space-between",
+                alignItems: "center",
                 gap: 10,
                 marginTop: 20,
               }}
             >
-              <Button
-                disabled={pagination.current === 1}
-                onClick={() => loadSubjects(pagination.current - 1, pagination.pageSize)}
-              >
-                Previous
-              </Button>
+              <span style={{ fontSize: 12, color: "#888" }}>Total: {pagination.total}</span>
 
-              <Button
-                disabled={pagination.current * pagination.pageSize >= pagination.total}
-                onClick={() => loadSubjects(pagination.current + 1, pagination.pageSize)}
-              >
-                Next
-              </Button>
+              <div style={{ display: "flex", gap: 10 }}>
+                <Button
+                  disabled={pagination.current === 1}
+                  onClick={() => loadSubjects(pagination.current - 1, pagination.pageSize)}
+                >
+                  Previous
+                </Button>
+
+                <Button
+                  disabled={pagination.current * pagination.pageSize >= pagination.total}
+                  onClick={() => loadSubjects(pagination.current + 1, pagination.pageSize)}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           </>
         )}

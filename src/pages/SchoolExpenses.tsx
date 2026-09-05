@@ -1,9 +1,28 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Button,
+  Card,
+  Col,
+  DatePicker,
+  Divider,
+  Drawer,
+  Empty,
+  Form,
+  InputNumber,
+  Popconfirm,
+  Row,
+  Select,
+  Spin,
+  Tag,
+  message,
   Button, Card, Col, Divider, Drawer, Empty, Form, Input, InputNumber,
   Popconfirm, Row, Select, Spin, Tag, message,
 } from "antd";
-import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, ShoppingOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined,
+  EditOutlined,
+  PlusOutlined,
+} from "@ant-design/icons";
 
 import CommonTable from "../components/commonTable";
 import api from "../lib/axios";
@@ -34,6 +53,8 @@ interface SchoolExpenseRow {
   quantity: number;
   price: number;
   total: number | null;
+  // 🆕 New field, inserted before "status" everywhere in this screen.
+  purchaseDate?: string;
   status: string;
   [key: string]: any;
 }
@@ -217,7 +238,14 @@ export default function SchoolExpenses() {
     setEditingExpenseId(null);
     setSelectedPurchase(null);
     form.resetFields();
-    form.setFieldsValue({ quantity: 1, price: 0, total: 0, status: "PAID" });
+
+    form.setFieldsValue({
+      quantity: 1,
+      price: 0,
+      total: 0,
+      status: "PAID",
+    });
+
     setDrawerOpen(true);
   };
 
@@ -249,9 +277,14 @@ export default function SchoolExpenses() {
         purchaseId: record.purchaseId,
         quantity: record.quantity,
         price: record.price,
-        total: record.total !== null && record.total !== undefined
-          ? record.total
-          : Number(record.quantity || 0) * Number(record.price || 0),
+
+        total:
+          record.total !== null &&
+          record.total !== undefined
+            ? record.total
+            : Number(record.quantity || 0) *
+              Number(record.price || 0),
+
         status: record.status,
       });
     } catch (error: any) {
@@ -303,13 +336,19 @@ export default function SchoolExpenses() {
         const price = Number(values.price || 0);
         const total = quantity * price;
 
+        // ======================================================
         // UPDATE
         if (isEditing && editingExpenseId !== null) {
           const payload = {
             price,
             quantity,
-            schoolExpenseId: editingExpenseId,
-            purchaseId: Number(values.purchaseId),
+
+            schoolExpenseId:
+              editingExpenseId,
+
+            purchaseId:
+              Number(values.purchaseId),
+
             status: values.status,
           };
           console.log("UPDATE SCHOOL EXPENSE PAYLOAD:", payload);
@@ -327,8 +366,25 @@ export default function SchoolExpenses() {
         }
 
         // SAVE
-        const payload = { price, quantity, total, purchaseId: Number(values.purchaseId), status: values.status };
-        console.log("SAVE SCHOOL EXPENSE PAYLOAD:", payload);
+        // ======================================================
+
+        const payload = {
+          price,
+
+          quantity,
+
+          total,
+
+          purchaseId:
+            Number(values.purchaseId),
+
+          status: values.status,
+        };
+
+        console.log(
+          "SAVE SCHOOL EXPENSE PAYLOAD:",
+          payload
+        );
 
         const res = await api.post(apiEndpoints.saveSchoolExpenses(), payload);
         // Backend may return HTTP 200 but success:false.
@@ -412,6 +468,7 @@ export default function SchoolExpenses() {
         return `₹ ${Number(total || 0).toFixed(2)}`;
       },
     },
+
     {
       title: "Status", dataIndex: "status", key: "status",
       render: (status: string) => (
@@ -554,10 +611,29 @@ export default function SchoolExpenses() {
                     </div>
                   </div>
 
-                  <div className="border-t mt-4 pt-3 flex justify-between">
-                    <span className="font-medium">Total</span>
-                    <span className="font-bold text-lg">₹ {Number(calculatedTotal || 0).toFixed(2)}</span>
-                  </div>
+                      </div>
+
+                    </div>
+
+                    {/* Total */}
+
+                    <div className="border-t mt-4 pt-3 flex justify-between">
+
+                      <span className="font-medium">
+                        Total
+                      </span>
+
+                      <span className="font-bold text-lg">
+                        ₹{" "}
+                        {Number(
+                          calculatedTotal ||
+                            0
+                        ).toFixed(2)}
+                      </span>
+
+                    </div>
+
+                    {/* Actions */}
 
                   <div className="flex justify-end gap-2 mt-4">
                     <Button type="primary" icon={<EditOutlined />} size="small" onClick={() => openEditDrawer(record)}>
@@ -692,56 +768,139 @@ export default function SchoolExpenses() {
               Billing Details
             </Divider>
 
-            {/* QUANTITY / PRICE / TOTAL / STATUS */}
-            <Card size="small" style={{ borderRadius: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-              <Row gutter={12}>
-                <Col span={12}>
-                  <Form.Item
-                    label="Quantity"
-                    name="quantity"
-                    rules={[
-                      { required: true, message: "Quantity is required" },
-                      { type: "number", min: 1, message: "Quantity must be at least 1" },
-                    ]}
-                  >
-                    <InputNumber className="w-full" min={1} placeholder="Enter quantity" onChange={updateTotal} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    label="Price"
-                    name="price"
-                    rules={[
-                      { required: true, message: "Price is required" },
-                      { type: "number", min: 0, message: "Price cannot be negative" },
-                    ]}
-                  >
-                    <InputNumber className="w-full" min={0} precision={2} prefix="₹" placeholder="Enter price" onChange={updateTotal} />
-                  </Form.Item>
-                </Col>
-              </Row>
+            {/* ==================================================
+                QUANTITY / PRICE
+            =================================================== */}
 
-              <Row gutter={12}>
-                <Col span={12}>
-                  <Form.Item label="Total" name="total">
-                    <InputNumber className="w-full" precision={2} prefix="₹" disabled />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    label="Status"
-                    name="status"
-                    rules={[{ required: true, message: "Please select status" }]}
-                  >
-                    <Select placeholder="Select status">
-                      <Option value="PAID">PAID</Option>
-                      <Option value="PENDING">PENDING</Option>
-                      <Option value="PARTIALLY_PAID">PARTIALLY PAID</Option>
-                    </Select>
-                  </Form.Item>
-                </Col>
-              </Row>
-            </Card>
+            <Row gutter={12}>
+
+              <Col span={12}>
+
+                <Form.Item
+                  label="Quantity"
+                  name="quantity"
+                  rules={[
+                    {
+                      required: true,
+                      message:
+                        "Quantity is required",
+                    },
+                    {
+                      type: "number",
+                      min: 1,
+                      message:
+                        "Quantity must be at least 1",
+                    },
+                  ]}
+                >
+
+                  <InputNumber
+                    className="w-full"
+                    min={1}
+                    placeholder="Enter quantity"
+                    onChange={updateTotal}
+                  />
+
+                </Form.Item>
+
+              </Col>
+
+              <Col span={12}>
+
+                <Form.Item
+                  label="Price"
+                  name="price"
+                  rules={[
+                    {
+                      required: true,
+                      message:
+                        "Price is required",
+                    },
+                    {
+                      type: "number",
+                      min: 0,
+                      message:
+                        "Price cannot be negative",
+                    },
+                  ]}
+                >
+
+                  <InputNumber
+                    className="w-full"
+                    min={0}
+                    precision={2}
+                    prefix="₹"
+                    placeholder="Enter price"
+                    onChange={updateTotal}
+                  />
+
+                </Form.Item>
+
+              </Col>
+
+            </Row>
+
+            {/* ==================================================
+                TOTAL / STATUS
+            =================================================== */}
+
+            <Row gutter={12}>
+
+              <Col span={12}>
+
+                <Form.Item
+                  label="Total"
+                  name="total"
+                >
+
+                  <InputNumber
+                    className="w-full"
+                    precision={2}
+                    prefix="₹"
+                    disabled
+                  />
+
+                </Form.Item>
+
+              </Col>
+
+              <Col span={12}>
+
+                <Form.Item
+                  label="Status"
+                  name="status"
+                  rules={[
+                    {
+                      required: true,
+                      message:
+                        "Please select status",
+                    },
+                  ]}
+                >
+
+                  <Select placeholder="Select status">
+
+                    <Option value="PAID">
+                      PAID
+                    </Option>
+
+                    <Option value="PENDING">
+                      PENDING
+                    </Option>
+
+                    <Option value="PARTIALLY_PAID">
+                      PARTIALLY PAID
+                    </Option>
+
+                  </Select>
+
+                </Form.Item>
+
+              </Col>
+
+            </Row>
+
+            <Divider className="!my-2" />
 
             <div className="text-xs text-gray-400 leading-relaxed mt-3">
               Select a product to auto-fill its category and purchase details. Quantity and Price will
