@@ -231,4 +231,20 @@ deleteSchoolExpenses: (schoolExpenseId: number | string) =>
 getAllSchoolExpensesByFilter: (page: number, size: number) =>
   `/jnpa-school-project/schoolExpenses/getAllSchoolExpensesByFilter?page=${page}&size=${size}&desc&paginate=true`,
 
+// ===============================
+  // Homework
+  // ===============================
+  saveHomework: () => `/jnpa-school-project/homework/saveHomework`,
+ 
+  updateHomework: () => `/jnpa-school-project/homework/updateHomework`,
+ 
+  getHomeworkById: (homeworkId: number | string) =>
+    `/jnpa-school-project/homework/getHomeworkById/${homeworkId}`,
+ 
+  deleteHomework: (homeworkId: number | string) =>
+    `/jnpa-school-project/homework/deleteHomework/${homeworkId}`,
+ 
+  getAllHomeworkByFilter: (page: number, size: number) =>
+    `/jnpa-school-project/homework/getAllHomeworkByFilter?page=${page}&size=${size}&paginate=true`,
+
 };

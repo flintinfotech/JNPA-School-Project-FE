@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
-import { Spin, Empty, message, Tabs, Button } from "antd";
-import { PrinterOutlined } from "@ant-design/icons";
+import { Spin, Empty, message, Tabs, Button, Tag, DatePicker } from "antd";
+import { PrinterOutlined, PaperClipOutlined } from "@ant-design/icons";
 import {
     HiCheckCircle,
     HiXCircle,
@@ -9,9 +9,13 @@ import {
     HiUser,
     HiStar,
     HiCurrencyRupee,
+    HiBookOpen,
 } from "react-icons/hi";
 import dayjs from "dayjs";
+import type { Dayjs } from "dayjs";
 import FeeReceiptModal, { getPaymentReceiptNo } from "../components/FeeReceipt";
+import api from "../lib/axios";
+import { apiEndpoints } from "../services/apiEndpoints";
 
 import {
     getStudentById,
@@ -776,6 +780,208 @@ function FeeCard({
         </div>
     );
 }
+
+// ===========================
+// Homework
+// -----------------------------------------------------------
+// Read-only list of homework assigned to this student's current
+// class (standard + division + medium + academicYear), driven by
+// POST /jnpa-school-project/homework/getAllHomeworkByFilter.
+// ===========================
+
+interface HomeworkRecord {
+    homeworkId: number;
+    subject: string;
+    standard: string;
+    division: string;
+    medium: string;
+    academicYear: string;
+    homeworkDate: string;
+    remark: string | null;
+    uploadedFile: string | null; // base64
+}
+
+// The API wraps the list under a "Homework list" key (and reports the
+// count under "total elements") — normalize that here so the component
+// doesn't need to know about the exact response shape.
+const extractHomeworkList = (raw: any): HomeworkRecord[] => {
+    const body = raw?.data ?? raw ?? {};
+    const data = body?.data ?? body;
+    const list =
+        data?.["Homework list"] ??
+        data?.["homeworkList"] ??
+        data?.["Data"] ??
+        data?.["data"];
+    return Array.isArray(list) ? list : [];
+};
+
+function HomeworkCard({
+    homework,
+    loading,
+    error,
+    onViewAttachment,
+}: {
+    homework: HomeworkRecord[];
+    loading: boolean;
+    error: string | null;
+    onViewAttachment: (base64: string) => void;
+}) {
+    // Date filter — picking a date instantly narrows the list down to just
+    // that day's homework; clearing it (✕ on the picker) goes back to
+    // showing everything. Kept local to this card so it resets naturally
+    // whenever the tab remounts.
+    const [selectedDate, setSelectedDate] = useState<Dayjs | null>(null);
+
+    const dateFilterBar = (
+        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+            <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-slate-600">
+                    Filter by date
+                </span>
+                <DatePicker
+                    value={selectedDate}
+                    onChange={(date) => setSelectedDate(date)}
+                    format="DD-MM-YYYY"
+                    allowClear
+                    placeholder="Select a date"
+                />
+            </div>
+
+            {selectedDate && (
+                <button
+                    onClick={() => setSelectedDate(null)}
+                    className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                >
+                    Clear filter — show all
+                </button>
+            )}
+        </div>
+    );
+
+    if (loading) {
+        return (
+            <Card title="Homework">
+                <div className="py-10 flex items-center justify-center">
+                    <Spin tip="Loading homework..." />
+                </div>
+            </Card>
+        );
+    }
+
+    if (error) {
+        return (
+            <Card title="Homework">
+                <div className="py-8 text-center">
+                    <p className="text-sm text-red-500 font-medium">
+                        Failed to load homework.
+                    </p>
+                    <p className="text-xs text-slate-400 mt-2">{error}</p>
+                </div>
+            </Card>
+        );
+    }
+
+    if (!homework || homework.length === 0) {
+        return (
+            <Card title="Homework">
+                <div className="py-8 text-center">
+                    <div className="w-14 h-14 mx-auto rounded-full bg-indigo-50 flex items-center justify-center mb-3">
+                        <HiBookOpen size={28} className="text-indigo-400" />
+                    </div>
+                    <p className="text-sm text-slate-400">
+                        No homework assigned yet.
+                    </p>
+                </div>
+            </Card>
+        );
+    }
+
+    // Newest homework first
+    const sorted = [...homework].sort((a, b) =>
+        (b.homeworkDate || "").localeCompare(a.homeworkDate || "")
+    );
+
+    // Apply the date filter (if any) on top of the sorted list.
+    const displayed = selectedDate
+        ? sorted.filter(
+              (hw) => hw.homeworkDate === selectedDate.format("YYYY-MM-DD")
+          )
+        : sorted;
+
+    return (
+        <div className="flex flex-col">
+            {dateFilterBar}
+
+            {displayed.length === 0 ? (
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 py-8 text-center">
+                    <p className="text-sm text-slate-400">
+                        No homework found for{" "}
+                        {selectedDate?.format("DD-MM-YYYY")}.
+                    </p>
+                </div>
+            ) : (
+            <div className="flex flex-col gap-3">
+            {displayed.map((hw, idx) => (
+                <div
+                    key={hw.homeworkId ?? idx}
+                    className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex items-start justify-between gap-3"
+                >
+                    <div className="flex items-start gap-3 min-w-0">
+                        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center">
+                            <HiBookOpen size={20} className="text-indigo-500" />
+                        </div>
+
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                                <h3 className="text-sm font-semibold text-slate-800">
+                                    {hw.subject || "Subject"}
+                                </h3>
+
+                                {hw.academicYear && (
+                                    <Tag color="default">{hw.academicYear}</Tag>
+                                )}
+                            </div>
+
+                            <p className="text-xs text-slate-500 mb-1">
+                                {hw.standard
+                                    ? `Std.${hw.standard.replace(" Standard", "")}`
+                                    : ""}
+                                {hw.division ? ` (${hw.division})` : ""}
+                                {hw.medium ? ` • ${hw.medium} Medium` : ""}
+                            </p>
+
+                            <p className="text-sm text-slate-700 mt-1">
+                                {hw.remark || "No remark added."}
+                            </p>
+
+                            {hw.uploadedFile && (
+                                <button
+                                    onClick={() => onViewAttachment(hw.uploadedFile as string)}
+                                    className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 cursor-pointer mt-2"
+                                >
+                                    <PaperClipOutlined />
+                                    View attachment
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="flex-shrink-0 text-right">
+                        <p className="text-sm font-semibold text-slate-800">
+                            {hw.homeworkDate
+                                ? dayjs(hw.homeworkDate).format("DD-MM-YYYY")
+                                : "-"}
+                        </p>
+                        <p className="text-xs text-slate-400">Homework Date</p>
+                    </div>
+                </div>
+            ))}
+            </div>
+            )}
+        </div>
+    );
+}
+
 // ===========================
 // Student Profile
 // ===========================
@@ -822,6 +1028,17 @@ export default function StudentProfile() {
         fee: StudentFeeDTO;
         payment: FeePaymentDTO | null;
     } | null>(null);
+
+    // ===========================
+    // Homework tab state
+    // -----------------------------------------------------------
+    // Fetched from POST /homework/getAllHomeworkByFilter, filtered to
+    // this student's current class (standard/division/medium/academicYear).
+    // ===========================
+    const [homework, setHomework] = useState<HomeworkRecord[]>([]);
+    const [homeworkLoading, setHomeworkLoading] = useState(false);
+    const [homeworkError, setHomeworkError] = useState<string | null>(null);
+    const [homeworkFetchedForId, setHomeworkFetchedForId] = useState<number | null>(null);
 
     // ===========================
     // Fetch Student
@@ -1001,6 +1218,95 @@ export default function StudentProfile() {
     }, [activeTab, student, feeFetchedForId]);
 
     // ===========================
+    // Fetch Homework Data
+    // -----------------------------------------------------------
+    // Fires when the user opens the Homework tab. Calls
+    //   POST /jnpa-school-project/homework/getAllHomeworkByFilter?page=0&size=20&paginate=true
+    // with the student's current class as the filter payload
+    // (academicYear, division, medium, standard). Response is
+    // returned under data["Homework list"]. As an extra safety net
+    // (in case the backend ever ignores some of the filter fields),
+    // the result is also filtered client-side against the same four
+    // fields before being shown — harmless no-op once the backend
+    // filters correctly on its own.
+    // ===========================
+
+    useEffect(() => {
+        if (activeTab !== "homework") return;
+        if (!student) return;
+
+        const studentKey = student.studentId ?? null;
+        if (homeworkFetchedForId === studentKey) return; // already fetched
+
+        const academicInfo = student.academicInformation?.[0];
+
+        const classScope = {
+            academicYear: academicInfo?.academicYear || "",
+            division: academicInfo?.division || academicInfo?.section || "",
+            medium: (academicInfo as any)?.medium || "",
+            standard: academicInfo?.standard || "",
+        };
+
+        const loadHomework = async () => {
+            setHomeworkLoading(true);
+            setHomeworkError(null);
+
+            try {
+                const res = await api.post(
+                    apiEndpoints.getAllHomeworkByFilter(0, 20),
+                    classScope
+                );
+
+                if (res?.data?.success === false) {
+                    setHomeworkError(res?.data?.message || "Failed to load homework");
+                    setHomework([]);
+                    setHomeworkFetchedForId(studentKey);
+                    return;
+                }
+
+                const list = extractHomeworkList(res);
+
+                // Client-side safety filter against the same class scope
+                // used in the request payload.
+                const filtered = list.filter((item) => {
+                    const matchesStandard = classScope.standard
+                        ? item.standard === classScope.standard
+                        : true;
+                    const matchesDivision = classScope.division
+                        ? item.division === classScope.division
+                        : true;
+                    const matchesMedium = classScope.medium
+                        ? item.medium === classScope.medium
+                        : true;
+                    const matchesYear = classScope.academicYear
+                        ? item.academicYear === classScope.academicYear
+                        : true;
+                    return (
+                        matchesStandard &&
+                        matchesDivision &&
+                        matchesMedium &&
+                        matchesYear
+                    );
+                });
+
+                setHomework(filtered);
+                setHomeworkFetchedForId(studentKey);
+            } catch (err: any) {
+                console.error("Failed to load homework:", err);
+                setHomeworkError(
+                    err?.response?.data?.message ||
+                    err?.message ||
+                    "Something went wrong while loading homework."
+                );
+            } finally {
+                setHomeworkLoading(false);
+            }
+        };
+
+        loadHomework();
+    }, [activeTab, student, homeworkFetchedForId]);
+
+    // ===========================
     // Loading
     // ===========================
 
@@ -1131,6 +1437,20 @@ export default function StudentProfile() {
             message.error(
                 "Could not open this document."
             );
+        }
+    };
+
+    // ===========================
+    // Homework Attachment View
+    // ===========================
+
+    const handleViewHomeworkAttachment = (rawBase64: string) => {
+        const url = base64ToBlobUrl(rawBase64, detectMimeType(rawBase64));
+
+        if (url) {
+            window.open(url, "_blank");
+        } else {
+            message.error("Could not open this attachment.");
         }
     };
 
@@ -1528,6 +1848,25 @@ export default function StudentProfile() {
                                             onPrintReceipt={(fee, payment) =>
                                                 setReceiptTarget({ fee, payment })
                                             }
+                                        />
+                                    </div>
+                                ),
+                            },
+                            {
+                                key: "homework",
+                                label: (
+                                    <span className="inline-flex items-center gap-1">
+                                        <HiBookOpen size={15} />
+                                        Homework
+                                    </span>
+                                ),
+                                children: (
+                                    <div className="px-1 pb-5">
+                                        <HomeworkCard
+                                            homework={homework}
+                                            loading={homeworkLoading}
+                                            error={homeworkError}
+                                            onViewAttachment={handleViewHomeworkAttachment}
                                         />
                                     </div>
                                 ),

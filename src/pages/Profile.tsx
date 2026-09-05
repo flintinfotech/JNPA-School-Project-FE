@@ -1,9 +1,37 @@
 import { useEffect, useState } from "react";
-import { Spin, Empty, message, Tabs } from "antd";
-import { PaperClipOutlined } from "@ant-design/icons";
+import {
+  Spin,
+  Empty,
+  message,
+  Tabs,
+  Modal,
+  Form,
+  Input,
+  DatePicker,
+  Upload,
+  Button,
+  Tooltip,
+  Popconfirm,
+  Card,
+  Divider,
+  Tag,
+} from "antd";
+import {
+  PaperClipOutlined,
+  UploadOutlined,
+  EyeOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  FileOutlined,
+  CloseCircleOutlined,
+  CalendarOutlined,
+  BookOutlined,
+} from "@ant-design/icons";
+import dayjs from "dayjs";
+import api from "../lib/axios";
+import { apiEndpoints } from "../services/apiEndpoints";
 import { getEmployeeDetailsById } from "../services/userService";
 import { getSubjectsByEmployeeDetailsId } from "../services/teacherSubjectService";
-
 
 // ===========================
 // Types (matches actual API response)
@@ -17,6 +45,7 @@ interface LoggedInUser {
   standard?: string | null;
   section?: string | null;
   division?: string | null;
+  academicYear?: string | null;
 }
 
 interface UserDocumentDTO {
@@ -61,6 +90,19 @@ interface ClassSubjectGroup {
   subjects: SubjectDTO[];
 }
 
+// Homework record (matches homework API response)
+interface HomeworkRecord {
+  homeworkId: number;
+  subject: string;
+  standard: string;
+  division: string;
+  medium: string;
+  academicYear: string;
+  homeworkDate: string;
+  remark: string | null;
+  uploadedFile: string | null; // base64
+}
+
 // The API returns subjects grouped under a key that encodes the class,
 // e.g. "classMasterId=5, standard=10, division=A, medium=English"
 const parseClassMasterKey = (key: string) => {
@@ -78,8 +120,7 @@ const parseClassMasterKey = (key: string) => {
 };
 
 // ===========================
-// Document helpers (same approach as EmployeeViewer.tsx —
-// detect real file type from decoded bytes, never trust documentType)
+// Document / base64 helpers (shared by Documents tab + Homework attachment)
 // ===========================
 
 const cleanBase64 = (base64: string) => {
@@ -110,36 +151,100 @@ const extensionForMime = (mime: string) => {
   return "file";
 };
 
+// Decode a raw base64 string into a blob URL (detects real file type from bytes)
+const base64ToBlobUrl = (rawBase64: string): { url: string; mime: string } => {
+  const cleaned = cleanBase64(rawBase64);
+  const mime = detectMimeFromBase64(cleaned);
+
+  const byteCharacters = atob(cleaned);
+  const byteArrays: Uint8Array[] = [];
+  const sliceSize = 1024;
+
+  for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+    const slice = byteCharacters.slice(offset, offset + sliceSize);
+    const byteNumbers = new Array(slice.length);
+    for (let i = 0; i < slice.length; i++) {
+      byteNumbers[i] = slice.charCodeAt(i);
+    }
+    byteArrays.push(new Uint8Array(byteNumbers));
+  }
+
+  const blob = new Blob(byteArrays, { type: mime });
+  return { url: URL.createObjectURL(blob), mime };
+};
+
 const openDocument = (doc: UserDocumentDTO) => {
   if (!doc.document) {
     console.warn("No document data for", doc.documentName);
     return;
   }
-
   try {
-    const cleaned = cleanBase64(doc.document);
-    const mime = detectMimeFromBase64(cleaned);
-
-    const byteCharacters = atob(cleaned);
-    const byteArrays: Uint8Array[] = [];
-    const sliceSize = 1024;
-
-    for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
-      const slice = byteCharacters.slice(offset, offset + sliceSize);
-      const byteNumbers = new Array(slice.length);
-      for (let i = 0; i < slice.length; i++) {
-        byteNumbers[i] = slice.charCodeAt(i);
-      }
-      byteArrays.push(new Uint8Array(byteNumbers));
-    }
-
-    const blob = new Blob(byteArrays, { type: mime });
-    const blobUrl = URL.createObjectURL(blob);
-    window.open(blobUrl, "_blank");
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    const { url } = base64ToBlobUrl(doc.document);
+    window.open(url, "_blank");
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
   } catch (err) {
     console.error("Failed to decode/open document:", err);
   }
+};
+
+const openBase64File = (rawBase64: string) => {
+  try {
+    const { url } = base64ToBlobUrl(rawBase64);
+    window.open(url, "_blank");
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (err) {
+    console.error("Failed to decode/open file:", err);
+    message.error("Unable to open file");
+  }
+};
+
+// ===========================
+// Homework helpers
+// ===========================
+
+const extractHomeworkList = (raw: any): HomeworkRecord[] => {
+  const body = raw?.data ?? raw ?? {};
+  const data = body?.data ?? body;
+  const list = data?.["Homework list"] ?? data?.["homeworkList"] ?? data?.["Data"] ?? data?.["data"];
+  return Array.isArray(list) ? list : [];
+};
+
+// ===========================
+// Academic Year — same logic as ResultDrawer.tsx
+// ===========================
+// Shows the academic year the user is currently logged in under (selected
+// on the login screen and stored by useAuth), e.g. "2026-2027" for
+// { startDate: "2026-06-15", endDate: "2027-04-30" }. Falls back to a
+// calendar-based guess only if nothing was stored (shouldn't normally
+// happen since login always sets this). Same logic as ResultDrawer.tsx /
+// StudentFrom.tsx, kept in sync so Academic Year reads identically across
+// the app.
+const getCurrentAcademicYear = (): string => {
+  try {
+    const stored = localStorage.getItem("academicYear");
+    if (stored) {
+      const { startDate, endDate } = JSON.parse(stored) as {
+        startDate?: string;
+        endDate?: string;
+      };
+      const startYear = startDate ? new Date(startDate).getFullYear() : NaN;
+      const endYear = endDate ? new Date(endDate).getFullYear() : NaN;
+      if (!Number.isNaN(startYear) && !Number.isNaN(endYear)) {
+        return `${startYear}-${endYear}`;
+      }
+    }
+  } catch {
+    // fall through to the calendar-based guess below
+  }
+
+  const now = new Date();
+  const year = now.getFullYear();
+  // School years typically start mid-year (e.g. June) — before that month,
+  // treat it as still part of the previous academic year.
+  const ACADEMIC_YEAR_START_MONTH = 5; // June (0-indexed)
+  return now.getMonth() >= ACADEMIC_YEAR_START_MONTH
+    ? `${year}-${year + 1}`
+    : `${year - 1}-${year}`;
 };
 
 // ===========================
@@ -148,7 +253,6 @@ const openDocument = (doc: UserDocumentDTO) => {
 
 const InfoRow = ({ label, value }: { label: string; value?: string | number | null }) => (
   <div className="grid grid-cols-3 border-b border-gray-100 last:border-b-0">
-    {/* <div className="col-span-1 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-600"> */}
     <div className="col-span-1 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-600">
       {label}
     </div>
@@ -171,6 +275,25 @@ export default function Profile() {
   const [teacherInfo, setTeacherInfo] = useState<TeacherInformation | null>(null);
   const [classGroups, setClassGroups] = useState<ClassSubjectGroup[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // ----------------------------------------------------------
+  // HOMEWORK: Add / Edit modal state
+  // ----------------------------------------------------------
+  const [homeworkModalOpen, setHomeworkModalOpen] = useState(false);
+  const [homeworkSubmitting, setHomeworkSubmitting] = useState(false);
+  const [homeworkForm] = Form.useForm();
+  const [editingHomeworkId, setEditingHomeworkId] = useState<number | null>(null);
+  const [filePreview, setFilePreview] = useState<{ base64: string; mime: string } | null>(null);
+
+  // ----------------------------------------------------------
+  // HOMEWORK: View list modal state
+  // ----------------------------------------------------------
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [viewLoading, setViewLoading] = useState(false);
+  const [viewContext, setViewContext] = useState<
+    { subject: string; standard: string; division: string; medium: string } | null
+  >(null);
+  const [homeworkList, setHomeworkList] = useState<HomeworkRecord[]>([]);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -227,6 +350,229 @@ export default function Profile() {
     loadTeacherProfile();
   }, []);
 
+  // ============================================================
+  // HOMEWORK: fetch list filtered for a specific subject/class
+  // ============================================================
+  const fetchHomeworkList = async (context: {
+    subject: string;
+    standard: string;
+    division: string;
+    medium: string;
+  }) => {
+    setViewLoading(true);
+    try {
+      const res = await api.post(apiEndpoints.getAllHomeworkByFilter(0, 100), {});
+
+      if (res?.data?.success === false) {
+        message.error(res?.data?.message || "Failed to load homework");
+        setHomeworkList([]);
+        return;
+      }
+
+      const list = extractHomeworkList(res);
+
+      const filtered = list.filter(
+        (item) =>
+          item.subject === context.subject &&
+          item.standard === context.standard &&
+          item.division === context.division &&
+          item.medium === context.medium
+      );
+
+      setHomeworkList(filtered);
+    } catch (error: any) {
+      console.error("Homework list error:", error);
+      message.error(error?.response?.data?.message || "Failed to load homework");
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
+  // ============================================================
+  // HOMEWORK: open View modal
+  // ============================================================
+  const openViewModal = (group: ClassSubjectGroup, subject: SubjectDTO) => {
+    const context = {
+      subject: subject.subjectName,
+      standard: group.standard,
+      division: group.division,
+      medium: group.medium,
+    };
+    setViewContext(context);
+    setViewModalOpen(true);
+    fetchHomeworkList(context);
+  };
+
+  const closeViewModal = () => {
+    setViewModalOpen(false);
+    setViewContext(null);
+    setHomeworkList([]);
+  };
+
+  // ============================================================
+  // HOMEWORK: open Add modal (subject/standard/division/medium/academicYear
+  // pre-filled & disabled, rest left empty)
+  // ============================================================
+  const openUploadModal = (group: ClassSubjectGroup, subject: SubjectDTO) => {
+    setEditingHomeworkId(null);
+    setFilePreview(null);
+    homeworkForm.resetFields();
+    homeworkForm.setFieldsValue({
+      subject: subject.subjectName,
+      standard: group.standard,
+      division: group.division,
+      medium: group.medium,
+      academicYear: getCurrentAcademicYear(),
+      homeworkDate: null,
+      remark: "",
+    });
+    setHomeworkModalOpen(true);
+  };
+
+  // ============================================================
+  // HOMEWORK: open Edit modal from the View list
+  // ============================================================
+  const openEditHomeworkModal = (record: HomeworkRecord) => {
+    setEditingHomeworkId(record.homeworkId);
+
+    if (record.uploadedFile) {
+      const cleaned = cleanBase64(record.uploadedFile);
+      setFilePreview({ base64: cleaned, mime: detectMimeFromBase64(cleaned) });
+    } else {
+      setFilePreview(null);
+    }
+
+    homeworkForm.resetFields();
+    homeworkForm.setFieldsValue({
+      subject: record.subject,
+      standard: record.standard,
+      division: record.division,
+      medium: record.medium,
+      // Academic Year is always shown as the current login year (same rule
+      // as the Add flow), not whatever was stored on the old record.
+      academicYear: getCurrentAcademicYear() || record.academicYear,
+      homeworkDate: record.homeworkDate ? dayjs(record.homeworkDate) : null,
+      remark: record.remark || "",
+    });
+
+    setHomeworkModalOpen(true);
+  };
+
+  const closeHomeworkModal = () => {
+    setHomeworkModalOpen(false);
+    homeworkForm.resetFields();
+    setEditingHomeworkId(null);
+    setFilePreview(null);
+  };
+
+  // ============================================================
+  // HOMEWORK: file select -> base64 (no auto-upload, just read+preview)
+  // ============================================================
+  const handleFileBeforeUpload = (file: File) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const result = reader.result as string;
+      const cleaned = cleanBase64(result);
+      const mime = detectMimeFromBase64(cleaned);
+      setFilePreview({ base64: cleaned, mime });
+      homeworkForm.setFieldsValue({ uploadedFile: cleaned });
+    };
+
+    reader.onerror = () => {
+      message.error("Failed to read file");
+    };
+
+    reader.readAsDataURL(file);
+    return false; // prevent antd's own upload behaviour
+  };
+
+  const removeSelectedFile = () => {
+    setFilePreview(null);
+    homeworkForm.setFieldsValue({ uploadedFile: null });
+  };
+
+  // ============================================================
+  // HOMEWORK: save (POST) / update (PUT)
+  // ============================================================
+  const handleHomeworkSubmit = async () => {
+    try {
+      const values = await homeworkForm.validateFields();
+      setHomeworkSubmitting(true);
+
+      try {
+        const payload: any = {
+          subject: values.subject,
+          standard: values.standard,
+          division: values.division,
+          medium: values.medium,
+          academicYear: values.academicYear,
+          homeworkDate: values.homeworkDate ? values.homeworkDate.format("YYYY-MM-DD") : null,
+          remark: values.remark ? values.remark : null,
+          uploadedFile: filePreview ? filePreview.base64 : null,
+        };
+
+        if (editingHomeworkId !== null) {
+          payload.homeworkId = editingHomeworkId;
+
+          const res = await api.put(apiEndpoints.updateHomework(), payload);
+
+          if (res?.data?.success === false) {
+            message.error(res?.data?.message || "Failed to update homework");
+            return;
+          }
+
+          message.success(res?.data?.message || "Homework updated successfully");
+        } else {
+          const res = await api.post(apiEndpoints.saveHomework(), payload);
+
+          if (res?.data?.success === false) {
+            message.error(res?.data?.message || "Failed to save homework");
+            return;
+          }
+
+          message.success(res?.data?.message || "Homework saved successfully");
+        }
+
+        closeHomeworkModal();
+
+        if (viewContext) {
+          fetchHomeworkList(viewContext);
+        }
+      } catch (error: any) {
+        console.error("Homework save/update error:", error);
+        message.error(error?.response?.data?.message || "Failed to save homework");
+      } finally {
+        setHomeworkSubmitting(false);
+      }
+    } catch {
+      // Ant Design validation errors are automatically displayed.
+    }
+  };
+
+  // ============================================================
+  // HOMEWORK: delete
+  // ============================================================
+  const handleDeleteHomework = async (homeworkId: number) => {
+    try {
+      const res = await api.delete(apiEndpoints.deleteHomework(homeworkId));
+
+      if (res?.data?.success === false) {
+        message.error(res?.data?.message || "Failed to delete homework");
+        return;
+      }
+
+      message.success(res?.data?.message || "Record deleted successfully");
+
+      if (viewContext) {
+        fetchHomeworkList(viewContext);
+      }
+    } catch (error: any) {
+      console.error("Delete homework error:", error);
+      message.error(error?.response?.data?.message || "Failed to delete homework");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-20">
@@ -259,8 +605,8 @@ export default function Profile() {
       <InfoRow label="Name" value={fullName || loggedInUser.userName} />
       <InfoRow label="Username" value={loggedInUser.userName} />
       <InfoRow label="Role" value={loggedInUser.role} />
-       <InfoRow label="Medium" value={loggedInUser.medium} />
-        <InfoRow label="Standard" value={loggedInUser.standard} />
+      <InfoRow label="Medium" value={loggedInUser.medium} />
+      <InfoRow label="Standard" value={loggedInUser.standard} />
       <InfoRow label="Division" value={loggedInUser.division} />
     </TabPanel>
   );
@@ -359,7 +705,22 @@ export default function Profile() {
                       className="border border-gray-200 rounded-md bg-gray-50 text-center px-2 py-2"
                     >
                       <div className="font-medium text-sm">{subject.subjectName}</div>
-                      <div className="text-xs text-gray-500">{subject.subjectCode}</div>
+                      <div className="text-xs text-gray-500 mb-1">{subject.subjectCode}</div>
+
+                      <div className="flex justify-center items-center gap-3 mt-1">
+                        <Tooltip title="Upload Homework">
+                          <UploadOutlined
+                            className="text-blue-600 cursor-pointer"
+                            onClick={() => openUploadModal(group, subject)}
+                          />
+                        </Tooltip>
+                        <Tooltip title="View Homework">
+                          <EyeOutlined
+                            className="text-green-600 cursor-pointer"
+                            onClick={() => openViewModal(group, subject)}
+                          />
+                        </Tooltip>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -381,8 +742,264 @@ export default function Profile() {
     : [{ key: "account", label: "Account Details", children: accountTab }];
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto">
+    <div className="profile-page p-4 md:p-6 max-w-4xl mx-auto">
+      {/* 👇 Same override used in ResultDrawer.tsx — keeps disabled
+          Input / Select / DatePicker / InputNumber fields dark & readable
+          instead of Ant Design's default faded/gray look. Scoped to
+          `.profile-page` so it doesn't leak elsewhere. */}
+      <style>{`
+        .profile-page .ant-input[disabled],
+        .profile-page .ant-input-disabled,
+        .profile-page textarea.ant-input-disabled {
+          color: rgba(0, 0, 0, 0.88) !important;
+          -webkit-text-fill-color: rgba(0, 0, 0, 0.88) !important;
+        }
+
+        .profile-page .ant-select-disabled .ant-select-selector,
+        .profile-page .ant-select-disabled .ant-select-selection-item {
+          color: rgba(0, 0, 0, 0.88) !important;
+        }
+
+        .profile-page .ant-picker-disabled .ant-picker-input > input {
+          color: rgba(0, 0, 0, 0.88) !important;
+        }
+
+        .profile-page .ant-picker-disabled {
+          background: #f5f5f5 !important;
+        }
+
+        .profile-page .ant-input-number-disabled .ant-input-number-input {
+          color: rgba(0, 0, 0, 0.88) !important;
+        }
+
+        .homework-modal .ant-modal-content {
+          border-radius: 14px;
+          overflow: hidden;
+        }
+
+        .homework-modal .ant-modal-header {
+          background: linear-gradient(135deg, #1677ff 0%, #4096ff 100%);
+          padding: 16px 24px;
+        }
+
+        .homework-modal .ant-modal-title {
+          color: #ffffff !important;
+          font-weight: 600;
+          font-size: 16px;
+        }
+
+        .homework-modal .ant-modal-close {
+          color: #ffffff;
+        }
+
+        .homework-modal .ant-modal-close:hover {
+          color: #f0f0f0;
+        }
+      `}</style>
+
       <Tabs defaultActiveKey="account" items={items} type="card" />
+
+      {/* ======================================================
+          HOMEWORK: ADD / EDIT MODAL
+      ======================================================= */}
+      <Modal
+        title={editingHomeworkId ? "Update Homework" : "Add Homework"}
+        open={homeworkModalOpen}
+        onCancel={closeHomeworkModal}
+        onOk={handleHomeworkSubmit}
+        confirmLoading={homeworkSubmitting}
+        okText={editingHomeworkId ? "Update" : "Save"}
+        destroyOnClose
+        className="homework-modal"
+        width={560}
+        styles={{ body: { background: "#fafafa", padding: "20px 24px" } }}
+      >
+        <Form form={homeworkForm} layout="vertical">
+          <Card
+            size="small"
+            style={{
+              marginBottom: 16,
+              borderRadius: 10,
+              border: "1px solid #eef0f3",
+              boxShadow: "0 1px 3px rgba(16,24,40,0.04)",
+            }}
+            bodyStyle={{ padding: 16 }}
+          >
+            <div className="flex items-center gap-2 mb-3 text-gray-600 text-xs font-semibold uppercase tracking-wide">
+              <BookOutlined /> Class & Subject
+            </div>
+            <div className="grid grid-cols-2 gap-x-3">
+              <Form.Item label="Subject" name="subject">
+                <Input disabled />
+              </Form.Item>
+              <Form.Item label="Standard" name="standard">
+                <Input disabled />
+              </Form.Item>
+              <Form.Item label="Division" name="division">
+                <Input disabled />
+              </Form.Item>
+              <Form.Item label="Medium" name="medium">
+                <Input disabled />
+              </Form.Item>
+            </div>
+
+            <Form.Item
+              label={
+                <span>
+                  <CalendarOutlined className="mr-1" />
+                  Academic Year
+                </span>
+              }
+              name="academicYear"
+              style={{ marginBottom: 0 }}
+            >
+              <Input disabled />
+            </Form.Item>
+          </Card>
+
+          <Card
+            size="small"
+            style={{
+              borderRadius: 10,
+              border: "1px solid #eef0f3",
+              boxShadow: "0 1px 3px rgba(16,24,40,0.04)",
+            }}
+            bodyStyle={{ padding: 16 }}
+          >
+            <div className="flex items-center gap-2 mb-3 text-gray-600 text-xs font-semibold uppercase tracking-wide">
+              Homework Details
+            </div>
+
+            <Form.Item
+              label="Homework Date"
+              name="homeworkDate"
+              rules={[{ required: true, message: "Please select homework date" }]}
+            >
+              <DatePicker className="w-full" format="YYYY-MM-DD" />
+            </Form.Item>
+
+            <Form.Item label="Remark" name="remark">
+              <Input.TextArea rows={3} placeholder="Enter remark (optional)" />
+            </Form.Item>
+
+            <Form.Item label="Attachment" name="uploadedFile" style={{ marginBottom: 0 }}>
+              {filePreview ? (
+                <div className="border border-gray-200 rounded-md p-3 flex items-center justify-between bg-white">
+                  <div className="flex items-center gap-2">
+                    {filePreview.mime.startsWith("image/") ? (
+                      <img
+                        src={`data:${filePreview.mime};base64,${filePreview.base64}`}
+                        alt="preview"
+                        className="w-12 h-12 object-cover rounded"
+                      />
+                    ) : (
+                      <FileOutlined className="text-xl text-blue-600" />
+                    )}
+                    <span
+                      className="text-sm text-blue-600 cursor-pointer"
+                      onClick={() => openBase64File(filePreview.base64)}
+                    >
+                      View attachment
+                    </span>
+                  </div>
+                  <CloseCircleOutlined
+                    className="text-red-500 cursor-pointer"
+                    onClick={removeSelectedFile}
+                  />
+                </div>
+              ) : (
+                <Upload beforeUpload={handleFileBeforeUpload} showUploadList={false} maxCount={1}>
+                  <Button icon={<UploadOutlined />}>Select File</Button>
+                </Upload>
+              )}
+            </Form.Item>
+          </Card>
+        </Form>
+      </Modal>
+
+      {/* ======================================================
+          HOMEWORK: VIEW LIST MODAL
+      ======================================================= */}
+      <Modal
+        title={
+          viewContext
+            ? `Homework – ${viewContext.subject} (${viewContext.standard} ${viewContext.division})`
+            : "Homework"
+        }
+        open={viewModalOpen}
+        onCancel={closeViewModal}
+        footer={null}
+        destroyOnClose
+        width={640}
+        className="homework-modal"
+        styles={{ body: { background: "#fafafa", padding: "20px 24px" } }}
+      >
+        <Spin spinning={viewLoading}>
+          {homeworkList.length === 0 ? (
+            <Empty description="No homework found" />
+          ) : (
+            <div className="flex flex-col gap-3">
+              {homeworkList.map((record) => (
+                <Card
+                  key={record.homeworkId}
+                  size="small"
+                  style={{
+                    borderRadius: 10,
+                    border: "1px solid #eef0f3",
+                    boxShadow: "0 1px 3px rgba(16,24,40,0.04)",
+                  }}
+                  bodyStyle={{ padding: 14 }}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Tag color="blue" icon={<CalendarOutlined />}>
+                          {record.homeworkDate}
+                        </Tag>
+                        {record.academicYear && (
+                          <Tag color="default">{record.academicYear}</Tag>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-600 mt-2">
+                        {record.remark || "No remark"}
+                      </div>
+                      {record.uploadedFile && (
+                        <div
+                          className="flex items-center gap-1 text-blue-600 text-xs mt-2 cursor-pointer"
+                          onClick={() => openBase64File(record.uploadedFile as string)}
+                        >
+                          <PaperClipOutlined />
+                          <span>View attachment</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex gap-3">
+                      <Tooltip title="Edit">
+                        <EditOutlined
+                          className="text-blue-600 cursor-pointer"
+                          onClick={() => openEditHomeworkModal(record)}
+                        />
+                      </Tooltip>
+                      <Popconfirm
+                        title="Delete this homework?"
+                        onConfirm={() => handleDeleteHomework(record.homeworkId)}
+                        okText="Delete"
+                        cancelText="Cancel"
+                        okButtonProps={{ danger: true }}
+                      >
+                        <Tooltip title="Delete">
+                          <DeleteOutlined className="text-red-500 cursor-pointer" />
+                        </Tooltip>
+                      </Popconfirm>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </Spin>
+      </Modal>
     </div>
   );
 }

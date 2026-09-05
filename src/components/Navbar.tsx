@@ -164,7 +164,9 @@ export default function Navbar() {
           opacity: 0;
           box-shadow: 0 8px 20px rgba(0,0,0,0.15);
           z-index: 150;
-          transition: max-height 0.6s cubic-bezier(0.4,0,0.2,1), opacity 0.80s ease;
+            transition:
+    max-height 3s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.8s ease;
         }
 
         .nav-expanded.open {

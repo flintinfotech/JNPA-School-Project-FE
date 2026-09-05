@@ -10,6 +10,8 @@ import { GrCircleInformation } from "react-icons/gr";
 import { RiMedalLine } from "react-icons/ri";
 import { SlCalender } from "react-icons/sl";
 import { RiShoppingBagFill } from "react-icons/ri";
+import { MdAccountBalance } from "react-icons/md";
+import { RiShoppingCartFill } from "react-icons/ri";
 import {
   PiBookOpenText,
   PiCalendarBlank,
@@ -109,11 +111,11 @@ export const adminNavItems: AdminNavEntry[] = [
   },
    {
     label: "Accounts",
-    icon: BsCash,
+    icon: MdAccountBalance,
     children: [
     
         {label:"Student Fees", path:"/student-fees",icon:BsCash},
-          {label:"School Expenses", path:"/school-expenses",icon:RiShoppingBagFill}
+          {label:"School Expenses", path:"/school-expenses",icon:RiShoppingCartFill}
        
       
     ],
