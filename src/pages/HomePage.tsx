@@ -361,28 +361,113 @@ export default function HomePage() {
 
         .hp-parent-login-icon { font-size: 14px; }
 
-        /* ── Responsive ── */
+        /* ── Responsive ──
+           🆕 Previously this just hid the hero slider entirely
+           (display: none) on mobile, leaving a bare stacked sidebar with
+           no real layout of its own. Now: the slider becomes a compact
+           hero banner up top, the sidebar content flows naturally below
+           it with tighter spacing, and the fixed quick-action buttons
+           shrink so they don't dominate a small screen. */
         @media (max-width: 860px) {
+          .hp-root {
+            flex-direction: column;
+          }
+
+          /* Hero slider — shown above the sidebar content on mobile,
+             at a fixed compact height instead of the desktop's 100vh. */
+          .hp-main {
+            display: block;
+            order: -1;
+            flex: none;
+          }
+
+          .hp-slider {
+            width: 100%;
+            height: 46vw;
+            max-height: 260px;
+            min-height: 180px;
+          }
+
           .hp-sidebar {
-              display: flex;
-              width: 100%;
-              min-width: 100%;
-              height: auto;
-              position: relative;
-            }
+            display: flex;
+            width: 100%;
+            min-width: 100%;
+            height: auto;
+            position: relative;
+            order: 0;
+          }
 
-            .hp-main {
-              display: none;
-            }
+          .hp-sb-logo {
+            padding: 20px 20px 16px;
+          }
 
-            .hp-root {
-              flex-direction: column;
-            }
+          .hp-sb-logo-circle {
+            width: 76px;
+            height: 76px;
+          }
 
-            .hp-quick-actions {
-              bottom: 16px;
-              right: 16px;
-            }
+          .hp-sb-logo-name {
+            font-size: 17px;
+          }
+
+          .hp-sb-section {
+            padding: 16px 20px;
+          }
+
+          .hp-sb-section-title {
+            font-size: 14px;
+          }
+
+          .hp-sb-connect {
+            padding: 16px 20px 96px; /* extra bottom room so the fixed
+                                        quick-action buttons never overlap
+                                        the last links */
+          }
+
+          /* Fixed quick actions — smaller footprint on phones */
+          .hp-quick-actions {
+            bottom: 14px;
+            right: 14px;
+            gap: 8px;
+          }
+
+          .hp-admission-Inquiry,
+          .hp-parent-login {
+            padding: 9px 14px;
+            font-size: 11px;
+          }
+        }
+
+        /* Extra-small phones */
+        @media (max-width: 420px) {
+          .hp-slider {
+            height: 52vw;
+            min-height: 160px;
+          }
+
+          .hp-sb-logo-circle {
+            width: 64px;
+            height: 64px;
+          }
+
+          .hp-sb-logo-name {
+            font-size: 15px;
+          }
+
+          .hp-sb-section {
+            padding: 14px 16px;
+          }
+
+          .hp-quick-actions {
+            bottom: 10px;
+            right: 10px;
+          }
+
+          .hp-admission-Inquiry,
+          .hp-parent-login {
+            padding: 8px 12px;
+            font-size: 10px;
+          }
         }
       `}</style>
 
