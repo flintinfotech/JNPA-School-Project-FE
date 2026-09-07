@@ -109,6 +109,10 @@ export const adminNavItems: AdminNavEntry[] = [
   {
     label:"Student Profile", path:"/student-profile",icon:PiStudentFill
   },
+  {
+    label:"Student Homework", path:"/student-homework",icon:MdAssignment
+  },
+  
    {
     label: "Accounts",
     icon: MdAccountBalance,
