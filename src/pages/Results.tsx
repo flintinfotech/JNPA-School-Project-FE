@@ -237,6 +237,11 @@ export default function Results() {
       render: (value) => value || "-",
     },
     {
+      title: "Roll No",
+      align: "center",width: 90 ,
+      render: (_, record) => getRollNo(record),
+    },
+    {
       title: "First Name",
       dataIndex: "firstName",
       align: "center",
@@ -245,11 +250,6 @@ export default function Results() {
       title: "Last Name",
       dataIndex: "lastName",
       align: "center",
-    },
-    {
-      title: "Roll No",
-      align: "center",
-      render: (_, record) => getRollNo(record),
     },
     {
       title: "Standard",

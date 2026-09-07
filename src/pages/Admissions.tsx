@@ -324,11 +324,11 @@ export default function Admissions() {
                   lineHeight: 1.6,
                 }}
               >
-                Admissions Office, JNPV Centre,
+                Jawaharlal Nehru Port Vidyalaya,
                 <br />
-                85, Chamarbaug Post Office Lane,
+                WX3H+282, Sector 3, Jaskhar,
                 <br />
-                Dr. Ambedkar Road, Parel, Mumbai - 400012
+                Maharashtra - 400707, India
               </p>
             </div>
           </div>

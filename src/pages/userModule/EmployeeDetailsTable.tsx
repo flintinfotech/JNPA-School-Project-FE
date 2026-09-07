@@ -51,49 +51,50 @@ export default function UserUpdateProfileTable({
       
       dataIndex:"employeeCode",
       key:"employeeCode",
+      width: 120 
     },
     {
       title: "User Name",
       dataIndex: "userName",
-      key: "userName",
+      key: "userName",width: 130 
     },
     {
       title: "First Name",
       dataIndex: "firstName",
-      key: "firstName",
+      key: "firstName",width: 150 
     },
     {
       title: "Last Name",
       dataIndex: "lastName",
-      key: "lastName",
+      key: "lastName",width: 150 
     },
     {
       title: "Email",
       dataIndex: "email",
-      key: "email",
+      key: "email",width: 190 
     },
     {
       title: "Mobile No",
       dataIndex: "mobileNo",
-      key: "mobileNo",
+      key: "mobileNo",width: 130 
     },
     {
       title: "Role",
       dataIndex: "role",
-      key: "role",
+      key: "role",width: 120, 
       render: (role: string) => role.charAt(0).toUpperCase() + role.slice(1).toLowerCase()
     },
     {
       title: "Status",
       dataIndex: "status",
-      key: "status",
+      key: "status",width: 110 ,
       render: (status: string) =>
         status ? <Tag color={statusColor(status)}>{status}</Tag> : "-",
     },
     {
       title: "Action",
       key: "action",
-      align: "center" as const,
+      align: "center" as const,width: 160 ,
       render: (_: any, record: UserDTO) => (
         <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
           <Button

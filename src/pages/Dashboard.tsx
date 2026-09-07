@@ -30,6 +30,49 @@ import {
   getAllTotalPaidExpensesCountAndTotalExpensesCount,
 } from "../services/dashboardService";
 
+// ── Academic year for the expense-dashboard APIs ───
+// Same convention used across the app (StudentFees.tsx, TimeTable.tsx, etc.):
+// prefer the year the user actually logged in under (stored at login by
+// useAuth); fall back to today's real-world academic year if nothing is
+// stored yet.
+const ACADEMIC_YEAR_STORAGE_KEY = "academicYear";
+
+const getCurrentAcademicYear = (): string => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth() + 1; // Jan = 1
+
+  if (month >= 4) {
+    return `${year}-${year + 1}`;
+  } else {
+    return `${year - 1}-${year}`;
+  }
+};
+
+const getLoggedInAcademicYear = (): string => {
+  try {
+    const stored = localStorage.getItem(ACADEMIC_YEAR_STORAGE_KEY);
+    if (!stored) return getCurrentAcademicYear();
+
+    const { startDate, endDate } = JSON.parse(stored) as {
+      startDate?: string;
+      endDate?: string;
+    };
+    if (!startDate) return getCurrentAcademicYear();
+
+    const startYear = new Date(startDate).getFullYear();
+    const endYear = endDate
+      ? new Date(endDate).getFullYear()
+      : startYear + 1;
+    if (Number.isNaN(startYear) || Number.isNaN(endYear)) {
+      return getCurrentAcademicYear();
+    }
+    return `${startYear}-${endYear}`;
+  } catch {
+    return getCurrentAcademicYear();
+  }
+};
+
 // ── Currency formatter (₹ with Indian digit grouping) ───
 const formatCurrency = (value?: number | null): string => {
   if (value === undefined || value === null || isNaN(value)) return "-";
@@ -462,7 +505,7 @@ const Dashboard = () => {
         setExpensesCountLoading(true);
         setExpensesCountError(null);
 
-        const res = await getAllExpensesCount();
+        const res = await getAllExpensesCount(getLoggedInAcademicYear());
 
         if (isMounted) {
           const data = res.data?.data;
@@ -480,9 +523,10 @@ const Dashboard = () => {
         setExpensesAmountLoading(true);
         setExpensesAmountError(null);
 
+        const academicYear = getLoggedInAcademicYear();
         const [paidRes, totalRes] = await Promise.all([
-          getAllPaidExpensesTotal(),
-          getAllExpensesTotal(),
+          getAllPaidExpensesTotal(academicYear),
+          getAllExpensesTotal(academicYear),
         ]);
 
         if (isMounted) {
@@ -504,7 +548,9 @@ const Dashboard = () => {
         setExpensesBreakdownLoading(true);
         setExpensesBreakdownError(null);
 
-        const res = await getAllTotalPaidExpensesCountAndTotalExpensesCount();
+        const res = await getAllTotalPaidExpensesCountAndTotalExpensesCount(
+          getLoggedInAcademicYear()
+        );
 
         if (isMounted) {
           const data = res.data?.data;

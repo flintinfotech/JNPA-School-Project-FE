@@ -8,6 +8,7 @@ import {
   Drawer,
   Empty,
   Form,
+  Input,
   InputNumber,
   Popconfirm,
   Row,
@@ -28,6 +29,47 @@ import api from "../lib/axios";
 import { apiEndpoints } from "../services/apiEndpoints";
 
 const { Option } = Select;
+
+// ============================================================
+// ACADEMIC YEAR (read-only field on this screen)
+//
+// Same convention used elsewhere in the app (StudentFees.tsx,
+// TimeTable.tsx, etc.): prefer the year the user actually logged in
+// under (stored at login by useAuth); fall back to today's real-world
+// academic year if nothing is stored yet.
+// ============================================================
+
+const ACADEMIC_YEAR_STORAGE_KEY = "academicYear";
+
+const getCurrentAcademicYear = (): string => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth() + 1; // Jan = 1
+
+  return month >= 4 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+};
+
+const getLoggedInAcademicYear = (): string => {
+  try {
+    const stored = localStorage.getItem(ACADEMIC_YEAR_STORAGE_KEY);
+    if (!stored) return getCurrentAcademicYear();
+
+    const { startDate, endDate } = JSON.parse(stored) as {
+      startDate?: string;
+      endDate?: string;
+    };
+    if (!startDate) return getCurrentAcademicYear();
+
+    const startYear = dayjs(startDate).year();
+    const endYear = endDate ? dayjs(endDate).year() : startYear + 1;
+    if (Number.isNaN(startYear) || Number.isNaN(endYear)) {
+      return getCurrentAcademicYear();
+    }
+    return `${startYear}-${endYear}`;
+  } catch {
+    return getCurrentAcademicYear();
+  }
+};
 
 // ============================================================
 // TYPES
@@ -55,6 +97,8 @@ interface SchoolExpenseRow {
   total: number | null;
   // 🆕 New field, inserted before "status" everywhere in this screen.
   purchaseDate?: string;
+  // 🆕 Read-only academic year the expense belongs to.
+  academicYear?: string;
   status: string;
   [key: string]: any;
 }
@@ -332,6 +376,9 @@ export default function SchoolExpenses() {
       total: 0,
       // 🆕 Defaults to today — the user can still change it.
       purchaseDate: dayjs(),
+      // 🆕 Read-only — always the year the user is currently logged in
+      // under, never user-editable.
+      academicYear: getLoggedInAcademicYear(),
       status: "PAID",
     });
 
@@ -409,6 +456,12 @@ export default function SchoolExpenses() {
         purchaseDate: record.purchaseDate
           ? dayjs(record.purchaseDate)
           : undefined,
+
+        // 🆕 Read-only — show whatever the record was saved under,
+        // falling back to the logged-in year for older rows that don't
+        // have it yet.
+        academicYear:
+          record.academicYear || getLoggedInAcademicYear(),
 
         status: record.status,
       });
@@ -548,6 +601,9 @@ export default function SchoolExpenses() {
             // 🆕
             purchaseDate,
 
+            // 🆕 Read-only field — sent through as-is, never edited by the user.
+            academicYear: values.academicYear,
+
             status: values.status,
           };
 
@@ -605,6 +661,9 @@ export default function SchoolExpenses() {
 
           // 🆕
           purchaseDate,
+
+          // 🆕 Read-only field — sent through as-is, never edited by the user.
+          academicYear: values.academicYear,
 
           status: values.status,
         };
@@ -738,7 +797,7 @@ export default function SchoolExpenses() {
     {
       title: "Sr No",
       key: "srNo",
-      width: 80,
+      width: 70,
 
       render: (
         _: any,
@@ -778,6 +837,7 @@ export default function SchoolExpenses() {
       title: "Quantity",
       dataIndex: "quantity",
       key: "quantity",
+      width: 90 ,
 
       render: (value: number) =>
         value ?? 0,
@@ -817,7 +877,7 @@ export default function SchoolExpenses() {
     {
       title: "Purchase Date",
       dataIndex: "purchaseDate",
-      key: "purchaseDate",
+      key: "purchaseDate",width: 120 ,
 
       render: (value: string) =>
         value ? dayjs(value).format("DD MMM, YYYY") : "-",
@@ -826,7 +886,7 @@ export default function SchoolExpenses() {
     {
       title: "Status",
       dataIndex: "status",
-      key: "status",
+      key: "status",width: 100 ,
 
       render: (status: string) => (
         <Tag
@@ -846,6 +906,7 @@ export default function SchoolExpenses() {
     {
       title: "Action",
       key: "action",
+      width: 130 ,
       align: "center" as const,
 
       render: (
@@ -904,13 +965,8 @@ export default function SchoolExpenses() {
           HEADER
       ======================================================= */}
 
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-4">
+      <div className="flex flex-col md:flex-row md:justify-end md:items-center gap-3 mb-4">
 
-        <div>
-          <h2 className="text-lg md:text-xl font-semibold m-0">
-            School Expenses
-          </h2>
-        </div>
 
         <Button
           type="primary"
@@ -1414,6 +1470,17 @@ export default function SchoolExpenses() {
 
               </div>
             )}
+
+            {/* ==================================================
+                ACADEMIC YEAR (🆕 read-only, never user-editable)
+            =================================================== */}
+
+            <Form.Item
+              label="Academic Year"
+              name="academicYear"
+            >
+              <Input disabled className="w-full" />
+            </Form.Item>
 
             <Divider
               orientation="left"

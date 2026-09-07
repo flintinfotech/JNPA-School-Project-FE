@@ -69,39 +69,44 @@ export interface ExpensesCountBreakdownData {
   totalPaidExpensesCount: number;
 }
 
-// GET /jnpa-school-project/dashboard/getAllExpensesCount
+// GET /jnpa-school-project/dashboard/getAllExpensesCount/{academicYear}
 // -> { "Total Count": number } — used for the "Total Count Expenses" stat
 // card (shows the NUMBER of expense records, not a rupee amount).
-export const getAllExpensesCount = () => {
+// 🆕 academicYear is now required, e.g. "2026-2027".
+export const getAllExpensesCount = (academicYear: string) => {
   return axiosInstance.get<ApiResponse<ExpensesCountData>>(
-    apiEndpoints.getAllExpensesCount()
+    apiEndpoints.getAllExpensesCount(academicYear)
   );
 };
 
-// GET /jnpa-school-project/dashboard/getAllPaidExpensesTotal
+// GET /jnpa-school-project/dashboard/getAllPaidExpensesTotal/{academicYear}
 // -> { "Total Paid Expenses": number } — the "paid" side of the
 // Paid/Total expense amount card.
-export const getAllPaidExpensesTotal = () => {
+export const getAllPaidExpensesTotal = (academicYear: string) => {
   return axiosInstance.get<ApiResponse<PaidExpensesTotalData>>(
-    apiEndpoints.getAllPaidExpensesTotal()
+    apiEndpoints.getAllPaidExpensesTotal(academicYear)
   );
 };
 
-// GET /jnpa-school-project/dashboard/getAllExpensesTotal
+// GET /jnpa-school-project/dashboard/getAllExpensesTotal/{academicYear}
 // -> { "Total Expenses": number } — the "total" side of the Paid/Total
 // expense amount card.
-export const getAllExpensesTotal = () => {
+export const getAllExpensesTotal = (academicYear: string) => {
   return axiosInstance.get<ApiResponse<ExpensesTotalData>>(
-    apiEndpoints.getAllExpensesTotal()
+    apiEndpoints.getAllExpensesTotal(academicYear)
   );
 };
 
-// GET /jnpa-school-project/dashboard/getAllTotalPaidExpensesCountAndTotalExpensesCount
+// GET /jnpa-school-project/dashboard/getAllTotalPaidExpensesCountAndTotalExpensesCount/{academicYear}
 // -> { totalExpensesCount, totalPaidExpensesCount } — combined counts
 // endpoint, kept available in case the count card should later show a
 // "paid vs total" breakdown instead of a single number.
-export const getAllTotalPaidExpensesCountAndTotalExpensesCount = () => {
+export const getAllTotalPaidExpensesCountAndTotalExpensesCount = (
+  academicYear: string
+) => {
   return axiosInstance.get<ApiResponse<ExpensesCountBreakdownData>>(
-    apiEndpoints.getAllTotalPaidExpensesCountAndTotalExpensesCount()
+    apiEndpoints.getAllTotalPaidExpensesCountAndTotalExpensesCount(
+      academicYear
+    )
   );
 };

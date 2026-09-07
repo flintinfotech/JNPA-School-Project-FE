@@ -435,6 +435,8 @@ export default function HomePage() {
           .hp-parent-login {
             padding: 9px 14px;
             font-size: 11px;
+            min-width: 158px;
+            justify-content: center;
           }
         }
 
@@ -467,6 +469,8 @@ export default function HomePage() {
           .hp-parent-login {
             padding: 8px 12px;
             font-size: 10px;
+            min-width: 136px;
+            justify-content: center;
           }
         }
       `}</style>
