@@ -769,6 +769,13 @@ function StudentFeesTable({ data, loading, pagination, onEdit }: StudentFeesTabl
       title: "Action",
       key: "action",
       align: "center" as const,
+      // 🛠️ FIX: every other column has a fixed `width` so it stays put
+      // and the table scrolls horizontally on smaller screens. This one
+      // didn't, so it was the odd one out — stretching/shrinking with
+      // whatever space was left instead of staying a consistent size like
+      // its neighbours. Giving it a fixed width (enough for both action
+      // buttons + their gap) makes it behave the same way.
+      width: 100,
       render: (_: any, record: StudentRow) => (
         <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
           <Button icon={<EyeOutlined />} size="small" onClick={() => onView(record)} />
