@@ -179,12 +179,14 @@ export interface ResultDrawerProps {
 // Table column header row for the subject-marks section
 const SubjectTableHeader = () => (
   <Row
-    gutter={[8, 0]}
+    gutter={0}
     style={{
       background: "#f0f2f5",
-      padding: "8px 10px",
-      borderRadius: 6,
-      marginBottom: 8,
+      border: "1px solid #d9d9d9",
+      borderBottom: "none",
+      borderRadius: "6px 6px 0 0",
+      margin: 0,
+      padding: "8px 0",
       fontSize: 12,
       fontWeight: 600,
       color: "#595959",
@@ -803,13 +805,23 @@ export default function ResultDrawer({
           <>
             <SubjectTableHeader />
             {(draft?.examSubjectsDTOS || []).map((s, i) => (
-              <Row
-                gutter={[8, 8]}
+              <div
                 key={s.ExamSubjectsId ?? i}
-                align="middle"
-                style={{ marginBottom: 8 }}
+                style={{
+                  border: "1px solid #d9d9d9",
+                  borderTop: i === 0 ? "1px solid #d9d9d9" : "none",
+                  background: "#fff",
+                }}
               >
-                <Col span={8}>
+              <Row
+                gutter={0}
+                align="middle"
+                style={{ margin: 0 }}
+              >
+                <Col
+                  span={8}
+                  style={{ padding: "8px 10px", borderRight: "1px solid #d9d9d9" }}
+                >
                   <Select
                     style={{ width: "100%" }}
                     placeholder="Select subject"
@@ -823,16 +835,22 @@ export default function ResultDrawer({
                     ))}
                   </Select>
                 </Col>
-                <Col span={5}>
+                <Col
+                  span={5}
+                  style={{ padding: "8px 10px", borderRight: "1px solid #d9d9d9" }}
+                >
                   {/* Auto-calculated: Total Marks split equally across subjects */}
                   <InputNumber
                     style={{ width: "100%" }}
                     min={0}
                     value={s.maximumMarks}
-                    // disabled
+                    disabled
                   />
                 </Col>
-                <Col span={5}>
+                <Col
+                  span={5}
+                  style={{ padding: "8px 10px", borderRight: "1px solid #d9d9d9" }}
+                >
                   <InputNumber
                     style={{ width: "100%" }}
                     min={0}
@@ -840,7 +858,10 @@ export default function ResultDrawer({
                     onChange={(v) => updateDraftSubject(i, "obtainedMarks", v ?? 0)}
                   />
                 </Col>
-                <Col span={5}>
+                <Col
+                  span={5}
+                  style={{ padding: "8px 10px", borderRight: "1px solid #d9d9d9" }}
+                >
                   <Select
                     style={{ width: "100%" }}
                     value={s.status}
@@ -853,7 +874,10 @@ export default function ResultDrawer({
                     ))}
                   </Select>
                 </Col>
-                <Col span={1}>
+                <Col
+                  span={1}
+                  style={{ padding: "8px 4px", textAlign: "center" }}
+                >
                   <Button
                     type="text"
                     danger
@@ -863,6 +887,7 @@ export default function ResultDrawer({
                   />
                 </Col>
               </Row>
+              </div>
             ))}
             <Button
               type="dashed"
@@ -1021,6 +1046,7 @@ export default function ResultDrawer({
                                 <Input placeholder="e.g. 8th" disabled />
                               </Form.Item>
                             </Col>
+
                             <Col span={12}>
                               <Form.Item
                                 name={[field.name, "division"]}
@@ -1030,6 +1056,7 @@ export default function ResultDrawer({
                                 <Input placeholder="e.g. B" disabled />
                               </Form.Item>
                             </Col>
+
                             <Col span={12}>
                               <Form.Item
                                 name={[field.name, "academicYear"]}
@@ -1045,6 +1072,7 @@ export default function ResultDrawer({
                                 </Select>
                               </Form.Item>
                             </Col>
+
                             <Col span={12}>
                               <Form.Item
                                 name={[field.name, "examType"]}
@@ -1060,6 +1088,7 @@ export default function ResultDrawer({
                                 </Select>
                               </Form.Item>
                             </Col>
+
                             <Col span={12}>
                               <Form.Item
                                 name={[field.name, "startDate"]}
@@ -1069,6 +1098,7 @@ export default function ResultDrawer({
                                 <DatePicker style={{ width: "100%" }} />
                               </Form.Item>
                             </Col>
+
                             <Col span={12}>
                               <Form.Item
                                 name={[field.name, "endDate"]}
@@ -1078,23 +1108,66 @@ export default function ResultDrawer({
                                 <DatePicker style={{ width: "100%" }} />
                               </Form.Item>
                             </Col>
+
+                            {/* Same order as View/Edit: Total → Obtained */}
                             <Col span={12}>
+                              <Form.Item
+                                name={[field.name, "totalMarks"]}
+                                label="Total Marks"
+                                rules={[{ required: true, message: "Required" }]}
+                              >
+                                <InputNumber
+                                  style={{ width: "100%" }}
+                                  min={0}
+                                  placeholder="Enter total marks"
+                                />
+                              </Form.Item>
+                            </Col>
+
+                            <Col span={12}>
+                              <Form.Item
+                                name={[field.name, "obtainedMarks"]}
+                                label="Obtained Marks"
+                                rules={[{ required: true, message: "Required" }]}
+                              >
+                                <InputNumber
+                                  style={{ width: "100%" }}
+                                  min={0}
+                                  disabled
+                                />
+                              </Form.Item>
+                            </Col>
+
+                            <Col span={8}>
+                              <Form.Item
+                                name={[field.name, "percentage"]}
+                                label="Percentage"
+                              >
+                                <InputNumber
+                                  style={{ width: "100%" }}
+                                  min={0}
+                                  max={100}
+                                  disabled
+                                />
+                              </Form.Item>
+                            </Col>
+
+                            <Col span={8}>
                               <Form.Item
                                 name={[field.name, "grade"]}
                                 label="Grade"
                                 rules={[{ required: true, message: "Required" }]}
                               >
-                                {/* Auto-calculated from Percentage. Never manual. */}
                                 <Input placeholder="e.g. A" disabled />
                               </Form.Item>
                             </Col>
-                            <Col span={12}>
+
+                            <Col span={8}>
                               <Form.Item
                                 name={[field.name, "resultStatus"]}
                                 label="Result Status"
                                 rules={[{ required: true, message: "Required" }]}
                               >
-                                {/* Auto-calculated from Percentage. Never manual. */}
                                 <Select placeholder="Select status" disabled>
                                   {RESULT_STATUS_OPTIONS.map((opt) => (
                                     <Option key={opt} value={opt}>
@@ -1102,39 +1175,6 @@ export default function ResultDrawer({
                                     </Option>
                                   ))}
                                 </Select>
-                              </Form.Item>
-                            </Col>
-                            <Col span={8}>
-                              <Form.Item
-                                name={[field.name, "obtainedMarks"]}
-                                label="Obtained Marks"
-                                rules={[{ required: true, message: "Required" }]}
-                              >
-                                {/* Auto-calculated: sum of subject Obtained Marks */}
-                                <InputNumber style={{ width: "100%" }} min={0} disabled />
-                              </Form.Item>
-                            </Col>
-                            <Col span={8}>
-                              <Form.Item
-                                name={[field.name, "totalMarks"]}
-                                label="Total Marks"
-                                rules={[{ required: true, message: "Required" }]}
-                              >
-                                <InputNumber style={{ width: "100%" }} min={0} />
-                              </Form.Item>
-                            </Col>
-                            <Col span={8}>
-                              <Form.Item
-                                name={[field.name, "percentage"]}
-                                label="Percentage"
-                              >
-                                {/* Auto-calculated: Obtained / Total x 100 */}
-                                <InputNumber
-                                  style={{ width: "100%" }}
-                                  min={0}
-                                  max={100}
-                                  disabled
-                                />
                               </Form.Item>
                             </Col>
                           </Row>
@@ -1148,81 +1188,122 @@ export default function ResultDrawer({
                               <>
                                 {subjectFields.length > 0 && <SubjectTableHeader />}
                                 {subjectFields.map((subjectField) => (
-                                  <Row
-                                    gutter={[8, 0]}
+                                  <div
                                     key={subjectField.key}
-                                    align="middle"
-                                    style={{ marginBottom: 8 }}
+                                    style={{
+                                      border: "1px solid #d9d9d9",
+                                      borderTop: subjectFields.indexOf(subjectField) === 0
+                                        ? "1px solid #d9d9d9"
+                                        : "none",
+                                      background: "#fff",
+                                    }}
                                   >
-                                    <Col span={8}>
-                                      <Form.Item
-                                        name={[subjectField.name, "subjectName"]}
-                                        rules={[{ required: true, message: "Required" }]}
-                                        style={{ marginBottom: 0 }}
+                                    <Row
+                                      gutter={0}
+                                      align="middle"
+                                      style={{ margin: 0 }}
+                                    >
+                                      <Col
+                                        span={8}
+                                        style={{
+                                          padding: "8px 10px",
+                                          borderRight: "1px solid #d9d9d9",
+                                        }}
                                       >
-                                        <Select placeholder="Select subject">
-                                          {subjectOptions.map((opt) => (
-                                            <Option key={opt} value={opt}>
-                                              {opt}
-                                            </Option>
-                                          ))}
-                                        </Select>
-                                      </Form.Item>
-                                    </Col>
-                                    <Col span={5}>
-                                      <Form.Item
-                                        name={[subjectField.name, "maximumMarks"]}
-                                        // rules={[{ required: true, message: "Required" }]}
-                                        style={{ marginBottom: 0 }}
+                                        <Form.Item
+                                          name={[subjectField.name, "subjectName"]}
+                                          rules={[{ required: true, message: "Required" }]}
+                                          style={{ marginBottom: 0 }}
+                                        >
+                                          <Select placeholder="Select subject">
+                                            {subjectOptions.map((opt) => (
+                                              <Option key={opt} value={opt}>
+                                                {opt}
+                                              </Option>
+                                            ))}
+                                          </Select>
+                                        </Form.Item>
+                                      </Col>
+
+                                      <Col
+                                        span={5}
+                                        style={{
+                                          padding: "8px 10px",
+                                          borderRight: "1px solid #d9d9d9",
+                                        }}
                                       >
-                                        {/* Auto-calculated: Total Marks split equally
-                                            across every subject in this record */}
-                                        <InputNumber
-                                          style={{ width: "100%" }}
-                                          min={0}
-                                          placeholder="Max"
-                                        
+                                        <Form.Item
+                                          name={[subjectField.name, "maximumMarks"]}
+                                          style={{ marginBottom: 0 }}
+                                        >
+                                          <InputNumber
+                                            style={{ width: "100%" }}
+                                            min={0}
+                                            placeholder="Max"
+                                           
+                                          />
+                                        </Form.Item>
+                                      </Col>
+
+                                      <Col
+                                        span={5}
+                                        style={{
+                                          padding: "8px 10px",
+                                          borderRight: "1px solid #d9d9d9",
+                                        }}
+                                      >
+                                        <Form.Item
+                                          name={[subjectField.name, "obtainedMarks"]}
+                                          rules={[{ required: true, message: "Required" }]}
+                                          style={{ marginBottom: 0 }}
+                                        >
+                                          <InputNumber
+                                            style={{ width: "100%" }}
+                                            min={0}
+                                            placeholder="Obtained"
+                                          />
+                                        </Form.Item>
+                                      </Col>
+
+                                      <Col
+                                        span={5}
+                                        style={{
+                                          padding: "8px 10px",
+                                          borderRight: "1px solid #d9d9d9",
+                                        }}
+                                      >
+                                        <Form.Item
+                                          name={[subjectField.name, "status"]}
+                                          rules={[{ required: true, message: "Required" }]}
+                                          style={{ marginBottom: 0 }}
+                                        >
+                                          <Select placeholder="Status">
+                                            {RESULT_STATUS_OPTIONS.map((opt) => (
+                                              <Option key={opt} value={opt}>
+                                                {opt}
+                                              </Option>
+                                            ))}
+                                          </Select>
+                                        </Form.Item>
+                                      </Col>
+
+                                      <Col
+                                        span={1}
+                                        style={{
+                                          padding: "8px 4px",
+                                          textAlign: "center",
+                                        }}
+                                      >
+                                        <Button
+                                          type="text"
+                                          danger
+                                          size="small"
+                                          icon={<DeleteOutlined />}
+                                          onClick={() => removeSubject(subjectField.name)}
                                         />
-                                      </Form.Item>
-                                    </Col>
-                                    <Col span={5}>
-                                      <Form.Item
-                                        name={[subjectField.name, "obtainedMarks"]}
-                                        rules={[{ required: true, message: "Required" }]}
-                                        style={{ marginBottom: 0 }}
-                                      >
-                                        <InputNumber
-                                          style={{ width: "100%" }}
-                                          min={0}
-                                          placeholder="Obtained"
-                                        />
-                                      </Form.Item>
-                                    </Col>
-                                    <Col span={5}>
-                                      <Form.Item
-                                        name={[subjectField.name, "status"]}
-                                        rules={[{ required: true, message: "Required" }]}
-                                        style={{ marginBottom: 0 }}
-                                      >
-                                        <Select placeholder="Status">
-                                          {RESULT_STATUS_OPTIONS.map((opt) => (
-                                            <Option key={opt} value={opt}>
-                                              {opt}
-                                            </Option>
-                                          ))}
-                                        </Select>
-                                      </Form.Item>
-                                    </Col>
-                                    <Col span={1}>
-                                      <Button
-                                        type="text"
-                                        danger
-                                        size="small"
-                                        icon={<DeleteOutlined />}
-                                        onClick={() => removeSubject(subjectField.name)}
-                                      />
-                                    </Col>
-                                  </Row>
+                                      </Col>
+                                    </Row>
+                                  </div>
                                 ))}
                                 <Button
                                   type="dashed"

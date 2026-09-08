@@ -146,7 +146,7 @@ const SubjectMaster: React.FC = () => {
     try {
       const response = await deleteSubject(id);
 
-      message.success(response.message);
+      message.error(response.message);
 
       // refresh table data
       loadSubjects();
