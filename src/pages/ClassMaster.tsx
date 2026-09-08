@@ -192,11 +192,24 @@ const ClassMaster: React.FC = () => {
           if (classes.length === 1 && page > 1) {
             setPage(page - 1);
           }
+        } else {
+          // 👇 FIX: the backend returns this as a normal resolved response
+          // (not a thrown/rejected one) with `success: false` and the real
+          // reason in `message` — e.g. "This Class master is assigned in
+          // subject assignment and teacher subjects, can't delete this
+          // class". There was no `else` here before, so that case was
+          // silently ignored: nothing got deleted and nothing was shown.
+          message.error(response.data.message ?? "Failed to delete class");
         }
       })
       .catch((error) => {
         console.log(error);
-        message.error("Failed to delete class");
+        // Fallback for the rarer case where the backend genuinely rejects
+        // the request (network error, 4xx/5xx thrown, etc.) instead of
+        // resolving with `success: false`.
+        message.error(
+          error?.response?.data?.message ?? "Failed to delete class"
+        );
       });
   };
 
@@ -679,5 +692,3 @@ const ClassMaster: React.FC = () => {
 };
 
 export default ClassMaster;
-
-
