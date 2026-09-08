@@ -13,47 +13,6 @@ import { apiEndpoints } from "../services/apiEndpoints";
 const { Option } = Select;
 
 // ============================================================
-// ACADEMIC YEAR (read-only field on this screen)
-//
-// Same convention used elsewhere in the app (StudentFees.tsx,
-// TimeTable.tsx, etc.): prefer the year the user actually logged in
-// under (stored at login by useAuth); fall back to today's real-world
-// academic year if nothing is stored yet.
-// ============================================================
-
-const ACADEMIC_YEAR_STORAGE_KEY = "academicYear";
-
-const getCurrentAcademicYear = (): string => {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth() + 1; // Jan = 1
-
-  return month >= 4 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
-};
-
-const getLoggedInAcademicYear = (): string => {
-  try {
-    const stored = localStorage.getItem(ACADEMIC_YEAR_STORAGE_KEY);
-    if (!stored) return getCurrentAcademicYear();
-
-    const { startDate, endDate } = JSON.parse(stored) as {
-      startDate?: string;
-      endDate?: string;
-    };
-    if (!startDate) return getCurrentAcademicYear();
-
-    const startYear = dayjs(startDate).year();
-    const endYear = endDate ? dayjs(endDate).year() : startYear + 1;
-    if (Number.isNaN(startYear) || Number.isNaN(endYear)) {
-      return getCurrentAcademicYear();
-    }
-    return `${startYear}-${endYear}`;
-  } catch {
-    return getCurrentAcademicYear();
-  }
-};
-
-// ============================================================
 // TYPES
 // ============================================================
 
@@ -73,8 +32,6 @@ interface SchoolExpenseRow {
   price: number;
   total: number | null;
   purchaseDate?: string;
-  // 🆕 Read-only academic year the expense belongs to.
-  academicYear?: string;
   status: string;
   [key: string]: any;
 }
@@ -266,6 +223,9 @@ export default function SchoolExpenses() {
     setEditingExpenseId(null);
     setSelectedPurchase(null);
     form.resetFields();
+<<<<<<<<< Temporary merge branch 1
+    form.setFieldsValue({ quantity: 1, price: 0, total: 0, purchaseDate: dayjs(), status: "PAID" });
+=========
 
     form.setFieldsValue({
       quantity: 1,
@@ -273,9 +233,13 @@ export default function SchoolExpenses() {
       total: 0,
       // 🆕 Defaults to today — the user can still change it.
       purchaseDate: dayjs(),
+      // 🆕 Read-only — always the year the user is currently logged in
+      // under, never user-editable.
+      academicYear: getLoggedInAcademicYear(),
       status: "PAID",
     });
 
+>>>>>>>>> Temporary merge branch 2
     setDrawerOpen(true);
   };
 
@@ -307,6 +271,12 @@ export default function SchoolExpenses() {
         purchaseId: record.purchaseId,
         quantity: record.quantity,
         price: record.price,
+<<<<<<<<< Temporary merge branch 1
+        total: record.total !== null && record.total !== undefined
+          ? record.total
+          : Number(record.quantity || 0) * Number(record.price || 0),
+        purchaseDate: record.purchaseDate ? dayjs(record.purchaseDate) : undefined,
+=========
 
         total:
           record.total !== null &&
@@ -320,6 +290,13 @@ export default function SchoolExpenses() {
           ? dayjs(record.purchaseDate)
           : undefined,
 
+        // 🆕 Read-only — show whatever the record was saved under,
+        // falling back to the logged-in year for older rows that don't
+        // have it yet.
+        academicYear:
+          record.academicYear || getLoggedInAcademicYear(),
+
+>>>>>>>>> Temporary merge branch 2
         status: record.status,
       });
     } catch (error: any) {
@@ -385,7 +362,13 @@ export default function SchoolExpenses() {
             schoolExpenseId: editingExpenseId,
             purchaseId: Number(values.purchaseId),
             purchaseDate,
+<<<<<<<<< Temporary merge branch 1
+=========
 
+            // 🆕 Read-only field — sent through as-is, never edited by the user.
+            academicYear: values.academicYear,
+
+>>>>>>>>> Temporary merge branch 2
             status: values.status,
           };
 
@@ -407,7 +390,13 @@ export default function SchoolExpenses() {
           price, quantity, total,
           purchaseId: Number(values.purchaseId),
           purchaseDate,
+<<<<<<<<< Temporary merge branch 1
+=========
 
+          // 🆕 Read-only field — sent through as-is, never edited by the user.
+          academicYear: values.academicYear,
+
+>>>>>>>>> Temporary merge branch 2
           status: values.status,
         };
 
@@ -468,10 +457,23 @@ export default function SchoolExpenses() {
   // ============================================================
 
   const columns = [
+    { title: "Sr No", key: "srNo", width: 80, render: (_: any, __: SchoolExpenseRow, index: number) => page * pageSize + index + 1 },
+    { title: "Category", key: "category", render: (_: any, record: SchoolExpenseRow) => record.purchaseDTO?.category || "-" },
+    { title: "Product Name", key: "productName", render: (_: any, record: SchoolExpenseRow) => record.purchaseDTO?.productName || "-" },
+    { title: "Quantity", dataIndex: "quantity", key: "quantity", render: (value: number) => value ?? 0 },
+    { title: "Price", dataIndex: "price", key: "price", render: (value: number) => `₹ ${Number(value || 0).toFixed(2)}` },
     {
+<<<<<<<<< Temporary merge branch 1
+      title: "Total", key: "total",
+      render: (_: any, record: SchoolExpenseRow) => {
+        const total = record.total !== null && record.total !== undefined
+          ? record.total
+          : Number(record.quantity || 0) * Number(record.price || 0);
+        return `₹ ${Number(total || 0).toFixed(2)}`;
+=========
       title: "Sr No",
       key: "srNo",
-      width: 80,
+      width: 70,
 
       render: (
         _: any,
@@ -511,6 +513,7 @@ export default function SchoolExpenses() {
       title: "Quantity",
       dataIndex: "quantity",
       key: "quantity",
+      width: 90 ,
 
       render: (value: number) =>
         value ?? 0,
@@ -526,20 +529,34 @@ export default function SchoolExpenses() {
     },
 
     {
-      title: "Total", key: "total",
-      render: (_: any, record: SchoolExpenseRow) => {
-        const total = record.total !== null && record.total !== undefined
-          ? record.total
-          : Number(record.quantity || 0) * Number(record.price || 0);
-        return `₹ ${Number(total || 0).toFixed(2)}`;
+      title: "Total",
+      key: "total",
+
+      render: (
+        _: any,
+        record: SchoolExpenseRow
+      ) => {
+        const total =
+          record.total !== null &&
+          record.total !== undefined
+            ? record.total
+            : Number(record.quantity || 0) *
+              Number(record.price || 0);
+
+        return `₹ ${Number(
+          total || 0
+        ).toFixed(2)}`;
+>>>>>>>>> Temporary merge branch 2
       },
     },
-
-    // 🆕 New column — inserted right before "Status".
+    { title: "Purchase Date", dataIndex: "purchaseDate", key: "purchaseDate", render: (value: string) => (value ? dayjs(value).format("DD MMM, YYYY") : "-") },
     {
+<<<<<<<<< Temporary merge branch 1
+      title: "Status", dataIndex: "status", key: "status",
+=========
       title: "Purchase Date",
       dataIndex: "purchaseDate",
-      key: "purchaseDate",
+      key: "purchaseDate",width: 120 ,
 
       render: (value: string) =>
         value ? dayjs(value).format("DD MMM, YYYY") : "-",
@@ -548,15 +565,23 @@ export default function SchoolExpenses() {
     {
       title: "Status",
       dataIndex: "status",
-      key: "status",
+      key: "status",width: 100 ,
 
+>>>>>>>>> Temporary merge branch 2
       render: (status: string) => (
         <Tag color={status === "PAID" ? "green" : status === "PENDING" ? "orange" : "blue"}>{status || "-"}</Tag>
       ),
     },
     {
+<<<<<<<<< Temporary merge branch 1
+      title: "Action", key: "action", align: "center" as const,
+      render: (_: any, record: SchoolExpenseRow) => (
+        <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+          <Button type="primary" icon={<EditOutlined />} size="small" onClick={() => openEditDrawer(record)} />
+=========
       title: "Action",
       key: "action",
+      width: 130 ,
       align: "center" as const,
 
       render: (
@@ -579,6 +604,7 @@ export default function SchoolExpenses() {
             }
           />
 
+>>>>>>>>> Temporary merge branch 2
           <Popconfirm
             title="Delete this expense?"
             description="Are you sure you want to delete this school expense?"
@@ -598,18 +624,18 @@ export default function SchoolExpenses() {
 
   return (
     <div className="p-4 md:p-6">
+<<<<<<<<< Temporary merge branch 1
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-4">
+        <div><h2 className="text-lg md:text-xl font-semibold m-0">School Expenses</h2></div>
+        <Button type="primary" icon={<PlusOutlined />} onClick={openAddDrawer}>Add Expense</Button>
+=========
 
       {/* ======================================================
           HEADER
       ======================================================= */}
 
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-4">
+      <div className="flex flex-col md:flex-row md:justify-end md:items-center gap-3 mb-4">
 
-        <div>
-          <h2 className="text-lg md:text-xl font-semibold m-0">
-            School Expenses
-          </h2>
-        </div>
 
         <Button
           type="primary"
@@ -619,6 +645,7 @@ export default function SchoolExpenses() {
           Add Expense
         </Button>
 
+>>>>>>>>> Temporary merge branch 2
       </div>
 
       {renderFilterBar()}
@@ -794,6 +821,9 @@ export default function SchoolExpenses() {
               </div>
             )}
 
+<<<<<<<<< Temporary merge branch 1
+            <Divider orientation="left" plain className="!my-3 !text-xs !text-gray-400">Billing Details</Divider>
+=========
             {/* ==================================================
                 ACADEMIC YEAR (🆕 read-only, never user-editable)
             =================================================== */}
@@ -805,7 +835,18 @@ export default function SchoolExpenses() {
               <Input disabled className="w-full" />
             </Form.Item>
 
-            <Divider orientation="left" plain className="!my-3 !text-xs !text-gray-400">Billing Details</Divider>
+            <Divider
+              orientation="left"
+              plain
+              className="!my-3 !text-xs !text-gray-400"
+            >
+              Billing Details
+            </Divider>
+
+            {/* ==================================================
+                QUANTITY / PRICE
+            =================================================== */}
+>>>>>>>>> Temporary merge branch 2
 
             <Row gutter={12}>
               <Col span={12}>
