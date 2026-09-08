@@ -719,7 +719,7 @@ export default function Achievements() {
               total:
                 pagination.total,
 
-              showSizeChanger: true,
+              showSizeChanger: false,
 
               showTotal: (total) => `Total: ${total}`,
 

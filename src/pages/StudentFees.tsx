@@ -721,8 +721,26 @@ function StudentFeesTable({ data, loading, pagination, onEdit }: StudentFeesTabl
       render: (status: string) =>
         status ? <Tag color={statusColor(status)}>{status}</Tag> : "-",
     },
-    { title: "First Name", dataIndex: "firstName", key: "firstName",width: 150  },
-    { title: "Last Name", dataIndex: "lastName", key: "lastName",width: 150  },
+    {
+      title: "First Name",
+      dataIndex: "firstName",
+      key: "firstName",
+      width: 150,
+      // 👇 FIX: scoped ONLY to this column (which already has a fixed
+      // `width`). A very long, unbroken name now truncates with "..." to
+      // fit that 150px, instead of stretching the column and pushing
+      // Total Fee / Pending Fee / Payment Status out of view. `ellipsis:
+      // true` also adds a native hover tooltip showing the full name.
+      // Left untouched on every other column, so nothing else is affected.
+      ellipsis: true,
+    },
+    {
+      title: "Last Name",
+      dataIndex: "lastName",
+      key: "lastName",
+      width: 150,
+      ellipsis: true,
+    },
     { title: "Gender", dataIndex: "gender", key: "gender",width: 90  },
     { title: "Religion", dataIndex: "religion", key: "religion",width: 100  },
     { title: "Category", dataIndex: "category", key: "category",width: 100  },

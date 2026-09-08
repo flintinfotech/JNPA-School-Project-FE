@@ -452,7 +452,7 @@ export default function Results() {
               current: pagination.current,
               pageSize: pagination.pageSize,
               total: pagination.total,
-              showSizeChanger: true,
+              showSizeChanger: false,
               showTotal: (total) => `Total: ${total}`,
               onChange: (page, pageSize) => {
                 loadResults(page, pageSize, filters);
