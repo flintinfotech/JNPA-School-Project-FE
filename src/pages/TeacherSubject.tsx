@@ -807,7 +807,7 @@ const TeacherSubject: React.FC = () => {
                 current: pagination.current,
                 pageSize: pagination.pageSize,
                 total: pagination.total,
-                showSizeChanger: true,
+                showSizeChanger: false,
                 showTotal: (total) => `Total: ${total}`,
 
                 onChange: (page, pageSize) => {

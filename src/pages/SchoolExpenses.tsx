@@ -13,6 +13,47 @@ import { apiEndpoints } from "../services/apiEndpoints";
 const { Option } = Select;
 
 // ============================================================
+// ACADEMIC YEAR (read-only field on this screen)
+//
+// Same convention used elsewhere in the app (StudentFees.tsx,
+// TimeTable.tsx, etc.): prefer the year the user actually logged in
+// under (stored at login by useAuth); fall back to today's real-world
+// academic year if nothing is stored yet.
+// ============================================================
+
+const ACADEMIC_YEAR_STORAGE_KEY = "academicYear";
+
+const getCurrentAcademicYear = (): string => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth() + 1; // Jan = 1
+
+  return month >= 4 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+};
+
+const getLoggedInAcademicYear = (): string => {
+  try {
+    const stored = localStorage.getItem(ACADEMIC_YEAR_STORAGE_KEY);
+    if (!stored) return getCurrentAcademicYear();
+
+    const { startDate, endDate } = JSON.parse(stored) as {
+      startDate?: string;
+      endDate?: string;
+    };
+    if (!startDate) return getCurrentAcademicYear();
+
+    const startYear = dayjs(startDate).year();
+    const endYear = endDate ? dayjs(endDate).year() : startYear + 1;
+    if (Number.isNaN(startYear) || Number.isNaN(endYear)) {
+      return getCurrentAcademicYear();
+    }
+    return `${startYear}-${endYear}`;
+  } catch {
+    return getCurrentAcademicYear();
+  }
+};
+
+// ============================================================
 // TYPES
 // ============================================================
 
@@ -32,6 +73,8 @@ interface SchoolExpenseRow {
   price: number;
   total: number | null;
   purchaseDate?: string;
+  // 🆕 Read-only academic year the expense belongs to.
+  academicYear?: string;
   status: string;
   [key: string]: any;
 }
@@ -223,7 +266,16 @@ export default function SchoolExpenses() {
     setEditingExpenseId(null);
     setSelectedPurchase(null);
     form.resetFields();
-    form.setFieldsValue({ quantity: 1, price: 0, total: 0, purchaseDate: dayjs(), status: "PAID" });
+
+    form.setFieldsValue({
+      quantity: 1,
+      price: 0,
+      total: 0,
+      // 🆕 Defaults to today — the user can still change it.
+      purchaseDate: dayjs(),
+      status: "PAID",
+    });
+
     setDrawerOpen(true);
   };
 
@@ -255,10 +307,19 @@ export default function SchoolExpenses() {
         purchaseId: record.purchaseId,
         quantity: record.quantity,
         price: record.price,
-        total: record.total !== null && record.total !== undefined
-          ? record.total
-          : Number(record.quantity || 0) * Number(record.price || 0),
-        purchaseDate: record.purchaseDate ? dayjs(record.purchaseDate) : undefined,
+
+        total:
+          record.total !== null &&
+          record.total !== undefined
+            ? record.total
+            : Number(record.quantity || 0) *
+              Number(record.price || 0),
+
+        // 🆕 DatePicker needs a Dayjs instance, not a plain string.
+        purchaseDate: record.purchaseDate
+          ? dayjs(record.purchaseDate)
+          : undefined,
+
         status: record.status,
       });
     } catch (error: any) {
@@ -324,6 +385,7 @@ export default function SchoolExpenses() {
             schoolExpenseId: editingExpenseId,
             purchaseId: Number(values.purchaseId),
             purchaseDate,
+
             status: values.status,
           };
 
@@ -345,6 +407,7 @@ export default function SchoolExpenses() {
           price, quantity, total,
           purchaseId: Number(values.purchaseId),
           purchaseDate,
+
           status: values.status,
         };
 
@@ -405,11 +468,63 @@ export default function SchoolExpenses() {
   // ============================================================
 
   const columns = [
-    { title: "Sr No", key: "srNo", width: 80, render: (_: any, __: SchoolExpenseRow, index: number) => page * pageSize + index + 1 },
-    { title: "Category", key: "category", render: (_: any, record: SchoolExpenseRow) => record.purchaseDTO?.category || "-" },
-    { title: "Product Name", key: "productName", render: (_: any, record: SchoolExpenseRow) => record.purchaseDTO?.productName || "-" },
-    { title: "Quantity", dataIndex: "quantity", key: "quantity", render: (value: number) => value ?? 0 },
-    { title: "Price", dataIndex: "price", key: "price", render: (value: number) => `₹ ${Number(value || 0).toFixed(2)}` },
+    {
+      title: "Sr No",
+      key: "srNo",
+      width: 80,
+
+      render: (
+        _: any,
+        __: SchoolExpenseRow,
+        index: number
+      ) =>
+        page * pageSize +
+        index +
+        1,
+    },
+
+    {
+      title: "Category",
+      key: "category",
+
+      render: (
+        _: any,
+        record: SchoolExpenseRow
+      ) =>
+        record.purchaseDTO
+          ?.category || "-",
+    },
+
+    {
+      title: "Product Name",
+      key: "productName",
+
+      render: (
+        _: any,
+        record: SchoolExpenseRow
+      ) =>
+        record.purchaseDTO
+          ?.productName || "-",
+    },
+
+    {
+      title: "Quantity",
+      dataIndex: "quantity",
+      key: "quantity",
+
+      render: (value: number) =>
+        value ?? 0,
+    },
+
+    {
+      title: "Price",
+      dataIndex: "price",
+      key: "price",
+
+      render: (value: number) =>
+        `₹ ${Number(value || 0).toFixed(2)}`,
+    },
+
     {
       title: "Total", key: "total",
       render: (_: any, record: SchoolExpenseRow) => {
@@ -419,18 +534,51 @@ export default function SchoolExpenses() {
         return `₹ ${Number(total || 0).toFixed(2)}`;
       },
     },
-    { title: "Purchase Date", dataIndex: "purchaseDate", key: "purchaseDate", render: (value: string) => (value ? dayjs(value).format("DD MMM, YYYY") : "-") },
+
+    // 🆕 New column — inserted right before "Status".
     {
-      title: "Status", dataIndex: "status", key: "status",
+      title: "Purchase Date",
+      dataIndex: "purchaseDate",
+      key: "purchaseDate",
+
+      render: (value: string) =>
+        value ? dayjs(value).format("DD MMM, YYYY") : "-",
+    },
+
+    {
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+
       render: (status: string) => (
         <Tag color={status === "PAID" ? "green" : status === "PENDING" ? "orange" : "blue"}>{status || "-"}</Tag>
       ),
     },
     {
-      title: "Action", key: "action", align: "center" as const,
-      render: (_: any, record: SchoolExpenseRow) => (
-        <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-          <Button type="primary" icon={<EditOutlined />} size="small" onClick={() => openEditDrawer(record)} />
+      title: "Action",
+      key: "action",
+      align: "center" as const,
+
+      render: (
+        _: any,
+        record: SchoolExpenseRow
+      ) => (
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            justifyContent: "center",
+          }}
+        >
+          <Button
+            type="primary"
+            icon={<EditOutlined />}
+            size="small"
+            onClick={() =>
+              openEditDrawer(record)
+            }
+          />
+
           <Popconfirm
             title="Delete this expense?"
             description="Are you sure you want to delete this school expense?"
@@ -448,65 +596,29 @@ export default function SchoolExpenses() {
   // SEARCH BAR
   // ============================================================
 
-  const renderFilterBar = () => (
-    <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
-      <Col xs={24} sm={12} md={6}>
-        <Select
-          placeholder="Category"
-          value={filters.category || undefined}
-          onChange={(value) => handleFilterChange("category", value)}
-          style={{ width: "100%" }}
-          allowClear
-        >
-          {categoryOptions.map((cat) => (
-            <Option key={cat} value={cat}>{cat}</Option>
-          ))}
-        </Select>
-      </Col>
-
-      <Col xs={24} sm={12} md={6}>
-        <DatePicker
-          placeholder="Purchase Date"
-          value={filters.purchaseDate || null}
-          onChange={(value) => handleFilterChange("purchaseDate", value)}
-          format="DD/MM/YYYY"
-          style={{ width: "100%" }}
-          allowClear
-        />
-      </Col>
-
-      <Col xs={24} sm={12} md={6}>
-        <Select
-          placeholder="Status"
-          value={filters.status || undefined}
-          onChange={(value) => handleFilterChange("status", value)}
-          style={{ width: "100%" }}
-          allowClear
-        >
-          <Option value="PAID">PAID</Option>
-          <Option value="PENDING">PENDING</Option>
-          <Option value="PARTIALLY_PAID">PARTIALLY PAID</Option>
-        </Select>
-      </Col>
-
-      <Col xs={24} sm={24} md={6}>
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>Search</Button>
-          <Button icon={<ReloadOutlined />} onClick={handleReset}>Reset</Button>
-        </div>
-      </Col>
-    </Row>
-  );
-
-  // ============================================================
-  // RETURN
-  // ============================================================
-
   return (
     <div className="p-4 md:p-6">
+
+      {/* ======================================================
+          HEADER
+      ======================================================= */}
+
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-4">
-        <div><h2 className="text-lg md:text-xl font-semibold m-0">School Expenses</h2></div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={openAddDrawer}>Add Expense</Button>
+
+        <div>
+          <h2 className="text-lg md:text-xl font-semibold m-0">
+            School Expenses
+          </h2>
+        </div>
+
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={openAddDrawer}
+        >
+          Add Expense
+        </Button>
+
       </div>
 
       {renderFilterBar()}
@@ -681,6 +793,17 @@ export default function SchoolExpenses() {
                 </Row>
               </div>
             )}
+
+            {/* ==================================================
+                ACADEMIC YEAR (🆕 read-only, never user-editable)
+            =================================================== */}
+
+            <Form.Item
+              label="Academic Year"
+              name="academicYear"
+            >
+              <Input disabled className="w-full" />
+            </Form.Item>
 
             <Divider orientation="left" plain className="!my-3 !text-xs !text-gray-400">Billing Details</Divider>
 

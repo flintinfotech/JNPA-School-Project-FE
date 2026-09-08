@@ -705,7 +705,7 @@ export default function Achievements() {
 
               total: total,
 
-              showSizeChanger: true,
+              showSizeChanger: false,
 
               showTotal: (t) => `Total: ${t}`,
 

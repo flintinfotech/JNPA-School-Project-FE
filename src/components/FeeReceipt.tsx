@@ -222,6 +222,17 @@ export default function FeeReceiptModal({
       width={640}
       style={{ maxWidth: "95vw", top: 16 }}
       styles={{ body: { maxHeight: "80vh", overflowY: "auto", padding: 0 } }}
+      // 👇 Scopes the close-icon repositioning CSS below to just this modal
+      // (Modal renders via a portal, so it can't be targeted with a normal
+      // parent class on the JSX below it).
+      wrapClassName="fee-receipt-modal-wrap"
+      // 👇 FIX: with no `title`, antd had no header bar to put the X in, so
+      // it sat absolutely positioned right on top of the receipt's own
+      // header (overlapping the school logo/name — see screenshot). Moving
+      // it fully outside the white receipt card, as a small floating round
+      // button above the top-right corner, keeps it clear of the form
+      // content instead of sitting inside it.
+      closeIcon={<span className="fee-receipt-close-icon">✕</span>}
       footer={[
         <Button key="close" onClick={onClose}>
           Close
@@ -240,6 +251,30 @@ export default function FeeReceiptModal({
       {/* Only this block is visible when printing — see @media print rules below. */}
       <div id="fee-receipt-print-area" className="fee-receipt">
         <style>{`
+          /* 👇 FIX: pulls the modal's close (X) button out of the white
+             receipt card and floats it just outside the card's top-right
+             corner instead, as its own round button — so it never sits on
+             top of the receipt content/form again. */
+          .fee-receipt-modal-wrap .ant-modal-close {
+            top: -18px;
+            right: -18px;
+            width: 36px;
+            height: 36px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .fee-receipt-modal-wrap .ant-modal-close:hover {
+            background: #f5f5f5;
+          }
+          .fee-receipt-close-icon {
+            font-size: 16px;
+            line-height: 1;
+            color: rgba(0, 0, 0, 0.65);
+          }
           .fee-receipt {
             font-family: "Times New Roman", Georgia, serif;
             color: #1f1f1f;

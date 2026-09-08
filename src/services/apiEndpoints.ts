@@ -1,5 +1,3 @@
-
-
 export const apiEndpoints = {
   login: () => `/jnpa-school-project/auth/login`,
   getLastFiveAcademicYears: () => `/jnpa-school-project/auth/getLastFiveAcademicYears`,
@@ -143,17 +141,19 @@ getAllCurrentYearStudentsData: (page: number, size: number) =>
   `/jnpa-school-project/student/getAllCurrentYearStudentsData?page=${page}&size=${size}&sort=studentId,desc&paginate=true`,
 
   // Dashboard — Expenses
-  getAllExpensesCount: () =>
-    "/jnpa-school-project/dashboard/getAllExpensesCount",
+  // 🆕 All 4 now take academicYear as a path param, e.g.
+  // GET /jnpa-school-project/dashboard/getAllExpensesTotal/2026-2027
+  getAllExpensesCount: (academicYear: string) =>
+    `/jnpa-school-project/dashboard/getAllExpensesCount/${academicYear}`,
 
-  getAllPaidExpensesTotal: () =>
-    "/jnpa-school-project/dashboard/getAllPaidExpensesTotal",
+  getAllPaidExpensesTotal: (academicYear: string) =>
+    `/jnpa-school-project/dashboard/getAllPaidExpensesTotal/${academicYear}`,
 
-  getAllExpensesTotal: () =>
-    "/jnpa-school-project/dashboard/getAllExpensesTotal",
+  getAllExpensesTotal: (academicYear: string) =>
+    `/jnpa-school-project/dashboard/getAllExpensesTotal/${academicYear}`,
 
-  getAllTotalPaidExpensesCountAndTotalExpensesCount: () =>
-    "/jnpa-school-project/dashboard/getAllTotalPaidExpensesCountAndTotalExpensesCount",
+  getAllTotalPaidExpensesCountAndTotalExpensesCount: (academicYear: string) =>
+    `/jnpa-school-project/dashboard/getAllTotalPaidExpensesCountAndTotalExpensesCount/${academicYear}`,
 
   // ===============================
   // Student Result

@@ -177,7 +177,18 @@ export default function StudentManagement() {
     setSubmitting(true);
     try {
       if (editingStudent) {
+        // 👇 BUG FIX: the Student edit form has no Form.Item for fee data
+        // (studentFeeDTOS etc.) — or for studentResultDTOS/studentAchievementsDTOS —
+        // so `values` from validateFields() never contains them. Sending
+        // `values` alone to the update API dropped those fields from the
+        // payload entirely, and the backend treated "missing" as "clear it",
+        // wiping Total Fee / Pending Fee / Status on the Student Fees screen
+        // any time a student's name (or any other basic field) was updated.
+        // Fix: start from the full record we already fetched
+        // (`editingStudent`, which still has the fee/result/achievement
+        // arrays), then layer the actually-edited form `values` on top.
         const response = await updateStudent({
+          ...editingStudent,
           ...values,
           studentId: editingStudent.studentId,
         });

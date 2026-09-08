@@ -323,8 +323,10 @@ export default function HomePage() {
         .hp-admission-Inquiry {
           display: flex;
           align-items: center;
+          justify-content: center;
           gap: 8px;
-          padding: 12px 11px;
+          width: 210px;
+          padding: 12px 16px;
           background:#983929;
           color: #ffffff;
           font-size: 12px;
@@ -340,12 +342,18 @@ export default function HomePage() {
 
         .hp-admission-Inquiry-icon { font-size: 14px; }
 
-        /* Parent login badge (mirrors DAIS) */
+        /* Parent login badge (mirrors DAIS)
+           🆕 width/padding now match .hp-admission-Inquiry exactly so
+           both quick-action buttons render as identically-sized boxes
+           at every screen size, not just inside the mobile media
+           queries below. */
         .hp-parent-login {
           display: flex;
           align-items: center;
+          justify-content: center;
           gap: 8px;
-          padding: 12px 23px;
+          width: 210px;
+          padding: 12px 16px;
           background: #983929;
           color: #ffffff;
           font-size: 12px;
@@ -433,8 +441,10 @@ export default function HomePage() {
 
           .hp-admission-Inquiry,
           .hp-parent-login {
+            width: 158px;
             padding: 9px 14px;
             font-size: 11px;
+            justify-content: center;
           }
         }
 
@@ -465,8 +475,10 @@ export default function HomePage() {
 
           .hp-admission-Inquiry,
           .hp-parent-login {
+            width: 136px;
             padding: 8px 12px;
             font-size: 10px;
+            justify-content: center;
           }
         }
       `}</style>

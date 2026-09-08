@@ -711,39 +711,57 @@ function StudentFeesTable({ data, loading, pagination, onEdit }: StudentFeesTabl
     {
       title: "Student Code",
       dataIndex: "studentCode",
-      key: "studentCode",
+      key: "studentCode",width: 110 ,
       render: (value: string) => value || "-",
     },
     {
       title: "Status",
       dataIndex: "status",
-      key: "status",
+      key: "status", width: 100 ,
       render: (status: string) =>
         status ? <Tag color={statusColor(status)}>{status}</Tag> : "-",
     },
-    { title: "First Name", dataIndex: "firstName", key: "firstName" },
-    { title: "Last Name", dataIndex: "lastName", key: "lastName" },
-    { title: "Gender", dataIndex: "gender", key: "gender" },
-    { title: "Religion", dataIndex: "religion", key: "religion" },
-    { title: "Category", dataIndex: "category", key: "category" },
-    { title: "Caste", dataIndex: "caste", key: "caste" },
+    {
+      title: "First Name",
+      dataIndex: "firstName",
+      key: "firstName",
+      width: 150,
+      // 👇 FIX: scoped ONLY to this column (which already has a fixed
+      // `width`). A very long, unbroken name now truncates with "..." to
+      // fit that 150px, instead of stretching the column and pushing
+      // Total Fee / Pending Fee / Payment Status out of view. `ellipsis:
+      // true` also adds a native hover tooltip showing the full name.
+      // Left untouched on every other column, so nothing else is affected.
+      ellipsis: true,
+    },
+    {
+      title: "Last Name",
+      dataIndex: "lastName",
+      key: "lastName",
+      width: 150,
+      ellipsis: true,
+    },
+    { title: "Gender", dataIndex: "gender", key: "gender",width: 90  },
+    { title: "Religion", dataIndex: "religion", key: "religion",width: 100  },
+    { title: "Category", dataIndex: "category", key: "category",width: 100  },
+    { title: "Caste", dataIndex: "caste", key: "caste",width: 130  },
     
     {
-      title: "Total Fee Amount",
+      title: "Total Fee's ",
       dataIndex: "totalFeeAmount",
-      key: "totalFeeAmount",
+      key: "totalFeeAmount",width: 110 ,
       render: (value: number) => (value !== undefined && value !== null ? value : "-"),
     },
     {
-      title: "Pending Fee Amount",
+      title: "Pending Fee's  ",
       dataIndex: "pendingFeeAmount",
-      key: "pendingFeeAmount",
+      key: "pendingFeeAmount",width: 110 ,
       render: (value: number) => (value !== undefined && value !== null ? value : "-"),
     },
     {
       title: "Payment Status",
       dataIndex: "paymentStatus",
-      key: "paymentStatus",
+      key: "paymentStatus",width: 120 ,
       render: (status: string) =>
         status ? <Tag color={feeStatusColor(status)}>{status}</Tag> : "-",
     },

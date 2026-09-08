@@ -337,10 +337,10 @@ export default function AcademicsSecondaryMarathi() {
           {classRoom?.subjectDTOList?.map((subj, i) => (
             <div
               key={subj.subjectId ?? i}
-              style={{ background: "#fff", borderTop: "4px solid #1f4d3d", borderRadius: "6px", padding: "24px", boxShadow: "0 4px 14px rgba(0,0,0,0.06)" }}
+              style={{ background: "#fff", borderTop: "4px solid #1f4d3d", borderRadius: "6px", padding: "14px 18px", boxShadow: "0 4px 14px rgba(0,0,0,0.06)" }}
             >
-              <h3 style={{ color: "#1f4d3d", fontSize: "16px", fontWeight: 700, marginBottom: "8px" }}>{subj.subjectName}</h3>
-              <p style={{ color: "#555", fontSize: "13px", lineHeight: 1.6, margin: 0 }}>{subj.subjectDescription}</p>
+              <h3 style={{ color: "#1f4d3d", fontSize: "16px", fontWeight: 700, marginBottom: "4px" }}>{subj.subjectName}</h3>
+              <p style={{ color: "#555", fontSize: "13px", lineHeight: 1.4, margin: 0 }}>{subj.subjectDescription}</p>
             </div>
           ))}
         </div>

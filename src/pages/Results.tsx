@@ -241,6 +241,11 @@ export default function Results() {
       render: (value) => value || "-",
     },
     {
+      title: "Roll No",
+      align: "center",width: 90 ,
+      render: (_, record) => getRollNo(record),
+    },
+    {
       title: "First Name",
       dataIndex: "firstName",
       align: "center",
@@ -249,11 +254,6 @@ export default function Results() {
       title: "Last Name",
       dataIndex: "lastName",
       align: "center",
-    },
-    {
-      title: "Roll No",
-      align: "center",
-      render: (_, record) => getRollNo(record),
     },
     {
       title: "Standard",
@@ -455,9 +455,9 @@ export default function Results() {
             pagination={{
               current: pagination.current,
               pageSize: pagination.pageSize,
-              total: total,
-              showSizeChanger: true,
-              showTotal: (t) => `Total: ${t}`,
+              total: pagination.total,
+              showSizeChanger: false,
+              showTotal: (total) => `Total: ${total}`,
               onChange: (page, pageSize) => {
                 setPagination({ current: page, pageSize });
               },
