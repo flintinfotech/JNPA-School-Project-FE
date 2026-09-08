@@ -54,24 +54,31 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
       label: "Username",
       type: "text" as const,
       required: true,
+      // 👇 These identity fields shouldn't be changed once a user exists —
+      // locked (grayed out, not editable) only while updating; still fully
+      // editable when adding a new user.
+      disabled: isEditing,
     },
     {
       name: "firstName",
       label: "First Name",
       type: "text" as const,
       required: true,
+      disabled: isEditing,
     },
     {
       name: "lastName",
       label: "Last Name",
       type: "text" as const,
       required: true,
+      disabled: isEditing,
     },
     {
       name: "email",
       label: "Email",
       type: "email" as const,
       required: true,
+      disabled: isEditing,
     },
     {
       name: "mobileNo",
@@ -80,7 +87,8 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
       required: true,
       minLength: 10,
       maxLength: 10,
-      pattern: "^[0-9]{10}$"
+      pattern: "^[0-9]{10}$",
+      disabled: isEditing,
     },
     ...(!isEditing
       ? [

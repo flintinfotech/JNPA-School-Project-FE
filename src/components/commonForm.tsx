@@ -10,6 +10,10 @@ export interface FormFieldConfig {
   rules?: Rule[];
   maxLength?: number;
   mode?: "multiple" | "tags";
+  // 👇 Lets a specific field be disabled independently of the whole form's
+  // `viewOnly` flag — e.g. keeping a few identity fields locked while
+  // updating a record, but leaving the rest of the form editable.
+  disabled?: boolean;
 }
 
 interface CommonFormProps {
@@ -48,6 +52,7 @@ export default function CommonForm({
               options={field.options}
               placeholder={`Select ${field.label}`}
               mode={field.mode}
+              disabled={field.disabled}
               optionRender={
                 field.mode === "multiple"
                   ? (option) => (
@@ -59,7 +64,12 @@ export default function CommonForm({
               }
             />
           ) : (
-            <Input type={field.type} placeholder={field.label} maxLength={field.maxLength} />
+            <Input
+              type={field.type}
+              placeholder={field.label}
+              maxLength={field.maxLength}
+              disabled={field.disabled}
+            />
           )}
         </Form.Item>
       ))}

@@ -1363,7 +1363,13 @@ export default function StudentProfile() {
                                                         }
                                                     />
                                                     <InfoRow label="Standard" value={rec.standard} />
-                                                    <InfoRow label="Section" value={rec.section} />
+                                                    {/* <InfoRow label="Section" value={rec.section} /> */}
+                                                    {/* 🛠️ FIX: Division and Medium are real fields on
+                                                        academicInformation (same ones editable in the
+                                                        Student edit form's Academic Info section) but
+                                                        were missing from this read-only view. */}
+                                                    <InfoRow label="Division" value={rec.division} />
+                                                    <InfoRow label="Medium" value={rec.medium} />
                                                     <InfoRow label="Roll No" value={rec.rollNo} />
                                                     <InfoRow label="Academic Year" value={rec.academicYear} />
                                                     <InfoRow label="Blood Group" value={rec.bloodGroup} />
