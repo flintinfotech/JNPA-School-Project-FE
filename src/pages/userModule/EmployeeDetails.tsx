@@ -268,7 +268,34 @@ export default function UpdateUserProfile() {
   const handleCopy = async (value: string | undefined, label: string) => {
     if (!value) return;
     try {
-      await navigator.clipboard.writeText(value);
+      // 👇 FIX: `navigator.clipboard` only exists in a "secure context"
+      // (HTTPS, or `localhost`). Locally you open the app via
+      // `localhost:5173`, so it's available and copy works. On the
+      // development server it's most likely opened over plain HTTP via an
+      // IP/domain (not `localhost`), so `navigator.clipboard` is
+      // undefined there — calling `.writeText` on it throws immediately,
+      // landing in the catch block below as "Failed to copy". The real
+      // fix is serving the dev/staging site over HTTPS, but until then
+      // this fallback copies using the older `execCommand('copy')` API,
+      // which still works over plain HTTP.
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = value;
+        // Keep it out of view but still selectable/copyable.
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        textarea.style.top = "0";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        const successful = document.execCommand("copy");
+        document.body.removeChild(textarea);
+        if (!successful) {
+          throw new Error("execCommand copy failed");
+        }
+      }
       message.success(`${label} copied to clipboard`);
     } catch (err) {
       message.error(`Failed to copy ${label.toLowerCase()}`);
