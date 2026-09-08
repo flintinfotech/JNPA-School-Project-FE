@@ -747,13 +747,13 @@ function StudentFeesTable({ data, loading, pagination, onEdit }: StudentFeesTabl
     { title: "Caste", dataIndex: "caste", key: "caste",width: 130  },
     
     {
-      title: "Total Fee ",
+      title: "Total Fee's ",
       dataIndex: "totalFeeAmount",
       key: "totalFeeAmount",width: 110 ,
       render: (value: number) => (value !== undefined && value !== null ? value : "-"),
     },
     {
-      title: "Pending Fee  ",
+      title: "Pending Fee's  ",
       dataIndex: "pendingFeeAmount",
       key: "pendingFeeAmount",width: 110 ,
       render: (value: number) => (value !== undefined && value !== null ? value : "-"),
