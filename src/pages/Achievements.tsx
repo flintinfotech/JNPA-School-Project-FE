@@ -35,6 +35,14 @@ const { useBreakpoint } = Grid;
 
 const TEACHER_ROLE = "TEACHER";
 
+// 🛠️ FIX — same issue as Results.tsx: the backend only filters on
+// standard/division/medium and ignores firstName/lastName/rollNo, so
+// search was only ever filtering whatever 10 rows were already loaded
+// for the CURRENT page — page 2/3 never showed matches.
+// Fix: fetch every row matching the class scope ONCE (large page size),
+// then filter + paginate entirely on the client over the FULL dataset.
+const MAX_FETCH_SIZE = 10000;
+
 // ---------------------------------------------------------
 // Helper functions
 // ---------------------------------------------------------
@@ -91,17 +99,20 @@ export default function Achievements() {
   // State
   // -------------------------------------------------------
 
+  // Holds EVERY row matching the class scope (not just one page) so
+  // search/pagination below can work over the full dataset.
   const [students, setStudents] =
     useState<ResultStudentDTO[]>([]);
 
   const [loading, setLoading] =
     useState(false);
 
+  // current/pageSize are now purely a client-side "which slice to show"
+  // cursor — no network call is needed just to change page anymore.
   const [pagination, setPagination] =
     useState({
       current: 1,
       pageSize: 10,
-      total: 0,
     });
 
   // 🛠️ FIX — this used to be `const [filters] = useState(...)`, i.e. no
@@ -129,16 +140,15 @@ export default function Achievements() {
   // -------------------------------------------------------
 
   const loadAchievements = useCallback(
-    (
-      page = pagination.current,
-      pageSize = pagination.pageSize,
-      appliedFilters = filters
-    ) => {
+    (appliedFilters = filters) => {
       setLoading(true);
 
+      // Always pull the full class-scoped set (page 0, MAX_FETCH_SIZE) —
+      // firstName/lastName/rollNo are filtered client-side below, so
+      // there's no need to ask the backend to re-page on every search.
       getAllCurrentYearStudentsData(
-        page - 1,
-        pageSize,
+        0,
+        MAX_FETCH_SIZE,
         appliedFilters
       )
         .then((response) => {
@@ -146,14 +156,6 @@ export default function Achievements() {
             setStudents(
               response.data?.data || []
             );
-
-            setPagination({
-              current: page,
-              pageSize,
-              total:
-                response.data?.totalElements ||
-                0,
-            });
           } else {
             message.error(
               response.message ||
@@ -171,11 +173,8 @@ export default function Achievements() {
           setLoading(false);
         });
     },
-    [
-      filters,
-      pagination.current,
-      pagination.pageSize,
-    ]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   // -------------------------------------------------------
@@ -183,11 +182,7 @@ export default function Achievements() {
   // -------------------------------------------------------
 
   useEffect(() => {
-    loadAchievements(
-      1,
-      pagination.pageSize,
-      filters
-    );
+    loadAchievements(filters);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -206,11 +201,12 @@ export default function Achievements() {
     setFilters((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Re-queries page 1 using whatever is currently typed into the
-  // First Name / Last Name / Roll No boxes (plus the pinned class scope
-  // for a teacher).
+  // Jumps back to page 1 of the (already fully loaded) filtered results
+  // for whatever is currently typed into the First Name / Last Name /
+  // Roll No boxes (plus the pinned class scope for a teacher). No
+  // refetch needed — filtering happens client-side below.
   const handleSearch = () => {
-    loadAchievements(1, pagination.pageSize, filters);
+    setPagination((prev) => ({ ...prev, current: 1 }));
   };
 
   // Pressing Enter in any of the search inputs searches too.
@@ -227,26 +223,16 @@ export default function Achievements() {
     // Reset can't be used to escape their assigned class.
     const cleared: ResultFilters = { ...classScope };
     setFilters(cleared);
-    loadAchievements(1, pagination.pageSize, cleared);
+    setPagination((prev) => ({ ...prev, current: 1 }));
   };
 
   // ---------------------------------------------------------------
-  // 🛠️ FIX — client-side fallback filter for First Name / Last Name /
-  // Roll No, same as Results.tsx.
-  //
-  // The backend's getAllCurrentYearStudentsData endpoint may only
-  // filter on standard/division/medium and silently ignore
-  // firstName/lastName/rollNo in the request body, which is why the
-  // search boxes looked wired up but never visibly changed anything.
-  // This filters whatever the API already returned for the current
-  // page, so search visibly works regardless of what the backend
-  // actually honors server-side.
-  //
-  // ⚠️ This only filters the CURRENT PAGE of results, not the whole
-  // dataset. Once the backend is confirmed to filter on these fields
-  // itself, this can be removed and `students` used directly again.
+  // 🛠️ FIX — search now runs over the FULL fetched dataset (`students`,
+  // which holds every class-scoped row, not just one page), so a match
+  // on any page is found. The result is then sliced below for whichever
+  // page is currently selected.
   // ---------------------------------------------------------------
-  const displayedStudents = useMemo(() => {
+  const filteredStudents = useMemo(() => {
     const first = filters.firstName?.trim().toLowerCase();
     const last = filters.lastName?.trim().toLowerCase();
     const roll = filters.rollNo?.trim().toLowerCase();
@@ -266,6 +252,15 @@ export default function Achievements() {
       return matchesFirst && matchesLast && matchesRoll;
     });
   }, [students, filters.firstName, filters.lastName, filters.rollNo]);
+
+  const total = filteredStudents.length;
+
+  // The slice actually rendered for the current page/pageSize — this is
+  // the client-side pagination step that replaces the old server paging.
+  const displayedStudents = useMemo(() => {
+    const start = (pagination.current - 1) * pagination.pageSize;
+    return filteredStudents.slice(start, start + pagination.pageSize);
+  }, [filteredStudents, pagination.current, pagination.pageSize]);
 
   // -------------------------------------------------------
   // Open Achievement Drawer
@@ -593,7 +588,7 @@ export default function Achievements() {
           <div className="flex items-center justify-between pt-2">
             <span className="text-xs text-gray-500">
               Total:{" "}
-              {pagination.total}
+              {total}
             </span>
 
             <div className="flex gap-2">
@@ -604,12 +599,10 @@ export default function Achievements() {
                   1
                 }
                 onClick={() =>
-                  loadAchievements(
-                    pagination.current -
-                      1,
-                    pagination.pageSize,
-                    filters
-                  )
+                  setPagination((prev) => ({
+                    ...prev,
+                    current: prev.current - 1,
+                  }))
                 }
               >
                 Prev
@@ -620,15 +613,13 @@ export default function Achievements() {
                 disabled={
                   pagination.current *
                     pagination.pageSize >=
-                  pagination.total
+                  total
                 }
                 onClick={() =>
-                  loadAchievements(
-                    pagination.current +
-                      1,
-                    pagination.pageSize,
-                    filters
-                  )
+                  setPagination((prev) => ({
+                    ...prev,
+                    current: prev.current + 1,
+                  }))
                 }
               >
                 Next
@@ -682,11 +673,7 @@ export default function Achievements() {
             closeAchievementDrawer
           }
           onSaved={() => {
-            loadAchievements(
-              pagination.current,
-              pagination.pageSize,
-              filters
-            );
+            loadAchievements(filters);
           }}
         />
       </>
@@ -716,22 +703,17 @@ export default function Achievements() {
               pageSize:
                 pagination.pageSize,
 
-              total:
-                pagination.total,
+              total: total,
 
               showSizeChanger: true,
 
-              showTotal: (total) => `Total: ${total}`,
+              showTotal: (t) => `Total: ${t}`,
 
               onChange: (
                 page,
                 pageSize
               ) => {
-                loadAchievements(
-                  page,
-                  pageSize,
-                  filters
-                );
+                setPagination({ current: page, pageSize });
               },
             }}
           />
@@ -783,11 +765,7 @@ export default function Achievements() {
           closeAchievementDrawer
         }
         onSaved={() => {
-          loadAchievements(
-            pagination.current,
-            pagination.pageSize,
-            filters
-          );
+          loadAchievements(filters);
         }}
       />
     </>
