@@ -504,8 +504,8 @@ export default function SchoolExpenses() {
 
   return (
     <div className="p-4 md:p-6">
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-4">
-        <div><h2 className="text-lg md:text-xl font-semibold m-0">School Expenses</h2></div>
+      <div className="flex flex-col md:flex-row md:justify-end md:items-center gap-3 mb-7">
+      
         <Button type="primary" icon={<PlusOutlined />} onClick={openAddDrawer}>Add Expense</Button>
       </div>
 
