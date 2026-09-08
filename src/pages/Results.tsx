@@ -33,6 +33,16 @@ const { useBreakpoint } = Grid;
 // 👇 TODO: confirm this matches the exact role string your backend sends
 const TEACHER_ROLE = "TEACHER";
 
+// 🛠️ FIX — the backend only filters on standard/division/medium and
+// ignores firstName/lastName/rollNo, so search was previously filtering
+// only whatever rows happened to already be loaded for the CURRENT page
+// (10 rows) — that's why page 2/3 never showed matching students.
+// Fix: fetch every row that matches the class scope ONCE (large page
+// size), then do the firstName/lastName/rollNo filtering AND the
+// pagination entirely on the client, over the FULL dataset. This way
+// search finds a match no matter which page it would have landed on.
+const MAX_FETCH_SIZE = 10000;
+
 const getStandard = (record: ResultStudentDTO) =>
   record.academicInformation?.[0]?.standard || "-";
 
@@ -76,13 +86,16 @@ export default function Results() {
     }
   : {};
 
+  // Holds EVERY row matching the class scope (not just one page) so
+  // search/pagination below can work over the full dataset.
   const [students, setStudents] = useState<ResultStudentDTO[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // current/pageSize are now purely a client-side "which slice to show"
+  // cursor — no network call is needed just to change page anymore.
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
-    total: 0,
   });
 
   const [filters, setFilters] = useState<ResultFilters>({
@@ -97,26 +110,20 @@ export default function Results() {
   );
 
   const loadResults = useCallback(
-    async (
-      page = pagination.current,
-      pageSize = pagination.pageSize,
-      appliedFilters = filters
-    ) => {
+    async (appliedFilters = filters) => {
       setLoading(true);
       try {
+        // Always pull the full class-scoped set (page 0, MAX_FETCH_SIZE) —
+        // firstName/lastName/rollNo are filtered client-side below anyway,
+        // so there's no need to ask the backend to re-page on every search.
         const response = await getAllCurrentYearStudentsData(
-          page - 1,
-          pageSize,
+          0,
+          MAX_FETCH_SIZE,
           appliedFilters
         );
 
         if (response.success) {
           setStudents(response.data?.data || []);
-          setPagination({
-            current: page,
-            pageSize,
-            total: response.data?.totalElements || 0,
-          });
         } else {
           message.error(response.message || "Failed to load results");
         }
@@ -131,7 +138,7 @@ export default function Results() {
   );
 
   useEffect(() => {
-    loadResults(1, pagination.pageSize, filters);
+    loadResults(filters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -143,11 +150,12 @@ export default function Results() {
     setFilters((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Search button — re-queries page 1 using whatever is currently typed
-  // into the First Name / Last Name / Roll No boxes (plus the pinned
-  // class scope for a teacher).
+  // Search button — jumps back to page 1 of the (already fully loaded)
+  // filtered results for whatever is currently typed into the First Name
+  // / Last Name / Roll No boxes (plus the pinned class scope for a
+  // teacher). No refetch needed — filtering happens client-side below.
   const handleSearch = () => {
-    loadResults(1, pagination.pageSize, filters);
+    setPagination((prev) => ({ ...prev, current: 1 }));
   };
 
   // Pressing Enter in any of the search inputs searches too, so the user
@@ -163,7 +171,7 @@ export default function Results() {
     // Reset can't be used to escape their assigned class.
     const cleared: ResultFilters = { ...classScope };
     setFilters(cleared);
-    loadResults(1, pagination.pageSize, cleared);
+    setPagination((prev) => ({ ...prev, current: 1 }));
   };
 
   const openDrawer = (record: ResultStudentDTO, mode: "view" | "edit") => {
@@ -179,29 +187,16 @@ export default function Results() {
 
   const handleSaved = () => {
     closeDrawer();
-    loadResults(pagination.current, pagination.pageSize, filters);
+    loadResults(filters);
   };
 
   // ---------------------------------------------------------------
-  // 🛠️ FIX — client-side fallback filter for First Name / Last Name /
-  // Roll No.
-  //
-  // The backend's getAllCurrentYearStudentsData endpoint may only
-  // filter on standard/division/medium and silently ignore
-  // firstName/lastName/rollNo in the request body — which is exactly
-  // why the search boxes looked "wired up" but never changed the
-  // results. This filters whatever the API already returned for the
-  // current page, so search visibly works regardless of what the
-  // backend actually honors server-side.
-  //
-  // ⚠️ This only filters the CURRENT PAGE of results, not the whole
-  // dataset (e.g. searching for a student who's on page 2 while
-  // viewing page 1 won't find them). Once the backend is confirmed to
-  // filter on these fields itself, this can be removed and `students`
-  // used directly again — it will already have been the right rows
-  // for every page.
+  // 🛠️ FIX — search now runs over the FULL fetched dataset (`students`,
+  // which holds every class-scoped row, not just one page), so a match
+  // on any page is found. The result is then sliced below for whichever
+  // page is currently selected.
   // ---------------------------------------------------------------
-  const displayedStudents = useMemo(() => {
+  const filteredStudents = useMemo(() => {
     const first = filters.firstName?.trim().toLowerCase();
     const last = filters.lastName?.trim().toLowerCase();
     const roll = filters.rollNo?.trim().toLowerCase();
@@ -221,6 +216,15 @@ export default function Results() {
       return matchesFirst && matchesLast && matchesRoll;
     });
   }, [students, filters.firstName, filters.lastName, filters.rollNo]);
+
+  const total = filteredStudents.length;
+
+  // The slice actually rendered for the current page/pageSize — this is
+  // the client-side pagination step that replaces the old server paging.
+  const displayedStudents = useMemo(() => {
+    const start = (pagination.current - 1) * pagination.pageSize;
+    return filteredStudents.slice(start, start + pagination.pageSize);
+  }, [filteredStudents, pagination.current, pagination.pageSize]);
 
   const columns: ColumnsType<ResultStudentDTO> = [
     {
@@ -417,22 +421,22 @@ export default function Results() {
             ))}
 
           <div className="flex items-center justify-between pt-2">
-            <span className="text-xs text-gray-500">Total: {pagination.total}</span>
+            <span className="text-xs text-gray-500">Total: {total}</span>
             <div className="flex gap-2">
               <Button
                 size="small"
                 disabled={pagination.current <= 1}
                 onClick={() =>
-                  loadResults(pagination.current - 1, pagination.pageSize, filters)
+                  setPagination((prev) => ({ ...prev, current: prev.current - 1 }))
                 }
               >
                 Prev
               </Button>
               <Button
                 size="small"
-                disabled={pagination.current * pagination.pageSize >= pagination.total}
+                disabled={pagination.current * pagination.pageSize >= total}
                 onClick={() =>
-                  loadResults(pagination.current + 1, pagination.pageSize, filters)
+                  setPagination((prev) => ({ ...prev, current: prev.current + 1 }))
                 }
               >
                 Next
@@ -455,7 +459,7 @@ export default function Results() {
               showSizeChanger: false,
               showTotal: (total) => `Total: ${total}`,
               onChange: (page, pageSize) => {
-                loadResults(page, pageSize, filters);
+                setPagination({ current: page, pageSize });
               },
             }}
           />

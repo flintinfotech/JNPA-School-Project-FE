@@ -603,17 +603,24 @@ const TeacherSubject: React.FC = () => {
     },
 
     {
-      title: "Designation",
-      dataIndex: "designation",
+      title: "Standard",
+      dataIndex: "standard",
       align: "center",
       render: (value) => value || "-",
     },
 
     {
-      title: "Experience",
-      dataIndex: "experience",
+      title: "Division",
+      dataIndex: "division",
       align: "center",
-      render: (value) => (value ? `${value} Years` : "-"),
+      render: (value) => value || "-",
+    },
+
+    {
+      title: "Medium",
+      dataIndex: "medium",
+      align: "center",
+      render: (value) => value || "-",
     },
 
     {
@@ -751,15 +758,18 @@ const TeacherSubject: React.FC = () => {
                 </div>
 
                 <div style={{ marginBottom: 8 }}>
-                  <Text strong>Designation : </Text>
-                  <Text>{teacher.designation || "-"}</Text>
+                  <Text strong>Standard : </Text>
+                  <Text>{teacher.standard || "-"}</Text>
+                </div>
+
+                <div style={{ marginBottom: 8 }}>
+                  <Text strong>Division : </Text>
+                  <Text>{teacher.division || "-"}</Text>
                 </div>
 
                 <div style={{ marginBottom: 12 }}>
-                  <Text strong>Experience : </Text>
-                  <Text>
-                    {teacher.experience ? `${teacher.experience} Years` : "-"}
-                  </Text>
+                  <Text strong>Medium : </Text>
+                  <Text>{teacher.medium || "-"}</Text>
                 </div>
 
                 <div
