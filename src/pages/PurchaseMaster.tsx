@@ -283,14 +283,35 @@ export default function PurchaseMaster() {
     try {
       const res = await api.delete(apiEndpoints.deletePurchase(purchaseId));
       if (res?.data?.success === false) {
-        message.error(res?.data?.message || "Failed to delete purchase");
+        showDeleteError(res?.data?.message);
         return;
       }
       message.success(res?.data?.message || "Purchase deleted successfully");
       fetchPurchases(page, pageSize);
     } catch (error: any) {
-      message.error(error?.response?.data?.message || "Failed to delete purchase");
+      showDeleteError(error?.response?.data?.message);
     }
+  };
+
+  // 👇 Same styled, friendlier wording used for the delete-blocked message
+  // on Class Master / Subject Master — red text + a rewritten sentence for
+  // the "in use elsewhere" case, falling back to the backend's own message
+  // for anything else.
+  const showDeleteError = (backendMessage?: string) => {
+    const finalMessage = backendMessage || "Failed to delete purchase";
+
+    const isInUseError = finalMessage.toLowerCase().includes("assigned");
+
+    message.error({
+      content: (
+        <span style={{ color: "#d4380d", fontWeight: 500 }}>
+          {isInUseError
+            ? "This purchase record cannot be Deleted as it is referenced elsewhere in the system."
+            : finalMessage}
+        </span>
+      ),
+      duration: 4,
+    });
   };
 
   const columns = [
@@ -326,7 +347,7 @@ export default function PurchaseMaster() {
             onClick={() => openEditModal(record)}
           />
           <Popconfirm
-            title="Delete this purchase?"
+            title="Are you sure you want to Delete this purchase?"
             onConfirm={() => handleDelete(record.purchaseId)}
             okText="Delete"
             okButtonProps={{ danger: true }}
@@ -386,7 +407,7 @@ export default function PurchaseMaster() {
                     onClick={() => openEditModal(record)}
                   />
                   <Popconfirm
-                    title="Delete this purchase?"
+                    title="Are you sure you want Delete this purchase?"
                     onConfirm={() => handleDelete(record.purchaseId)}
                     okText="Delete"
                     okButtonProps={{ danger: true }}

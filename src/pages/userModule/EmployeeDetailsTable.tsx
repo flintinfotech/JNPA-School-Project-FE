@@ -111,8 +111,8 @@ export default function UserUpdateProfileTable({
           />
 
           <Popconfirm
-            title="Delete Employee"
-            description="Are you sure want to delete?"
+            title="Are you sure you want to Delete Employee"
+            
             okText="Yes"
             cancelText="No"
             onConfirm={() => onDelete(record)}
@@ -189,8 +189,7 @@ export default function UserUpdateProfileTable({
                   onClick={() => onEdit(record)}
                 />
                 <Popconfirm
-                  title="Delete Employee"
-                  description="Are you sure want to delete?"
+                  title="Are you sure you want to Delete Employee"
                   okText="Yes"
                   cancelText="No"
                   onConfirm={() => onDelete(record)}
