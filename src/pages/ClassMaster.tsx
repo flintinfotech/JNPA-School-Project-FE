@@ -193,24 +193,33 @@ const ClassMaster: React.FC = () => {
             setPage(page - 1);
           }
         } else {
-          // 👇 FIX: the backend returns this as a normal resolved response
-          // (not a thrown/rejected one) with `success: false` and the real
-          // reason in `message` — e.g. "This Class master is assigned in
-          // subject assignment and teacher subjects, can't delete this
-          // class". There was no `else` here before, so that case was
-          // silently ignored: nothing got deleted and nothing was shown.
-          message.error(response.data.message ?? "Failed to delete class");
+          showDeleteError(response.data.message);
         }
       })
       .catch((error) => {
         console.log(error);
-        // Fallback for the rarer case where the backend genuinely rejects
-        // the request (network error, 4xx/5xx thrown, etc.) instead of
-        // resolving with `success: false`.
-        message.error(
-          error?.response?.data?.message ?? "Failed to delete class"
-        );
+        showDeleteError(error?.response?.data?.message);
       });
+  };
+
+  // 👇 Same styled, friendlier wording as Subject Master's delete-blocked
+  // message — red text + a rewritten sentence for the "in use elsewhere"
+  // case, falling back to the backend's own message for anything else.
+  const showDeleteError = (backendMessage?: string) => {
+    const finalMessage = backendMessage || "Failed to delete class";
+
+    const isAssignedError = finalMessage.toLowerCase().includes("assigned");
+
+    message.error({
+      content: (
+        <span style={{ color: "#d4380d", fontWeight: 500 }}>
+          {isAssignedError
+            ? "This class is already  use in (assigned in Subject Assignment / Teacher Subjects), Cannot be Deleted."
+            : finalMessage}
+        </span>
+      ),
+      duration: 4,
+    });
   };
 
   // ===========================
@@ -492,8 +501,8 @@ const ClassMaster: React.FC = () => {
                         </button>
 
                         <Popconfirm
-                          title="Delete Class"
-                          description="Are you sure?"
+                          title="Are you sure ,you want to Delete this Class"
+                        
                           okText="Yes"
                           cancelText="No"
                           onConfirm={() => handleDelete(row.id)}

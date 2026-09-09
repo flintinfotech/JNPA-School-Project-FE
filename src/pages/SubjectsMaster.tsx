@@ -146,15 +146,45 @@ const SubjectMaster: React.FC = () => {
     try {
       const response = await deleteSubject(id);
 
-      message.error(response.message);
+      if (response.success) {
+        message.success(response.message);
 
-      // refresh table data
-      loadSubjects();
+        // refresh table data
+        loadSubjects();
+        return;
+      }
+
+      // 👇 FIX: backend returns this as a normal (2xx) resolved response
+      // with `success: false` when delete isn't allowed — it never
+      // throws. There was no check for that here before, so this branch
+      // never ran and the raw backend message always showed with the
+      // default green "success" tick regardless of outcome.
+      showDeleteError(response.message);
     } catch (error: any) {
       console.log("Delete Error:", error);
 
-      message.error(error.response?.data?.message || "Delete operation failed");
+      showDeleteError(error.response?.data?.message);
     }
+  };
+
+  // 👇 Shared styling/wording for the delete-blocked message, used by both
+  // the `success: false` case above and the genuine thrown-error case.
+  const showDeleteError = (backendMessage?: string) => {
+    
+    const finalMessage = backendMessage || "Delete operation failed";
+
+    const isAssignedError = finalMessage.toLowerCase().includes("assigned");
+
+    message.error({
+      content: (
+        <span style={{ color: "#d4380d", fontWeight: 500 }}>
+          {isAssignedError
+            ? "This Subject is already use in  (assigned to a Class/Teacher), Cannot be Deleted."
+            : finalMessage}
+        </span>
+      ),
+      duration: 4,
+    });
   };
 
   // =============================
@@ -194,7 +224,7 @@ const SubjectMaster: React.FC = () => {
           />
 
           <Popconfirm
-            title="Are you sure you want to delete this subject?"
+            title="Are you sure you want to Delete this Subject?"
             onConfirm={() => handleDelete(record.subjectMasterId)}
             okText="Yes"
             cancelText="No"
@@ -227,6 +257,7 @@ const SubjectMaster: React.FC = () => {
                 current: pagination.current,
                 pageSize: pagination.pageSize,
                 total: pagination.total,
+                showSizeChanger: false,
                 showTotal: (total) => `Total: ${total}`,
                 onChange: (page, pageSize) => {
                   loadSubjects(page, pageSize);
