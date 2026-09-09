@@ -14,6 +14,10 @@ export interface FormFieldConfig {
   // `viewOnly` flag — e.g. keeping a few identity fields locked while
   // updating a record, but leaving the rest of the form editable.
   disabled?: boolean;
+  // 🆕 Shows a clear ("x") icon on a select field once a value is chosen,
+  // same as the Category dropdown in SchoolExpenses. Only meaningful for
+  // type: "select".
+  allowClear?: boolean;
 }
 
 interface CommonFormProps {
@@ -53,6 +57,7 @@ export default function CommonForm({
               placeholder={`Select ${field.label}`}
               mode={field.mode}
               disabled={field.disabled}
+              allowClear={field.allowClear}
               optionRender={
                 field.mode === "multiple"
                   ? (option) => (

@@ -119,13 +119,17 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
         value: screen.screenId,
       })),
     },
+    // 🛠️ FIX — Section / Medium / Standard / Division (TEACHER-only
+    // fields): "required" removed (was forcing these to be filled in even
+    // on edit) and "allowClear: true" added so each one now shows a clear
+    // ("x") icon, same as the Category dropdown in SchoolExpenses.
     ...(selectedRole === "TEACHER"
       ? [
         {
           name: "section",
           label: "Section",
           type: "select" as const,
-          required: true,
+          allowClear: true,
           options:
             staticData?.["class name"]?.map((item) => ({
               label: item,
@@ -136,7 +140,7 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
           name: "medium",
           label: "Medium",
           type: "select" as const,
-          required: true,
+          allowClear: true,
           options: [
             {
               label: "English",
@@ -152,7 +156,7 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
           name: "standard",
           label: "Standard",
           type: "select" as const,
-          required: true,
+          allowClear: true,
           options:
             staticData?.standard?.map((item) => ({
               label: item,
@@ -163,7 +167,7 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
           name: "division",
           label: "Division",
           type: "select" as const,
-          required: true,
+          allowClear: true,
           options:
             staticData?.division?.map((item) => ({
               label: item,
