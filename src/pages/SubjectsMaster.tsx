@@ -227,7 +227,6 @@ const SubjectMaster: React.FC = () => {
                 current: pagination.current,
                 pageSize: pagination.pageSize,
                 total: pagination.total,
-                showSizeChanger: true,
                 showTotal: (total) => `Total: ${total}`,
                 onChange: (page, pageSize) => {
                   loadSubjects(page, pageSize);
