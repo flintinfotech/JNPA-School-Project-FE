@@ -68,19 +68,28 @@ export function useAuth() {
           JSON.stringify(response.data.userDTO)
         );
 
-        if (isParent) {
-          localStorage.setItem("isParent", "true");
-          localStorage.setItem(
-            "screens",
-            JSON.stringify([{ screenName: "Student Profile" }])
-          );
-        } else {
-          localStorage.setItem("isParent", "false");
-          localStorage.setItem(
-            "screens",
-            JSON.stringify(response.data.userDTO.screens || [])
-          );
-        }
+        // 🛠️ FIX — Parent login couldn't see screens like "Student
+        // Homework" even though the backend was actually sending them.
+        //
+        // Root cause: this branch used to hard-overwrite "screens" with a
+        // fixed single-entry array ([{ screenName: "Student Profile" }])
+        // whenever isParent was true — completely ignoring whatever
+        // userDTO.screens the backend returned. Sidebar.tsx builds its
+        // allowed-screen list purely from localStorage "screens", so any
+        // screen not named "Student Profile" (e.g. "Student Homework")
+        // was filtered out before it ever reached the menu, regardless of
+        // what the backend said the parent was allowed to see. The normal
+        // (non-parent) login path never had this hardcoding, which is why
+        // it worked there.
+        //
+        // Fix: always store the real screens the backend returned, for
+        // both parents and staff/admin logins. isParent is still saved
+        // separately for route-guard purposes elsewhere in the app.
+        localStorage.setItem("isParent", isParent ? "true" : "false");
+        localStorage.setItem(
+          "screens",
+          JSON.stringify(response.data.userDTO?.screens || [])
+        );
 
         // Optional: Save Academic Year
         localStorage.setItem(

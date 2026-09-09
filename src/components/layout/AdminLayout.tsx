@@ -18,15 +18,33 @@ export default function AdminLayout({ isAuthenticated, onLogout }: Props) {
     return <Navigate to={isParent ? "/parent-login" : "/login"} replace />;
   }
 
-  const isParent = localStorage.getItem("isParent") === "true";
-  if (isParent && !location.pathname.startsWith("/student-profile")) {
-    return <Navigate to="/student-profile" replace />;
-  }
-
-  // Screen-level access control: only let the user reach a screen if the
-  // admin actually assigned it to them (Sidebar already hides unassigned
-  // links, but this stops direct URL access too, e.g. typing /dashboard).
-  if (!isParent && !isScreenAllowed(location.pathname)) {
+  // 🛠️ FIX — Clicking "Student Homework" (or any screen other than Student
+  // Profile) as a parent silently bounced straight back to
+  // /student-profile, with no API call ever firing.
+  //
+  // Root cause: this used to hard-lock every parent to paths starting with
+  // "/student-profile" — completely regardless of what "screens" the
+  // backend actually returned for that user at login:
+  //
+  //   const isParent = localStorage.getItem("isParent") === "true";
+  //   if (isParent && !location.pathname.startsWith("/student-profile")) {
+  //     return <Navigate to="/student-profile" replace />;
+  //   }
+  //
+  // This check ran on every render, BEFORE the screen-level
+  // isScreenAllowed() check below (which was also skipped for parents via
+  // `!isParent &&`). So even after fixing useAuth.ts to store the real
+  // backend-assigned screens, and even with "Student Homework" showing up
+  // correctly in the Sidebar, navigating to /student-homework as a parent
+  // would immediately get redirected back to /student-profile by THIS
+  // block — the StudentHomework component never got a chance to mount, so
+  // it never had a chance to call its API either.
+  //
+  // Fix: drop the parent-only hardcoded lock, and let isScreenAllowed()
+  // (which already reads the same localStorage "screens" list for both
+  // parents and staff/admin) be the single source of truth for what paths
+  // any logged-in user — parent or not — can reach.
+  if (!isScreenAllowed(location.pathname)) {
     const fallback = firstAllowedPath();
 
     if (fallback && fallback !== location.pathname) {

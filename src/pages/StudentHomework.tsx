@@ -164,6 +164,27 @@ export default function StudentHomework() {
     // see data — the Category/Date controls only filter what's on screen.
     //   POST /jnpa-school-project/homework/getAllHomeworkByFilter?page=0&size=20&paginate=true
     //   payload: { academicYear, division, medium, standard }
+    //
+    // 🛠️ FIX — Student Homework showed the screen but always returned 0
+    // records for parents.
+    //
+    // Root cause: `AcademicInformationDTO` (studentService.ts) has no
+    // "medium" field on it at all, so `academicInfo?.medium` was always
+    // `undefined`, and classScope.medium fell back to `""` (empty string)
+    // via `|| ""`. That empty string was then sent to the backend as a
+    // real filter value: `{ ..., medium: "" }`. The backend appears to
+    // treat every field in the filter body as an exact-match condition —
+    // including empty ones — so it was effectively asking for "homework
+    // where medium equals '' ", which no real record matches (they're all
+    // "English"/"Marathi" etc), so it always came back empty. Standard/
+    // division/academicYear happened to resolve to real values, so this
+    // only showed up because of the missing `medium` field — but the same
+    // bug would hit any field that's blank for a given student.
+    //
+    // Fix: build the classScope as before (for display / the safety
+    // filter below), but only include a field in the actual POST body when
+    // it has a real, non-empty value. Omitted fields let the backend treat
+    // them as "no filter on this field" instead of "must equal ''".
     // ===========================
 
     useEffect(() => {
@@ -178,6 +199,24 @@ export default function StudentHomework() {
             standard: academicInfo?.standard || "",
         };
 
+        // 🆕 Only send fields that actually have a value — never send an
+        // empty string as a "filter" the backend will match literally.
+        const requestPayload: Record<string, string> = {};
+        if (classScope.academicYear) requestPayload.academicYear = classScope.academicYear;
+        if (classScope.division) requestPayload.division = classScope.division;
+        if (classScope.medium) requestPayload.medium = classScope.medium;
+        if (classScope.standard) requestPayload.standard = classScope.standard;
+
+        // Debug aid — if homework still comes back empty, check this log
+        // first: does classScope have every field you expect (standard,
+        // division, medium, academicYear) populated with a real value
+        // that matches how homework was saved (e.g. "1st Standard", not
+        // "1")? If a field is missing here, the student's
+        // academicInformation from the backend doesn't have that data
+        // under the field name this component expects.
+        // eslint-disable-next-line no-console
+        console.log("StudentHomework classScope:", classScope, "payload sent:", requestPayload);
+
         const loadHomework = async () => {
             setHomeworkLoading(true);
             setHomeworkError(null);
@@ -185,7 +224,7 @@ export default function StudentHomework() {
             try {
                 const res = await api.post(
                     apiEndpoints.getAllHomeworkByFilter(0, 20),
-                    classScope
+                    requestPayload
                 );
 
                 if (res?.data?.success === false) {
@@ -196,8 +235,10 @@ export default function StudentHomework() {
 
                 const list = extractHomeworkList(res);
 
-                // Safety filter against the same class scope sent in the
-                // request, in case the backend ever ignores some fields.
+                // Safety filter against the same class scope, in case the
+                // backend ever ignores some fields or returns a broader
+                // set than expected. Only applies a check for fields that
+                // actually had a value.
                 const filtered = list.filter((item) => {
                     const matchesStandard = classScope.standard
                         ? item.standard === classScope.standard
