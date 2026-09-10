@@ -69,6 +69,7 @@ export const adminNavItems: AdminNavEntry[] = [
     { label: "Users", path: "/users", icon: LuUsers },
     { label: "Students", path: "/students", icon: PiStudent },
     { label: "Admission Inquiry", path:"/admission-inquiry",icon:GrCircleInformation},
+    { label: "Former Student", path:"/former-student",icon:PiStudentFill},
   ],
 },
 

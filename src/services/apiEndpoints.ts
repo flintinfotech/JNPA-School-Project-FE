@@ -260,4 +260,23 @@ getAllSchoolExpensesByFilter: (page: number, size: number) =>
   getAllHomeworkByFilter: (page: number, size: number) =>
     `/jnpa-school-project/homework/getAllHomeworkByFilter?page=${page}&size=${size}&paginate=true`,
 
+  // ===============================
+  // 🆕 Former Students
+  // ===============================
+  saveFormerStudent: () =>
+    `/jnpa-school-project/formerStudents/saveFormerStudent`,
+ 
+  updateFormerStudent: () =>
+    `/jnpa-school-project/formerStudents/updateFormerStudent`,
+ 
+  getFormerStudent: (formerStudentId: number | string) =>
+    `/jnpa-school-project/formerStudents/getFormerStudent/${formerStudentId}`,
+ 
+  deleteFormerStudent: (formerStudentId: number | string) =>
+    `/jnpa-school-project/formerStudents/deleteFormerStudent/${formerStudentId}`,
+ 
+  getAllFormerStudentByFilter: (page: number, size: number) =>
+    `/jnpa-school-project/formerStudents/getAllFormerStudentByFilter?page=${page}&size=${size}&paginate=true`,
+ 
+
 };
