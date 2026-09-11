@@ -571,17 +571,15 @@ export default function SchoolExpenses() {
         {!tableLoading && displayedRows.length === 0 ? (
           <Card><Empty description="No school expenses found" /></Card>
         ) : (
-          <div className="overflow-x-auto">
-            <CommonTable
-              data={displayedRows}
-              columns={columns}
-              loading={tableLoading}
-              pagination={{
-                current: page + 1, pageSize, total,
-                onChange: (newPage: number, newPageSize: number) => handlePaginationChange(newPage, newPageSize),
-              }}
-            />
-          </div>
+          <CommonTable
+            data={displayedRows}
+            columns={columns}
+            loading={tableLoading}
+            pagination={{
+              current: page + 1, pageSize, total,
+              onChange: (newPage: number, newPageSize: number) => handlePaginationChange(newPage, newPageSize),
+            }}
+          />
         )}
       </div>
 
@@ -655,7 +653,7 @@ export default function SchoolExpenses() {
 
             {/* Mobile Pagination */}
             <div className="flex justify-center">
-              <div className="w-full overflow-x-auto">
+              <div className="w-full">
                 <CommonTable
                   data={[]}
                   columns={[]}

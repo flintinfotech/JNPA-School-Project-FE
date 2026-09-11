@@ -803,6 +803,7 @@ const TeacherSubject: React.FC = () => {
               dataSource={teachers}
               loading={loading}
               bordered
+              scroll={{ x: "max-content" }}
               pagination={{
                 current: pagination.current,
                 pageSize: pagination.pageSize,

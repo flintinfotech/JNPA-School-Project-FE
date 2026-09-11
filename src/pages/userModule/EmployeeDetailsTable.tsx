@@ -230,15 +230,13 @@ export default function UserUpdateProfileTable({
     );
   }
 
-  // Desktop: existing table, wrapped for horizontal scroll safety on smaller laptop widths
+  // Desktop: existing table (CommonTable already handles horizontal scroll internally)
   return (
-    <div className="overflow-x-auto">
-      <CommonTable
-        data={data}
-        columns={columns}
-        loading={loading}
-        pagination={pagination}
-      />
-    </div>
+    <CommonTable
+      data={data}
+      columns={columns}
+      loading={loading}
+      pagination={pagination}
+    />
   );
 }

@@ -682,13 +682,14 @@ export default function FormerStudents() {
           <Empty description="No former students found" />
         </Card>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="table-wrapper">
           <Table
             rowKey={(record) => record.formerStudentId as number}
             columns={columns}
             dataSource={rows}
             loading={tableLoading}
             bordered
+            scroll={{ x: "max-content" }}
             pagination={{
               current: page + 1,
               pageSize: PAGE_SIZE,

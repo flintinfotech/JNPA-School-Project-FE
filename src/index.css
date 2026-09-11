@@ -1,14 +1,17 @@
 @import "tailwindcss";
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
 .table-wrapper .ant-pagination {
   display: flex !important;
-  justify-content: space-between !important;
   width: 100%;
 }
 
 .table-wrapper .ant-pagination-total-text {
   margin-right: auto !important;
 }
-
 
 .ant-card-type-inner > .ant-card-head {
   background: #CB4E38 !important;

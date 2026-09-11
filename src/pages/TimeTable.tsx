@@ -2292,22 +2292,20 @@ export default function TimeTable() {
             ))}
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <CommonTable
-            data={rows}
-            columns={columns}
-            loading={tableLoading}
-            pagination={{
-              current: page + 1,
-              pageSize,
-              total,
-              onChange: (newPage: number, newPageSize: number) => {
-                setPage(newPage - 1);
-                setPageSize(newPageSize);
-              },
-            }}
-          />
-        </div>
+        <CommonTable
+          data={rows}
+          columns={columns}
+          loading={tableLoading}
+          pagination={{
+            current: page + 1,
+            pageSize,
+            total,
+            onChange: (newPage: number, newPageSize: number) => {
+              setPage(newPage - 1);
+              setPageSize(newPageSize);
+            },
+          }}
+        />
       )}
 
       {/* Add / Edit Drawer */}
