@@ -696,6 +696,7 @@ export default function Achievements() {
             dataSource={displayedStudents}
             loading={loading}
             bordered
+            scroll={{ x: "max-content" }}
             pagination={{
               current:
                 pagination.current,

@@ -1502,7 +1502,7 @@ export default function FormerStudents() {
                 },
                 {
                   key: "lc",
-                  label: "LC",
+                  label: "Leaving Certificate",
                   forceRender: true,
                   children: (
                     <>

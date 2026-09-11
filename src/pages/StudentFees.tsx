@@ -861,9 +861,7 @@ function StudentFeesTable({ data, loading, pagination, onEdit }: StudentFeesTabl
           </div>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <CommonTable data={data} columns={columns} loading={loading} pagination={pagination} />
-        </div>
+        <CommonTable data={data} columns={columns} loading={loading} pagination={pagination} />
       )}
 
       {/* View is a Drawer (same width/placement style as the Edit drawer)

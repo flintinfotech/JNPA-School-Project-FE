@@ -439,7 +439,7 @@ export default function PurchaseMaster() {
           </div>
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <>
           {!tableLoading && rows.length === 0 ? (
             <Empty description="No purchases found" style={{ padding: "40px 0" }} />
           ) : (
@@ -458,7 +458,7 @@ export default function PurchaseMaster() {
               }}
             />
           )}
-        </div>
+        </>
       )}
 
       <Modal

@@ -253,6 +253,7 @@ const SubjectMaster: React.FC = () => {
               columns={columns}
               dataSource={subjects}
               loading={loading}
+              scroll={{ x: "max-content" }}
               pagination={{
                 current: pagination.current,
                 pageSize: pagination.pageSize,
