@@ -735,27 +735,133 @@ export default function FormerStudents() {
         </Col>
       </Row>
 
-      {/* TABLE */}
-      {!tableLoading && rows.length === 0 ? (
-        <Card>
-          <Empty description="No former students found" />
-        </Card>
-      ) : (
-        <div className="table-wrapper">
-          <Table
-            rowKey={(record) => record.formerStudentId as number}
-            columns={columns}
-            dataSource={rows}
-            loading={tableLoading}
-            bordered
-            scroll={{ x: "max-content" }}
-            pagination={{
-              current: page + 1,
-              pageSize: PAGE_SIZE,
-              total,
-              onChange: (newPage) => setPage(newPage - 1),
-              showTotal: (t) => `Total: ${t}`,
-            }}
+      {/* ============================================================
+          🆕 RESPONSIVE TABLE — a proper bordered Table on desktop, and a
+          stacked card list on mobile (same pattern used elsewhere in this
+          app for narrow screens), instead of relying only on horizontal
+          scroll for a wide table with many columns.
+      ============================================================ */}
+
+      {/* DESKTOP TABLE */}
+      <div className="hidden md:block">
+        {!tableLoading && rows.length === 0 ? (
+          <Card>
+            <Empty description="No former students found" />
+          </Card>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table
+              rowKey={(record) => record.formerStudentId as number}
+              columns={columns}
+              dataSource={rows}
+              loading={tableLoading}
+              bordered
+              pagination={false}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* MOBILE CARDS */}
+      <div className="block md:hidden">
+        {tableLoading ? (
+          <Card>
+            <div className="flex justify-center py-8">
+              <Spin />
+            </div>
+          </Card>
+        ) : rows.length === 0 ? (
+          <Card>
+            <Empty description="No former students found" />
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {rows.map((record) => (
+              <Card key={record.formerStudentId} size="small">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <div className="text-xs text-gray-400">
+                      {record.studentCode || "-"}
+                    </div>
+                    <div className="font-semibold text-base">
+                      {record.firstName} {record.lastName}
+                    </div>
+                  </div>
+                  <Tag color={statusColor(record.status)}>
+                    {record.status ? record.status.replace(/_/g, " ") : "-"}
+                  </Tag>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                  <div>
+                    <span className="text-gray-500">Gender: </span>
+                    {record.gender || "-"}
+                  </div>
+                  <div>
+                    <span className="text-gray-500">DOB: </span>
+                    {formatDob(record.DOB)}
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-gray-500">Address: </span>
+                    {record.address || "-"}
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Blood Group: </span>
+                    {record.bloodGroup || "-"}
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Category: </span>
+                    {record.category || "-"}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <Button
+                    icon={<EyeOutlined />}
+                    size="small"
+                    onClick={() => openViewOrEditDrawer(record, "view")}
+                  />
+                  <Button
+                    type="primary"
+                    icon={<EditOutlined />}
+                    size="small"
+                    onClick={() => openViewOrEditDrawer(record, "edit")}
+                  />
+                  <Popconfirm
+                    title="Delete this former student?"
+                    description="Are you sure you want to delete this record?"
+                    onConfirm={() => handleDelete(record.formerStudentId)}
+                    okText="Delete"
+                    cancelText="Cancel"
+                    okButtonProps={{ danger: true }}
+                  >
+                    <Button danger icon={<DeleteOutlined />} size="small" />
+                  </Popconfirm>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ============================================================
+          🆕 TOTAL (left) + PAGINATION (right) — moved out of the Table's
+          own built-in pagination footer into its own row so Total sits on
+          the opposite side from the page controls, same layout as the
+          reference screenshot.
+      ============================================================ */}
+      {!tableLoading && rows.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mt-4">
+          <div className="text-sm text-slate-500">
+            Total:{" "}
+            <span className="font-semibold text-slate-700">{total}</span>
+          </div>
+          <Pagination
+            current={page + 1}
+            pageSize={PAGE_SIZE}
+            total={total}
+            onChange={(newPage) => setPage(newPage - 1)}
+            showSizeChanger={false}
           />
         </div>
       )}
@@ -1396,7 +1502,7 @@ export default function FormerStudents() {
                 },
                 {
                   key: "lc",
-                  label: "LC",
+                  label: "Leaving Certificate",
                   forceRender: true,
                   children: (
                     <>
