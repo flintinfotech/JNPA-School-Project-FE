@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import {Button,  Card,  Col,  DatePicker,  Drawer,  Empty,  Form,  Input,InputNumber,  Pagination,  Popconfirm,  Row,  Select,  Spin,  Table,  Tabs,  Tag,  Upload,message,} from "antd";
-import {DeleteOutlined,  EditOutlined,  EyeOutlined,  LockOutlined,  PlusOutlined,  ReloadOutlined,  SearchOutlined,  UploadOutlined,} from "@ant-design/icons";
+import {Button,  Card,  Col,  DatePicker,  Drawer,  Empty,  Form,  Input,InputNumber,  Popconfirm,  Row,  Select,  Spin,  Table,  Tabs,  Tag,  Upload,message,} from "antd";
+import {DeleteOutlined,  EditOutlined,  EyeOutlined,  LockOutlined,  PlusOutlined,  PrinterOutlined,  ReloadOutlined,  SearchOutlined,  UploadOutlined,} from "@ant-design/icons";
 import dayjs from "dayjs";
 
 import api from "../lib/axios";
 import { apiEndpoints } from "../services/apiEndpoints";
+import CommonTable from "../components/commonTable";
+import LCReceiptModal, { type LCReceiptData } from "../components/Lcreceipt ";
 
 const { Option } = Select;
 
@@ -235,6 +237,29 @@ export default function FormerStudents() {
   // instead of creating a duplicate.
   const [lcAdded, setLcAdded] = useState(false);
   const [lcId, setLcId] = useState<number | null>(null);
+
+  // 🆕 Print Leaving Certificate — reads the current LC form values (view
+  // mode only) into a plain data object and hands them to LCReceiptModal,
+  // same "print via window.print()" pattern as the fee receipt.
+  const [lcPrintOpen, setLcPrintOpen] = useState(false);
+  const [lcPrintData, setLcPrintData] = useState<LCReceiptData | null>(null);
+
+  const openLcPrint = () => {
+    const lcValues = form.getFieldValue("formerStudentLCDTO") || {};
+    const toDateString = (value: any): string | null => {
+      if (!value) return null;
+      return dayjs.isDayjs(value) ? value.format("YYYY-MM-DD") : String(value);
+    };
+
+    setLcPrintData({
+      ...lcValues,
+      lcDate: toDateString(lcValues.lcDate),
+      admissionDate: toDateString(lcValues.admissionDate),
+      dateOfBirth: toDateString(lcValues.dateOfBirth),
+      dateOfLeaving: toDateString(lcValues.dateOfLeaving),
+    });
+    setLcPrintOpen(true);
+  };
 
   const [drawerWidth, setDrawerWidth] = useState(
     typeof window !== "undefined" && window.innerWidth < 768 ? "100%" : 520
@@ -742,23 +767,28 @@ export default function FormerStudents() {
           scroll for a wide table with many columns.
       ============================================================ */}
 
-      {/* DESKTOP TABLE */}
+      {/* DESKTOP TABLE — uses the same CommonTable wrapper as the Students
+          screen (size="middle", scroll={{ x: "max-content" }}, combined
+          Total + pagination footer) so both tables look identical. */}
       <div className="hidden md:block">
         {!tableLoading && rows.length === 0 ? (
           <Card>
             <Empty description="No former students found" />
           </Card>
         ) : (
-          <div className="overflow-x-auto">
-            <Table
-              rowKey={(record) => record.formerStudentId as number}
-              columns={columns}
-              dataSource={rows}
-              loading={tableLoading}
-              bordered
-              pagination={false}
-            />
-          </div>
+          <CommonTable
+            rowKey={(record: FormerStudentDTO) => record.formerStudentId as number}
+            columns={columns}
+            data={rows}
+            loading={tableLoading}
+            pagination={{
+              current: page + 1,
+              pageSize: PAGE_SIZE,
+              total,
+              onChange: (newPage: number) => setPage(newPage - 1),
+              showSizeChanger: false,
+            }}
+          />
         )}
       </div>
 
@@ -844,28 +874,7 @@ export default function FormerStudents() {
         )}
       </div>
 
-      {/* ============================================================
-          🆕 TOTAL (left) + PAGINATION (right) — moved out of the Table's
-          own built-in pagination footer into its own row so Total sits on
-          the opposite side from the page controls, same layout as the
-          reference screenshot.
-      ============================================================ */}
-      {!tableLoading && rows.length > 0 && (
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mt-4">
-          <div className="text-sm text-slate-500">
-            Total:{" "}
-            <span className="font-semibold text-slate-700">{total}</span>
-          </div>
-          <Pagination
-            current={page + 1}
-            pageSize={PAGE_SIZE}
-            total={total}
-            onChange={(newPage) => setPage(newPage - 1)}
-            showSizeChanger={false}
-          />
-        </div>
-      )}
-  {/* ADD / EDIT / VIEW DRAWER */}
+      {/* ADD / EDIT / VIEW DRAWER */}
       <Drawer
         title={
           isViewMode
@@ -1534,6 +1543,21 @@ export default function FormerStudents() {
                         )
                       ) : (
                         <>
+                          {/* 🆕 Print LC — only in View mode, once an LC
+                              record exists, opens a printable/downloadable
+                              certificate styled like the fee receipt. */}
+                          {isViewMode && (
+                            <div className="flex justify-end mb-3">
+                              <Button
+                                type="primary"
+                                icon={<PrinterOutlined />}
+                                onClick={openLcPrint}
+                                disabled={false}
+                              >
+                                Print LC
+                              </Button>
+                            </div>
+                          )}
                           <Row gutter={12}>
                             <Col span={12}>
                               <Form.Item label="LC Number" name={["formerStudentLCDTO", "lcNumber"]}>
@@ -1715,6 +1739,13 @@ export default function FormerStudents() {
           </Form>
         </Spin>
       </Drawer>
+
+      {/* Print Leaving Certificate */}
+      <LCReceiptModal
+        open={lcPrintOpen}
+        onClose={() => setLcPrintOpen(false)}
+        lc={lcPrintData}
+      />
     </div>
   );
 }
