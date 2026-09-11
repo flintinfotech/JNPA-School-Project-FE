@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import {Button,  Card,  Col,  DatePicker,  Drawer,  Empty,  Form,  Input,InputNumber,  Popconfirm,  Row,  Select,  Spin,  Table,  Tabs,  Tag,  Upload,message,} from "antd";
-import {DeleteOutlined,  EditOutlined,  EyeOutlined,  PlusOutlined,  ReloadOutlined,  SearchOutlined,  UploadOutlined,} from "@ant-design/icons";
+import {Button,  Card,  Col,  DatePicker,  Drawer,  Empty,  Form,  Input,InputNumber,  Pagination,  Popconfirm,  Row,  Select,  Spin,  Table,  Tabs,  Tag,  Upload,message,} from "antd";
+import {DeleteOutlined,  EditOutlined,  EyeOutlined,  LockOutlined,  PlusOutlined,  ReloadOutlined,  SearchOutlined,  UploadOutlined,} from "@ant-design/icons";
 import dayjs from "dayjs";
 
 import api from "../lib/axios";
@@ -63,34 +63,48 @@ interface FormerStudentDocumentDTO {
   document?: string | null; // base64, not edited here
 }
 
-// 🆕 Shape of each entry inside formerStudentResultDTOS, and its nested
-// examSubjectsDTOS — mirrors StudentResultDTO/ExamSubjectDTO used on the
-// regular Student profile's Results section, just keyed by
-// formerStudentId instead of studentId.
+// 🆕 Shape of each entry inside formerStudentResultDTOS' subject list
+// (backend key: formerExamSubjectsDTOS — see the Result tab below, which
+// reads this shape directly as returned, purely for read-only display).
+// 🆕 Shape of formerStudentLCDTO — the Leaving Certificate record. Unlike
+// documents/results, a former student has at most ONE of these (not a
+// list), so the LC tab below manages it as a single object, not a
+// Form.List.
+interface FormerStudentLCDTO {
+  formerStudentLCId?: number | null;
+  lcNumber?: string | null;
+  lcDate?: string | null;
+  admissionNumber?: string | null;
+  admissionDate?: string | null;
+  studentName?: string | null;
+  fatherName?: string | null;
+  motherName?: string | null;
+  surname?: string | null;
+  gender?: string | null;
+  dateOfBirth?: string | null;
+  placeOfBirth?: string | null;
+  nationality?: string | null;
+  motherTongue?: string | null;
+  religion?: string | null;
+  caste?: string | null;
+  standardAtLeaving?: string | null;
+  division?: string | null;
+  medium?: string | null;
+  academicYear?: string | null;
+  dateOfLeaving?: string | null;
+  reasonForLeaving?: string | null;
+  result?: string | null;
+  conduct?: string | null;
+  remark?: string | null;
+}
+
 interface FormerExamSubjectDTO {
-  examSubjectId?: number;
-  resultId?: number;
+  examSubjectsId?: number;
+  formerResultId?: number;
   subjectName: string;
   maximumMarks: number;
   obtainedMarks: number;
   status: string; // "PASS" | "FAIL"
-}
-
-interface FormerStudentResultDTO {
-  resultId?: number;
-  formerStudentId?: number;
-  academicYear?: string;
-  standard?: string;
-  division?: string;
-  examType?: string; // e.g. "UNIT_TEST" | "TERM_1" | "FINAL"
-  startDate?: string | null;
-  endDate?: string | null;
-  totalMarks?: number;
-  obtainedMarks?: number;
-  percentage?: number;
-  grade?: string;
-  resultStatus?: string; // "PASS" | "FAIL"
-  examSubjectsDTOS?: FormerExamSubjectDTO[];
 }
 
 interface FormerStudentFilters {
@@ -107,18 +121,12 @@ const PAYMENT_STATUS_OPTIONS = ["PAID", "PENDING", "PARTIALLY_PAID"];
 // 🆕 Document type options — "LC" (Leaving Certificate) first since that's
 // the one being worked on right now; extend this list as more document
 // types come up.
-const DOCUMENT_TYPE_OPTIONS = ["LC", "MARKSHEET", "OTHER"];
+const DOCUMENT_TYPE_OPTIONS = ["LC", "MARKSHEET", "BONAFIDE", "OTHER"];
 
 // 🆕 Document status options — adjust these to match whatever exact values
 // the backend expects for documentStatus (guessed here as a simple
 // ready/collected/pending lifecycle).
 const DOCUMENT_STATUS_OPTIONS = ["READY", "COLLECTED", "PENDING"];
-
-// 🆕 Result-tab options — adjust the exact values to match the backend's
-// actual enums if these differ (guessed here from the regular Student
-// Results screen's conventions).
-const EXAM_TYPE_OPTIONS = ["UNIT_TEST", "TERM_1", "TERM_2", "FINAL"];
-const RESULT_STATUS_OPTIONS = ["PASS", "FAIL"];
 
 // 🆕 Reads a File selected via the Upload control and resolves to its
 // base64 string (matching how the "document" field is sent/received —
@@ -213,6 +221,21 @@ export default function FormerStudents() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form] = Form.useForm();
 
+  // 🆕 Result section is READ-ONLY display data (not Form fields) — see
+  // the "result" tab below. Kept in plain state so it round-trips
+  // untouched into the Update payload (backend expects the full
+  // formerStudentResultDTOS array back, even though nothing here is
+  // editable in this UI).
+  const [viewResults, setViewResults] = useState<any[]>([]);
+
+  // 🆕 Leaving Certificate — a former student has at most ONE LC record.
+  // lcAdded controls whether the field grid is shown (revealed by the "+
+  // Add Leaving Certificate" button) or just the button. lcId preserves
+  // formerStudentLCId across edits so updates target the same record
+  // instead of creating a duplicate.
+  const [lcAdded, setLcAdded] = useState(false);
+  const [lcId, setLcId] = useState<number | null>(null);
+
   const [drawerWidth, setDrawerWidth] = useState(
     typeof window !== "undefined" && window.innerWidth < 768 ? "100%" : 520
   );
@@ -297,10 +320,13 @@ export default function FormerStudents() {
     setDrawerMode("add");
     setEditingId(null);
     form.resetFields();
+    setViewResults([]); // 🆕 no results yet for a brand-new former student
+    setLcAdded(false); // 🆕 no LC yet either
+    setLcId(null);
     // 🆕 formerStudentDocuments starts empty on Add — the "+ Add Document"
     // button inside the drawer lets the user attach one (e.g. Leaving
     // Certificate) before saving.
-    form.setFieldsValue({ status: "PASSED_OUT", formerStudentDocuments: [], formerStudentResultDTOS: [] });
+    form.setFieldsValue({ status: "PASSED_OUT", formerStudentDocuments: [] });
     setDrawerOpen(true);
   };
 
@@ -368,28 +394,45 @@ export default function FormerStudents() {
         }
       );
 
-      // 🆕 Map each formerStudentResultDTOS entry into the form, parsing its
-      // startDate/endDate into dayjs objects the same way as the document
-      // dates above. examSubjectsDTOS (subject-wise marks) are passed
-      // through as-is — no date fields inside those.
-      const results = (data.formerStudentResultDTOS || []).map(
-        (result: FormerStudentResultDTO) => {
-          const startDateParsed = result.startDate
-            ? dayjs(result.startDate, ["DD-MM-YYYY", "YYYY-MM-DD"], true)
-            : null;
-          const endDateParsed = result.endDate
-            ? dayjs(result.endDate, ["DD-MM-YYYY", "YYYY-MM-DD"], true)
-            : null;
+      // 🆕 formerStudentResultDTOS is read-only display data — store the
+      // raw array exactly as the backend returned it (no dayjs parsing
+      // needed since nothing here is edited; dates are formatted only at
+      // render time via formatDob). This same raw array is sent back
+      // untouched inside the Update payload later (see handleFinish).
+      setViewResults(data.formerStudentResultDTOS || []);
 
-          return {
-            ...result,
-            startDate:
-              startDateParsed && startDateParsed.isValid() ? startDateParsed : null,
-            endDate: endDateParsed && endDateParsed.isValid() ? endDateParsed : null,
-            examSubjectsDTOS: result.examSubjectsDTOS || [],
-          };
-        }
-      );
+      // 🆕 Leaving Certificate — if the backend already has real values for
+      // this former student (not just a blank/all-null object, as seen in
+      // the "no LC yet" example response), show the fields immediately;
+      // otherwise start collapsed behind the "+ Add" button.
+      const lcData: FormerStudentLCDTO | undefined = (data as any).formerStudentLCDTO;
+      const hasLcData =
+        !!lcData &&
+        Object.entries(lcData).some(
+          ([key, value]) => key !== "formerStudentLCId" && value !== null && value !== undefined && value !== ""
+        );
+
+      setLcAdded(hasLcData);
+      setLcId(lcData?.formerStudentLCId ?? null);
+
+      if (hasLcData) {
+        const parseLcDate = (value?: string | null) => {
+          if (!value) return null;
+          const parsed = dayjs(value, ["DD-MM-YYYY", "YYYY-MM-DD"], true);
+          return parsed.isValid() ? parsed : null;
+        };
+
+        form.setFieldsValue({
+          formerStudentLCDTO: {
+            ...lcData,
+            lcDate: parseLcDate(lcData?.lcDate),
+            admissionDate: parseLcDate(lcData?.admissionDate),
+            dateOfBirth: parseLcDate(lcData?.dateOfBirth),
+            dateOfLeaving: parseLcDate(lcData?.dateOfLeaving),
+          },
+        });
+      }
+
 
       form.setFieldsValue({
         firstName: data.firstName,
@@ -411,7 +454,6 @@ export default function FormerStudents() {
         totalFeeAmount: data.totalFeeAmount,
         pendingFeeAmount: data.pendingFeeAmount,
         formerStudentDocuments: documents, // 🆕
-        formerStudentResultDTOS: results, // 🆕
       });
     } catch (error: any) {
       console.error("Former student detail error:", error);
@@ -453,22 +495,39 @@ export default function FormerStudents() {
         })
       );
 
-      // 🆕 formerStudentResultDTOS' startDate/endDate are also dayjs
-      // objects while the form is open — convert them back the same way.
-      // examSubjectsDTOS (subject-wise marks) travel through untouched.
-      const formattedResults = (values.formerStudentResultDTOS || []).map(
-        (result: any) => ({
-          ...result,
-          startDate: result?.startDate ? result.startDate.format("YYYY-MM-DD") : null,
-          endDate: result?.endDate ? result.endDate.format("YYYY-MM-DD") : null,
-        })
-      );
+      // 🆕 formerStudentResultDTOS is READ-ONLY in this UI (see the
+      // "Result" tab) — never derived from form values. Send back exactly
+      // what was loaded (viewResults), unmodified, since the backend's
+      // update payload still expects the full results array even though
+      // this screen doesn't let anyone edit it.
+      // 🆕 formerStudentLCDTO — only included in the payload when the user
+      // actually clicked "+ Add Leaving Certificate" (or it already
+      // existed). Its date fields are dayjs objects while the form is
+      // open, same conversion pattern as everything else here.
+      const lcValues = values.formerStudentLCDTO;
+      const formattedLC = lcAdded
+        ? {
+            ...lcValues,
+            lcDate: lcValues?.lcDate ? lcValues.lcDate.format("YYYY-MM-DD") : null,
+            admissionDate: lcValues?.admissionDate
+              ? lcValues.admissionDate.format("YYYY-MM-DD")
+              : null,
+            dateOfBirth: lcValues?.dateOfBirth
+              ? lcValues.dateOfBirth.format("YYYY-MM-DD")
+              : null,
+            dateOfLeaving: lcValues?.dateOfLeaving
+              ? lcValues.dateOfLeaving.format("YYYY-MM-DD")
+              : null,
+            ...(lcId ? { formerStudentLCId: lcId } : {}),
+          }
+        : undefined;
 
       const payload = {
         ...values,
         DOB: values.DOB ? values.DOB.format("YYYY-MM-DD") : null,
         formerStudentDocuments: formattedDocuments, // 🆕
-        formerStudentResultDTOS: formattedResults, // 🆕
+        formerStudentResultDTOS: viewResults, // 🆕 pass-through, unedited
+        ...(formattedLC ? { formerStudentLCDTO: formattedLC } : {}), // 🆕
         ...(drawerMode === "edit" ? { formerStudentId: editingId } : {}),
       };
 
@@ -729,7 +788,50 @@ export default function FormerStudents() {
         }
       >
         <Spin spinning={drawerLoading} tip="Loading...">
-          <Form form={form} layout="vertical" disabled={isViewMode}>
+          {/* ============================================================
+              🆕 VIEW MODE — DARK TEXT
+              When viewing (isViewMode), the whole Form is `disabled`,
+              which makes every Input/Select/DatePicker/TextArea render
+              with Ant Design's default grayed-out disabled text — hard to
+              read. This override forces that text back to a normal dark
+              color while still keeping every field non-editable (disabled
+              behavior itself is untouched, only its text color changes),
+              scoped to just this drawer via the "view-mode-dark" class so
+              it never affects editable Add/Edit mode elsewhere.
+          ============================================================ */}
+          {isViewMode && (
+            <style>{`
+              .view-mode-dark .ant-input[disabled],
+              .view-mode-dark .ant-input-disabled,
+              .view-mode-dark textarea.ant-input[disabled],
+              .view-mode-dark .ant-input-number-disabled .ant-input-number-input,
+              .view-mode-dark .ant-select-disabled .ant-select-selector .ant-select-selection-item,
+              .view-mode-dark .ant-select-disabled .ant-select-selector .ant-select-selection-placeholder,
+              .view-mode-dark .ant-picker-disabled .ant-picker-input > input,
+              .view-mode-dark .ant-upload-disabled {
+                color: #1e293b !important;
+                -webkit-text-fill-color: #1e293b !important;
+              }
+            `}</style>
+          )}
+          {/* 🆕 Result tab's fields are ALWAYS disabled (Add/Edit/View all),
+              so this override is not tied to isViewMode — it always keeps
+              that tab's text dark. */}
+          <style>{`
+            .always-dark-disabled .ant-input[disabled],
+            .always-dark-disabled .ant-input-disabled,
+            .always-dark-disabled .ant-select-disabled .ant-select-selector .ant-select-selection-item,
+            .always-dark-disabled .ant-select-disabled .ant-select-selector .ant-select-selection-placeholder {
+              color: #1e293b !important;
+              -webkit-text-fill-color: #1e293b !important;
+            }
+          `}</style>
+          <Form
+            form={form}
+            layout="vertical"
+            disabled={isViewMode}
+            className={isViewMode ? "view-mode-dark" : ""}
+          >
             {/* ============================================================
                 🆕 TABS — "Former Student" (all the original fields, exactly
                 as before, untouched) and "Documents" (the new section) now
@@ -744,6 +846,7 @@ export default function FormerStudents() {
                 {
                   key: "details",
                   label: "Former Student",
+                  forceRender: true,
                   children: (
                     <>
             <Row gutter={12}>
@@ -917,285 +1020,159 @@ export default function FormerStudents() {
                 {
                   key: "result",
                   label: "Result",
+                  forceRender: true,
                   children: (
-                    <>
+                    <div className="always-dark-disabled">
+                      {/* 🆕 Result fields are always `disabled` (never
+                          editable, regardless of Add/Edit/View mode) — the
+                          "always-dark-disabled" class (styled once, near
+                          the Documents/LC dark-text override above) keeps
+                          their text dark even outside View mode, matching
+                          the reference screenshot. */}
                       {/* ============================================================
-                          🆕 RESULT — shows every entry from
-                          formerStudentResultDTOS, same shape as the regular
-                          Student profile's Results section (StudentResultDTO
-                          / ExamSubjectDTO), just keyed by formerStudentId.
-                          Each result card has its own nested
-                          examSubjectsDTOS list for subject-wise marks.
+                          🆕 RESULT — read-only, matches the "View Result"
+                          screenshot style exactly: "Existing Records"
+                          heading, each result as its own card titled
+                          "Record N — {academicYear}" with a PASS/FAIL tag
+                          and a "Read only" badge, all fields shown as
+                          disabled boxes, followed by a real Subject-wise
+                          Marks table. Nothing here is editable and there is
+                          no Add/Remove — this tab only ever DISPLAYS
+                          whatever formerStudentResultDTOS the backend sent
+                          back for this former student. viewResults is kept
+                          in plain component state (not Form fields) and is
+                          sent back untouched inside the Update payload (see
+                          handleFinish) so results always round-trip exactly
+                          as the backend gave them.
                       ============================================================ */}
-                      <Form.List name="formerStudentResultDTOS">
-                        {(resultFields, { add: addResult, remove: removeResult }) => (
-                          <>
-                            {resultFields.length === 0 && (
-                              <div className="text-xs text-slate-400 mb-3">
-                                No results added yet.
-                              </div>
-                            )}
+                      <div className="text-sm font-semibold text-slate-700 mb-3">
+                        Existing Records
+                      </div>
 
-                            {resultFields.map((resultField) => (
-                              <Card
-                                key={resultField.key}
-                                size="small"
-                                className="mb-3"
-                                style={{ background: "#fafafa" }}
-                                extra={
-                                  !isViewMode && (
-                                    <Button
-                                      type="text"
-                                      danger
-                                      size="small"
-                                      icon={<DeleteOutlined />}
-                                      onClick={() => removeResult(resultField.name)}
-                                    />
-                                  )
-                                }
-                              >
-                                <Row gutter={12}>
-                                  <Col span={12}>
-                                    <Form.Item
-                                      label="Academic Year"
-                                      name={[resultField.name, "academicYear"]}
-                                      rules={[{ required: true, message: "Required" }]}
-                                    >
-                                      <Input placeholder="e.g. 2025-2026" />
-                                    </Form.Item>
-                                  </Col>
-                                  <Col span={12}>
-                                    <Form.Item
-                                      label="Exam Type"
-                                      name={[resultField.name, "examType"]}
-                                      rules={[{ required: true, message: "Required" }]}
-                                    >
-                                      <Select placeholder="Select exam type" allowClear>
-                                        {EXAM_TYPE_OPTIONS.map((t) => (
-                                          <Option key={t} value={t}>
-                                            {t.replace(/_/g, " ")}
-                                          </Option>
-                                        ))}
-                                      </Select>
-                                    </Form.Item>
-                                  </Col>
-                                </Row>
+                      {viewResults.length === 0 ? (
+                        <div className="text-xs text-slate-400">
+                          No results available for this student.
+                        </div>
+                      ) : (
+                        viewResults.map((result: any, idx: number) => {
+                          // 🛠️ FIX — backend's subject list key is
+                          // "formerExamSubjectsDTOS" (confirmed from the
+                          // actual updateFormerStudent response), not
+                          // "examSubjectsDTOS" — fall back to the old name
+                          // too, just in case an older response ever uses it.
+                          const subjects =
+                            result.formerExamSubjectsDTOS ??
+                            result.examSubjectsDTOS ??
+                            [];
 
-                                <Row gutter={12}>
-                                  <Col span={12}>
-                                    <Form.Item
-                                      label="Standard"
-                                      name={[resultField.name, "standard"]}
-                                    >
-                                      <Input placeholder="e.g. 10th Standard" />
-                                    </Form.Item>
-                                  </Col>
-                                  <Col span={12}>
-                                    <Form.Item
-                                      label="Division"
-                                      name={[resultField.name, "division"]}
-                                    >
-                                      <Input placeholder="e.g. A" />
-                                    </Form.Item>
-                                  </Col>
-                                </Row>
-
-                                <Row gutter={12}>
-                                  <Col span={12}>
-                                    <Form.Item
-                                      label="Start Date"
-                                      name={[resultField.name, "startDate"]}
-                                    >
-                                      <DatePicker className="w-full" format="DD-MM-YYYY" />
-                                    </Form.Item>
-                                  </Col>
-                                  <Col span={12}>
-                                    <Form.Item
-                                      label="End Date"
-                                      name={[resultField.name, "endDate"]}
-                                    >
-                                      <DatePicker className="w-full" format="DD-MM-YYYY" />
-                                    </Form.Item>
-                                  </Col>
-                                </Row>
-
-                                <Row gutter={12}>
-                                  <Col span={12}>
-                                    <Form.Item
-                                      label="Total Marks"
-                                      name={[resultField.name, "totalMarks"]}
-                                    >
-                                      <InputNumber className="w-full" min={0} />
-                                    </Form.Item>
-                                  </Col>
-                                  <Col span={12}>
-                                    <Form.Item
-                                      label="Obtained Marks"
-                                      name={[resultField.name, "obtainedMarks"]}
-                                    >
-                                      <InputNumber className="w-full" min={0} />
-                                    </Form.Item>
-                                  </Col>
-                                </Row>
-
-                                <Row gutter={12}>
-                                  <Col span={12}>
-                                    <Form.Item
-                                      label="Percentage"
-                                      name={[resultField.name, "percentage"]}
-                                    >
-                                      <InputNumber className="w-full" min={0} max={100} />
-                                    </Form.Item>
-                                  </Col>
-                                  <Col span={12}>
-                                    <Form.Item
-                                      label="Grade"
-                                      name={[resultField.name, "grade"]}
-                                    >
-                                      <Input placeholder="e.g. A+" />
-                                    </Form.Item>
-                                  </Col>
-                                </Row>
-
-                                <Row gutter={12}>
-                                  <Col span={12}>
-                                    <Form.Item
-                                      label="Result Status"
-                                      name={[resultField.name, "resultStatus"]}
-                                    >
-                                      <Select placeholder="Select status" allowClear>
-                                        {RESULT_STATUS_OPTIONS.map((s) => (
-                                          <Option key={s} value={s}>
-                                            {s}
-                                          </Option>
-                                        ))}
-                                      </Select>
-                                    </Form.Item>
-                                  </Col>
-                                  <Col span={12} />
-                                </Row>
-
-                                {/* 🆕 Subject-wise marks — nested Form.List
-                                    keyed under this result's examSubjectsDTOS. */}
-                                <div className="text-xs font-semibold text-slate-600 mb-2">
-                                  Subject-wise Marks
+                          return (
+                            <Card
+                              key={result.formerResultId ?? result.resultId ?? idx}
+                              size="small"
+                              className="mb-4"
+                              style={{ background: "#fff7ed", border: "1px solid #f2e2c4" }}
+                            >
+                              <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                                <span className="font-semibold text-slate-800">
+                                  Record {idx + 1} — {result.academicYear || "-"}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <Tag color={result.resultStatus === "PASS" ? "green" : "red"}>
+                                    {result.resultStatus || "-"}
+                                  </Tag>
+                                  <Tag icon={<LockOutlined />} color="default">
+                                    Read only
+                                  </Tag>
                                 </div>
+                              </div>
 
-                                <Form.List
-                                  name={[resultField.name, "examSubjectsDTOS"]}
-                                >
-                                  {(subjectFields, { add: addSubject, remove: removeSubject }) => (
-                                    <>
-                                      {subjectFields.length === 0 && (
-                                        <div className="text-xs text-slate-400 mb-2">
-                                          No subjects added yet.
-                                        </div>
-                                      )}
+                              <Row gutter={[12, 12]}>
+                                <Col xs={24} sm={12}>
+                                  <div className="text-xs font-medium text-slate-800 mb-1">Standard</div>
+                                  <Input value={result.standard || "-"} disabled />
+                                </Col>
+                                <Col xs={24} sm={12}>
+                                  <div className="text-xs font-medium text-slate-800 mb-1">Division</div>
+                                  <Input value={result.division || "-"} disabled />
+                                </Col>
 
-                                      {subjectFields.map((subjectField) => (
-                                        <Row
-                                          key={subjectField.key}
-                                          gutter={8}
-                                          align="middle"
-                                          className="mb-2"
-                                        >
-                                          <Col span={8}>
-                                            <Form.Item
-                                              name={[subjectField.name, "subjectName"]}
-                                              rules={[{ required: true, message: "Required" }]}
-                                              style={{ marginBottom: 0 }}
-                                            >
-                                              <Input placeholder="Subject" />
-                                            </Form.Item>
-                                          </Col>
-                                          <Col span={5}>
-                                            <Form.Item
-                                              name={[subjectField.name, "maximumMarks"]}
-                                              style={{ marginBottom: 0 }}
-                                            >
-                                              <InputNumber
-                                                className="w-full"
-                                                min={0}
-                                                placeholder="Max"
-                                              />
-                                            </Form.Item>
-                                          </Col>
-                                          <Col span={5}>
-                                            <Form.Item
-                                              name={[subjectField.name, "obtainedMarks"]}
-                                              style={{ marginBottom: 0 }}
-                                            >
-                                              <InputNumber
-                                                className="w-full"
-                                                min={0}
-                                                placeholder="Obtained"
-                                              />
-                                            </Form.Item>
-                                          </Col>
-                                          <Col span={5}>
-                                            <Form.Item
-                                              name={[subjectField.name, "status"]}
-                                              style={{ marginBottom: 0 }}
-                                            >
-                                              <Select placeholder="Status" allowClear>
-                                                {RESULT_STATUS_OPTIONS.map((s) => (
-                                                  <Option key={s} value={s}>
-                                                    {s}
-                                                  </Option>
-                                                ))}
-                                              </Select>
-                                            </Form.Item>
-                                          </Col>
-                                          <Col span={1}>
-                                            {!isViewMode && (
-                                              <Button
-                                                type="text"
-                                                danger
-                                                size="small"
-                                                icon={<DeleteOutlined />}
-                                                onClick={() => removeSubject(subjectField.name)}
-                                              />
-                                            )}
-                                          </Col>
-                                        </Row>
-                                      ))}
+                                <Col xs={24} sm={12}>
+                                  <div className="text-xs font-medium text-slate-800 mb-1">Academic Year</div>
+                                  <Input value={result.academicYear || "-"} disabled />
+                                </Col>
+                                <Col xs={24} sm={12}>
+                                  <div className="text-xs font-medium text-slate-800 mb-1">Exam Type</div>
+                                  <Input value={result.examType || "-"} disabled />
+                                </Col>
 
-                                      {!isViewMode && (
-                                        <Button
-                                          type="dashed"
-                                          size="small"
-                                          icon={<PlusOutlined />}
-                                          onClick={() => addSubject()}
-                                        >
-                                          Add Subject
-                                        </Button>
-                                      )}
-                                    </>
-                                  )}
-                                </Form.List>
-                              </Card>
-                            ))}
+                                <Col xs={24} sm={12}>
+                                  <div className="text-xs font-medium text-slate-800 mb-1">Start Date</div>
+                                  <Input value={formatDob(result.startDate)} disabled />
+                                </Col>
+                                <Col xs={24} sm={12}>
+                                  <div className="text-xs font-medium text-slate-800 mb-1">End Date</div>
+                                  <Input value={formatDob(result.endDate)} disabled />
+                                </Col>
 
-                            {!isViewMode && (
-                              <Button
-                                type="dashed"
-                                block
-                                icon={<PlusOutlined />}
-                                className="mb-4"
-                                onClick={() => addResult()}
-                              >
-                                Add Result
-                              </Button>
-                            )}
-                          </>
-                        )}
-                      </Form.List>
-                    </>
+                                <Col xs={24} sm={12}>
+                                  <div className="text-xs font-medium text-slate-800 mb-1">Total Marks</div>
+                                  <Input value={result.totalMarks ?? "-"} disabled />
+                                </Col>
+                                <Col xs={24} sm={12}>
+                                  <div className="text-xs font-medium text-slate-800 mb-1">Obtained Marks</div>
+                                  <Input value={result.obtainedMarks ?? "-"} disabled />
+                                </Col>
+
+                                <Col xs={24} sm={8}>
+                                  <div className="text-xs font-medium text-slate-800 mb-1">Percentage</div>
+                                  <Input value={result.percentage ?? "-"} disabled />
+                                </Col>
+                                <Col xs={24} sm={8}>
+                                  <div className="text-xs font-medium text-slate-800 mb-1">Grade</div>
+                                  <Input value={result.grade || "-"} disabled />
+                                </Col>
+                                <Col xs={24} sm={8}>
+                                  <div className="text-xs font-medium text-slate-800 mb-1">Result Status</div>
+                                  <Input value={result.resultStatus || "-"} disabled />
+                                </Col>
+                              </Row>
+
+                              <div className="text-xs font-semibold text-slate-600 mt-4 mb-2">
+                                Subject-wise Marks
+                              </div>
+
+                              <Table
+                                size="small"
+                                bordered
+                                pagination={false}
+                                dataSource={subjects}
+                                rowKey={(s: any, i: number) => s.examSubjectsId ?? i}
+                                columns={[
+                                  { title: "Subject", dataIndex: "subjectName", key: "subjectName" },
+                                  { title: "Max Marks", dataIndex: "maximumMarks", key: "maximumMarks" },
+                                  { title: "Obtained", dataIndex: "obtainedMarks", key: "obtainedMarks" },
+                                  {
+                                    title: "Status",
+                                    dataIndex: "status",
+                                    key: "status",
+                                    render: (s: string) => (
+                                      <Tag color={s === "PASS" ? "green" : "red"}>{s || "-"}</Tag>
+                                    ),
+                                  },
+                                ]}
+                                locale={{ emptyText: "No subjects" }}
+                              />
+                            </Card>
+                          );
+                        })
+                      )}
+                    </div>
                   ),
                 },
                 {
                   key: "documents",
                   label: "Documents",
+                  forceRender: true,
                   children: (
                     <>
             {/* ============================================================
@@ -1414,6 +1391,216 @@ export default function FormerStudents() {
                 </>
               )}
             </Form.List>
+                    </>
+                  ),
+                },
+                {
+                  key: "lc",
+                  label: "LC",
+                  forceRender: true,
+                  children: (
+                    <>
+                      {/* ============================================================
+                          🆕 LC (Leaving Certificate) — a former student has
+                          at most ONE of these, so unlike Documents/Result
+                          this is NOT a Form.List. Before anything is added,
+                          only a "+ Add Leaving Certificate" button shows.
+                          Clicking it once reveals every field below (all
+                          backed by real Form.Item fields under the
+                          "formerStudentLCDTO" object) and the button never
+                          reappears for this record — only one LC per
+                          former student.
+                      ============================================================ */}
+                      {!lcAdded ? (
+                        !isViewMode ? (
+                          <Button
+                            type="dashed"
+                            block
+                            icon={<PlusOutlined />}
+                            onClick={() => setLcAdded(true)}
+                          >
+                            Add Leaving Certificate
+                          </Button>
+                        ) : (
+                          <div className="text-xs text-slate-400">
+                            No leaving certificate record for this student.
+                          </div>
+                        )
+                      ) : (
+                        <>
+                          <Row gutter={12}>
+                            <Col span={12}>
+                              <Form.Item label="LC Number" name={["formerStudentLCDTO", "lcNumber"]}>
+                                <Input placeholder="e.g. LC20260020" />
+                              </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                              <Form.Item label="LC Date" name={["formerStudentLCDTO", "lcDate"]}>
+                                <DatePicker className="w-full" format="DD-MM-YYYY" />
+                              </Form.Item>
+                            </Col>
+                          </Row>
+
+                          <Row gutter={12}>
+                            <Col span={12}>
+                              <Form.Item
+                                label="Admission Number"
+                                name={["formerStudentLCDTO", "admissionNumber"]}
+                              >
+                                <Input placeholder="Admission number" />
+                              </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                              <Form.Item
+                                label="Admission Date"
+                                name={["formerStudentLCDTO", "admissionDate"]}
+                              >
+                                <DatePicker className="w-full" format="DD-MM-YYYY" />
+                              </Form.Item>
+                            </Col>
+                          </Row>
+
+                          <Row gutter={12}>
+                            <Col span={12}>
+                              <Form.Item label="Student Name" name={["formerStudentLCDTO", "studentName"]}>
+                                <Input placeholder="Student's first name" />
+                              </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                              <Form.Item label="Surname" name={["formerStudentLCDTO", "surname"]}>
+                                <Input placeholder="Surname" />
+                              </Form.Item>
+                            </Col>
+                          </Row>
+
+                          <Row gutter={12}>
+                            <Col span={12}>
+                              <Form.Item label="Father's Name" name={["formerStudentLCDTO", "fatherName"]}>
+                                <Input placeholder="Father's name" />
+                              </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                              <Form.Item label="Mother's Name" name={["formerStudentLCDTO", "motherName"]}>
+                                <Input placeholder="Mother's name" />
+                              </Form.Item>
+                            </Col>
+                          </Row>
+
+                          <Row gutter={12}>
+                            <Col span={12}>
+                              <Form.Item label="Gender" name={["formerStudentLCDTO", "gender"]}>
+                                <Select placeholder="Select gender" allowClear>
+                                  {GENDER_OPTIONS.map((g) => (
+                                    <Option key={g} value={g}>
+                                      {g}
+                                    </Option>
+                                  ))}
+                                </Select>
+                              </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                              <Form.Item label="Date of Birth" name={["formerStudentLCDTO", "dateOfBirth"]}>
+                                <DatePicker className="w-full" format="DD-MM-YYYY" />
+                              </Form.Item>
+                            </Col>
+                          </Row>
+
+                          <Row gutter={12}>
+                            <Col span={12}>
+                              <Form.Item label="Place of Birth" name={["formerStudentLCDTO", "placeOfBirth"]}>
+                                <Input placeholder="Place of birth" />
+                              </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                              <Form.Item label="Nationality" name={["formerStudentLCDTO", "nationality"]}>
+                                <Input placeholder="Nationality" />
+                              </Form.Item>
+                            </Col>
+                          </Row>
+
+                          <Row gutter={12}>
+                            <Col span={12}>
+                              <Form.Item label="Mother Tongue" name={["formerStudentLCDTO", "motherTongue"]}>
+                                <Input placeholder="Mother tongue" />
+                              </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                              <Form.Item label="Religion" name={["formerStudentLCDTO", "religion"]}>
+                                <Input placeholder="Religion" />
+                              </Form.Item>
+                            </Col>
+                          </Row>
+
+                          <Row gutter={12}>
+                            <Col span={12}>
+                              <Form.Item label="Caste" name={["formerStudentLCDTO", "caste"]}>
+                                <Input placeholder="Caste" />
+                              </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                              <Form.Item
+                                label="Standard at Leaving"
+                                name={["formerStudentLCDTO", "standardAtLeaving"]}
+                              >
+                                <Input placeholder="e.g. 1st Standard" />
+                              </Form.Item>
+                            </Col>
+                          </Row>
+
+                          <Row gutter={12}>
+                            <Col span={12}>
+                              <Form.Item label="Division" name={["formerStudentLCDTO", "division"]}>
+                                <Input placeholder="e.g. A" />
+                              </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                              <Form.Item label="Medium" name={["formerStudentLCDTO", "medium"]}>
+                                <Input placeholder="e.g. English" />
+                              </Form.Item>
+                            </Col>
+                          </Row>
+
+                          <Row gutter={12}>
+                            <Col span={12}>
+                              <Form.Item label="Academic Year" name={["formerStudentLCDTO", "academicYear"]}>
+                                <Input placeholder="e.g. 2026-2027" />
+                              </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                              <Form.Item label="Date of Leaving" name={["formerStudentLCDTO", "dateOfLeaving"]}>
+                                <DatePicker className="w-full" format="DD-MM-YYYY" />
+                              </Form.Item>
+                            </Col>
+                          </Row>
+
+                          <Form.Item
+                            label="Reason for Leaving"
+                            name={["formerStudentLCDTO", "reasonForLeaving"]}
+                          >
+                            <Input placeholder="e.g. Transfer" />
+                          </Form.Item>
+
+                          <Row gutter={12}>
+                            <Col span={12}>
+                              <Form.Item label="Result" name={["formerStudentLCDTO", "result"]}>
+                                <Select placeholder="Select result" allowClear>
+                                  <Option value="PASS">PASS</Option>
+                                  <Option value="FAIL">FAIL</Option>
+                                </Select>
+                              </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                              <Form.Item label="Conduct" name={["formerStudentLCDTO", "conduct"]}>
+                                <Input placeholder="e.g. Good" />
+                              </Form.Item>
+                            </Col>
+                          </Row>
+
+                          <Form.Item label="Remark" name={["formerStudentLCDTO", "remark"]}>
+                            <Input.TextArea rows={2} placeholder="Remark" />
+                          </Form.Item>
+                        </>
+                      )}
                     </>
                   ),
                 },
