@@ -1,5 +1,18 @@
-import React, { useState, useEffect, useCallback, Fragment } from "react";
-import {Form,Input,Select,TimePicker,Button,Drawer,Modal,Spin,Popconfirm,Empty,message,ConfigProvider,Pagination,
+import React, { useState, useEffect, useCallback, useRef, Fragment } from "react";
+import {
+  Form,
+  Input,
+  Select,
+  TimePicker,
+  Button,
+  Drawer,
+  Modal,
+  Spin,
+  Popconfirm,
+  Empty,
+  message,
+  ConfigProvider,
+  Pagination,
 } from "antd";
 import {
   PlusOutlined,
@@ -67,7 +80,6 @@ interface TimeTableFilters {
 const getAllTimeTableByFilterEndpoint = (page: number, size: number) =>
   `/jnpa-school-project/timeTable/getAllTimeTableByFilter?page=${page}&size=${size}&paginate=true`;
 
-
 // 👇 how many period cards show per page inside Add/Edit.
 // 🛠️ FIX — bumped from 10 to 12 per request; this is now the max
 // number of period cards shown at once WITHIN a single selected day
@@ -94,7 +106,7 @@ const toLabel = (item: any): string => {
   if (typeof item === "string") return item;
   if (typeof item === "number") return String(item);
   return String(
-    item.label ?? item.name ?? item.periodName ?? item.title ?? item.value ?? ""
+    item.label ?? item.name ?? item.periodName ?? item.title ?? item.value ?? "",
   );
 };
 
@@ -103,7 +115,7 @@ const toValue = (item: any): string => {
   if (typeof item === "string") return item;
   if (typeof item === "number") return String(item);
   return String(
-    item.value ?? item.label ?? item.name ?? item.periodName ?? item.id ?? ""
+    item.value ?? item.label ?? item.name ?? item.periodName ?? item.id ?? "",
   );
 };
 
@@ -158,10 +170,9 @@ const isAdminOrPrincipal = (role?: string) => ADMIN_ROLES.includes(role || "");
 
 const isTeacherRole = (role?: string) => role === TEACHER_ROLE;
 
-
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(
-    typeof window !== "undefined" ? window.innerWidth < breakpoint : false
+    typeof window !== "undefined" ? window.innerWidth < breakpoint : false,
   );
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < breakpoint);
@@ -296,9 +307,11 @@ interface TimeTableFormProps {
   staticData: StaticDataMap | null;
   teacherOptions: TeacherOption[];
   subjectOptions: SubjectOption[];
-  // 👇 called whenever Standard/Division/Medium are all selected, so
-  // the parent can refetch the teacher list filtered to that class.
-  onClassChange?: (standard?: string, division?: string, medium?: string) => void;
+  // 👇 called the first time the Teacher dropdown is opened on any
+  // period card, so the parent can lazily fetch the teacher list only
+  // when it's actually needed — not just because Standard/Division/
+  // Medium were filled in.
+  onTeacherDropdownOpen?: () => void;
 }
 
 function TimeTableForm({
@@ -309,7 +322,7 @@ function TimeTableForm({
   staticData,
   teacherOptions,
   subjectOptions,
-  onClassChange,
+  onTeacherDropdownOpen,
 }: TimeTableFormProps) {
   const handleFinish = async () => {
     try {
@@ -365,26 +378,14 @@ function TimeTableForm({
   // badge counts stay accurate — not just at add/remove time.
   const watchedPeriods = (Form.useWatch("timeTablePeriods", form) as any[]) || [];
 
-  // 👇 watch Standard/Division/Medium so we can ask the parent to
-  // refetch the teacher list filtered to this class as soon as all three
-  // are picked.
-  const watchedStandard = Form.useWatch("standard", form);
-  const watchedDivision = Form.useWatch("division", form);
-  const watchedMedium = Form.useWatch("medium", form);
-
-  useEffect(() => {
-    if (watchedStandard && watchedDivision && watchedMedium) {
-      onClassChange?.(watchedStandard, watchedDivision, watchedMedium);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watchedStandard, watchedDivision, watchedMedium]);
-
   // 🛠️ FIX — normalize every static-data list (string OR object entries)
   // into safe { value, label } pairs before rendering any <Option>.
-  const standardOptions = (staticData?.["standard"] ?? STANDARD_FALLBACK).map((s: any) => ({
-    value: toValue(s),
-    label: toLabel(s),
-  }));
+  const standardOptions = (staticData?.["standard"] ?? STANDARD_FALLBACK).map(
+    (s: any) => ({
+      value: toValue(s),
+      label: toLabel(s),
+    }),
+  );
   const divisionOptions = (staticData?.["division"] ?? []).map((d: any) => ({
     value: toValue(d),
     label: toLabel(d),
@@ -395,18 +396,15 @@ function TimeTableForm({
   }));
 
   // 🛠️ if staticData loaded but Division/Medium came out empty, the
-  // dropdown literally can't be filled in, which silently blocks
-  // onClassChange from ever firing (it needs all three). This warns loudly
-  // in devtools so it's obvious *why* the filtered-teacher-fetch payload
-  // never goes out, instead of it looking like a mystery.
+  // dropdown literally can't be filled in. This warns loudly in devtools
+  // so it's obvious *why*, instead of it looking like a mystery.
   useEffect(() => {
     if (staticData && (divisionOptions.length === 0 || mediumOptions.length === 0)) {
       // eslint-disable-next-line no-console
       console.warn(
-        "TimeTable: getAllStaticData response has no usable \"division\" and/or \"medium\" keys" +
-          " — Division/Medium dropdown(s) are empty, so Standard+Division+Medium can never all be" +
-          " filled in, and the filtered teacher fetch will never fire. Actual staticData keys:",
-        Object.keys(staticData)
+        'TimeTable: getAllStaticData response has no usable "division" and/or "medium" keys' +
+          " — Division/Medium dropdown(s) are empty. Actual staticData keys:",
+        Object.keys(staticData),
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -415,7 +413,7 @@ function TimeTableForm({
     (p: any) => ({
       value: toValue(p),
       label: toLabel(p),
-    })
+    }),
   );
 
   return (
@@ -506,7 +504,9 @@ function TimeTableForm({
           const countForDay = (day: string): number =>
             fields.reduce((count, f) => count + (dayOf(f.name) === day ? 1 : 0), 0);
 
-          const matchingForActiveDay = fields.filter((f) => dayOf(f.name) === activeDayTab);
+          const matchingForActiveDay = fields.filter(
+            (f) => dayOf(f.name) === activeDayTab,
+          );
           const matchingCount = matchingForActiveDay.length;
           const totalPages = Math.max(1, Math.ceil(matchingCount / PERIOD_PAGE_SIZE));
           const safePage = Math.min(periodPage, totalPages);
@@ -644,7 +644,9 @@ function TimeTableForm({
                         {...restField}
                         label="Time"
                         name={[name, "timeRange"]}
-                        rules={[{ required: true, message: "Start and end time are required" }]}
+                        rules={[
+                          { required: true, message: "Start and end time are required" },
+                        ]}
                       >
                         <TimePicker.RangePicker
                           className="w-full"
@@ -683,9 +685,19 @@ function TimeTableForm({
                             allowClear
                             showSearch
                             optionFilterProp="children"
+                            // 🆕 Teacher list is now fetched on-demand —
+                            // the API call fires only when this dropdown
+                            // is actually opened, not when Standard/
+                            // Division/Medium are picked above.
+                            onDropdownVisibleChange={(open) => {
+                              if (open) onTeacherDropdownOpen?.();
+                            }}
                           >
                             {teacherOptions.map((t) => (
-                              <Option key={t.employeeDetailsId} value={t.employeeDetailsId}>
+                              <Option
+                                key={t.employeeDetailsId}
+                                value={t.employeeDetailsId}
+                              >
                                 {[t.firstName, t.lastName].filter(Boolean).join(" ")}
                                 {t.employeeCode ? ` (${t.employeeCode})` : ""}
                               </Option>
@@ -719,8 +731,7 @@ function TimeTableForm({
                 block
                 className="mb-4"
               >
-                Add Period{" "}
-                {activeDayTab.charAt(0) + activeDayTab.slice(1).toLowerCase()}
+                Add Period {activeDayTab.charAt(0) + activeDayTab.slice(1).toLowerCase()}
               </Button>
 
               <style>{`
@@ -782,7 +793,12 @@ function TimeTableForm({
 
       <ConfigProvider componentDisabled={false}>
         <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-gray-100">
-          <Button type="primary" htmlType="button" loading={loading} onClick={handleFinish}>
+          <Button
+            type="primary"
+            htmlType="button"
+            loading={loading}
+            onClick={handleFinish}
+          >
             {isEditing ? "Update" : "Save"}
           </Button>
         </div>
@@ -918,7 +934,9 @@ const timeToMinutes = (raw?: any): number => {
 };
 
 function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: string[] }) {
-  const periods: any[] = Array.isArray(data?.timeTablePeriods) ? data.timeTablePeriods : [];
+  const periods: any[] = Array.isArray(data?.timeTablePeriods)
+    ? data.timeTablePeriods
+    : [];
   const todayName = dayjs().format("dddd").toUpperCase();
 
   // 🛠️ RESPONSIVE FIX (v2) — on phones, a 7-column grid is never going
@@ -930,7 +948,7 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
   // changes — this only changes which JSX is rendered.
   const isMobile = useIsMobile(641);
   const [selectedDay, setSelectedDay] = useState<string>(
-    DAYS.includes(todayName) ? todayName : DAYS[0]
+    DAYS.includes(todayName) ? todayName : DAYS[0],
   );
 
   // 🛠️ dev diagnostic — if any period's start time can't be resolved
@@ -940,7 +958,7 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
   useEffect(() => {
     if (!periods.length) return;
     const unresolved = periods.filter(
-      (p) => timeToMinutes(extractStartTimeRaw(p)) === Number.MAX_SAFE_INTEGER
+      (p) => timeToMinutes(extractStartTimeRaw(p)) === Number.MAX_SAFE_INTEGER,
     );
     if (unresolved.length > 0) {
       // eslint-disable-next-line no-console
@@ -948,7 +966,7 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
         "TimeTable: could not resolve a usable start time for these periods, so they'll fall back" +
           " to the static period-list order instead of sorting chronologically. Inspect the raw" +
           " object below to find the actual field name/format your API returns for start time:",
-        unresolved
+        unresolved,
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -989,7 +1007,9 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
   // and the displayed time can never contradict each other.
   // ---------------------------------------------------------------
   const findFirstMatchingPeriod = (label: string) =>
-    periods.find((p) => (toLabel(p.periodNumber) || String(p.periodNumber ?? "")) === label);
+    periods.find(
+      (p) => (toLabel(p.periodNumber) || String(p.periodNumber ?? "")) === label,
+    );
 
   const periodStartMinutes = (label: string): number => {
     const p = findFirstMatchingPeriod(label);
@@ -997,7 +1017,7 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
   };
 
   const periodNumbers: string[] = Array.from(
-    new Set(periods.map((p) => (toLabel(p.periodNumber) || String(p.periodNumber ?? ""))))
+    new Set(periods.map((p) => toLabel(p.periodNumber) || String(p.periodNumber ?? ""))),
   ).sort((a: string, b: string) => {
     const timeDiff = periodStartMinutes(a) - periodStartMinutes(b);
     if (timeDiff !== 0) return timeDiff;
@@ -1016,7 +1036,9 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
 
   const findCell = (day: string, periodNumber: string) =>
     periods.find(
-      (p) => p.day === day && (toLabel(p.periodNumber) || String(p.periodNumber ?? "")) === periodNumber
+      (p) =>
+        p.day === day &&
+        (toLabel(p.periodNumber) || String(p.periodNumber ?? "")) === periodNumber,
     );
 
   return (
@@ -1027,7 +1049,9 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
           <span className="sked-eyebrow">Weekly Timetable</span>
           <h3 className="sked-title">
             {data?.standard || "-"}
-            {data?.division ? <span className="sked-div">Division {data.division}</span> : null}
+            {data?.division ? (
+              <span className="sked-div">Division {data.division}</span>
+            ) : null}
           </h3>
         </div>
         <div className="sked-banner-right">
@@ -1181,7 +1205,10 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
 
                     if (!cell) {
                       return (
-                        <div key={day} className={`sked-slot ${isToday ? "is-today" : ""}`}>
+                        <div
+                          key={day}
+                          className={`sked-slot ${isToday ? "is-today" : ""}`}
+                        >
                           <div className="sked-empty-slot">Free</div>
                         </div>
                       );
@@ -1194,7 +1221,10 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
                     // shaped data.
                     if (isBreakRow) {
                       return (
-                        <div key={day} className={`sked-slot ${isToday ? "is-today" : ""}`}>
+                        <div
+                          key={day}
+                          className={`sked-slot ${isToday ? "is-today" : ""}`}
+                        >
                           <div className="sked-break-card">
                             <span className="sked-break-label">{railLabel(num)}</span>
                           </div>
@@ -1206,7 +1236,9 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
                     const tag = getTagStyle(subjectName);
                     const teacherFirst = cell?.employeeDetailsDTO?.firstName;
                     const teacherLast = cell?.employeeDetailsDTO?.lastName;
-                    const teacherName = [teacherFirst, teacherLast].filter(Boolean).join(" ");
+                    const teacherName = [teacherFirst, teacherLast]
+                      .filter(Boolean)
+                      .join(" ");
 
                     return (
                       <div key={day} className={`sked-slot ${isToday ? "is-today" : ""}`}>
@@ -1218,10 +1250,15 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
                             {subjectName || "-"}
                           </p>
                           <div className="sked-card-teacher">
-                            <span className="sked-avatar" style={{ background: tag?.border }}>
+                            <span
+                              className="sked-avatar"
+                              style={{ background: tag?.border }}
+                            >
                               {initialsOf(teacherFirst, teacherLast)}
                             </span>
-                            <span className="sked-teacher-name">{teacherName || "-"}</span>
+                            <span className="sked-teacher-name">
+                              {teacherName || "-"}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -1684,6 +1721,13 @@ export default function TimeTable() {
   const [teacherOptions, setTeacherOptions] = useState<TeacherOption[]>([]);
   const [subjectOptions, setSubjectOptions] = useState<SubjectOption[]>([]);
 
+  // 🆕 guards so the "getAllEmployeeDetailsByFilter" (teacher) API is
+  // only ever called once — the first time it's actually needed (see
+  // fetchTeachersByRole below) — instead of firing again every time the
+  // Teacher dropdown is reopened or Edit is opened multiple times.
+  const teacherOptionsLoadedRef = useRef(false);
+  const teacherOptionsLoadingRef = useRef(false);
+
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerLoading, setDrawerLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -1711,10 +1755,12 @@ export default function TimeTable() {
 
   // Same normalization pattern used inside TimeTableForm — reused here
   // so the filter dropdowns match the Add/Edit dropdowns exactly.
-  const standardOptions = (staticData?.["standard"] ?? STANDARD_FALLBACK).map((s: any) => ({
-    value: toValue(s),
-    label: toLabel(s),
-  }));
+  const standardOptions = (staticData?.["standard"] ?? STANDARD_FALLBACK).map(
+    (s: any) => ({
+      value: toValue(s),
+      label: toLabel(s),
+    }),
+  );
   const divisionOptions = (staticData?.["division"] ?? []).map((d: any) => ({
     value: toValue(d),
     label: toLabel(d),
@@ -1742,7 +1788,11 @@ export default function TimeTable() {
     async (pageNum: number, size: number, activeFilters: TimeTableFilters = {}) => {
       setTableLoading(true);
       try {
-        const hasFilters = !!(activeFilters.standard || activeFilters.division || activeFilters.medium);
+        const hasFilters = !!(
+          activeFilters.standard ||
+          activeFilters.division ||
+          activeFilters.medium
+        );
         const res = hasFilters
           ? await api.post(getAllTimeTableByFilterEndpoint(pageNum, size), {
               standard: activeFilters.standard,
@@ -1759,7 +1809,7 @@ export default function TimeTable() {
         setTableLoading(false);
       }
     },
-    []
+    [],
   );
 
   // getAllStaticData is called on-demand only, the first time the
@@ -1800,20 +1850,19 @@ export default function TimeTable() {
     fetchTimeTables(0, pageSize, {});
   };
 
-  // Teacher/Subject dropdown data — fetched once on mount (unchanged).
-  // Static data (Standard/Division/Medium/Period lists) is NOT fetched here
-  // — it's loaded via ensureStaticData() above (eagerly for admin list +
-  // filter bar, lazily for Add/Edit/View). See ensureStaticData below.
+  // Subject dropdown data — fetched once on mount (unchanged).
+  //
+  // 🆕 Teacher dropdown data is NO LONGER fetched here. Previously this
+  // same effect also loaded every employee up front and filtered
+  // "TEACHER" role client-side; that's what was firing
+  // getAllEmployeeDetailsByFilter as soon as the Add Time Table drawer's
+  // Standard/Division/Medium became fully selected. Teachers are now
+  // fetched lazily — see fetchTeachersByRole below, called only when the
+  // Teacher dropdown is actually opened (or when editing an existing
+  // record, so the assigned teacher's name can render).
   useEffect(() => {
     if (viewerIsTeacher) return; // teachers never open Add/Edit
     (async () => {
-      try {
-        const res = await api.post(apiEndpoints.getAllemployeeDetails(0, 200), {});
-        const { list } = extractListAndTotal(res);
-        setTeacherOptions(list.filter((e: any) => (e.role || "").toUpperCase() === "TEACHER"));
-      } catch {
-        // non-fatal
-      }
       try {
         const res = await api.post(apiEndpoints.getAllSubjects(0, 100), {});
         const { list } = extractListAndTotal(res);
@@ -1824,34 +1873,32 @@ export default function TimeTable() {
     })();
   }, [viewerIsTeacher]);
 
-  // 👇 fetches teachers filtered by the class/division/medium chosen
-  // in the Add/Edit form, instead of always showing every teacher.
-  // Your apiEndpoints.ts already has this exact endpoint under the name
-  // `getAllemployeeDetails` (it builds
-  // .../employeeDetails/getAllEmployeeDetailsByFilter?page=0&size=200&paginate=true) —
-  // there's no separate `getAllEmployeeDetailsByFilter` function, so this
-  // now calls the one that actually exists, with the filter payload in
-  // the request body. Fails silently (keeps whatever teacherOptions we
-  // already had) so the dropdown is never left empty on error.
-  const fetchTeachersForClass = useCallback(
-    async (standard?: string, division?: string, medium?: string) => {
-      if (!standard || !division || !medium) return;
+  // 🆕 Fetches the teacher list ONLY when actually needed — the first
+  // time the Teacher dropdown is opened on any period card, or when
+  // opening Edit (so an already-assigned teacher's name can render
+  // instead of showing a raw id). Sends { role: "Teacher" } in the
+  // request body so the backend itself returns only teachers — no more
+  // client-side role filtering needed.
+  //
+  // Guarded so it only ever calls the API once per page load: repeated
+  // dropdown opens / repeated Edit opens re-use the already-fetched list.
+  const fetchTeachersByRole = useCallback(async () => {
+    if (teacherOptionsLoadedRef.current || teacherOptionsLoadingRef.current) return;
+    teacherOptionsLoadingRef.current = true;
+    try {
+      const res = await api.post(apiEndpoints.getAllemployeeDetails(0, 200), {
+        role: "Teacher",
+      });
+      const { list } = extractListAndTotal(res);
+      setTeacherOptions(list);
+      teacherOptionsLoadedRef.current = true;
+    } catch (error: any) {
       // eslint-disable-next-line no-console
-      console.log("TimeTable: fetching teachers filtered by", { standard, division, medium });
-      try {
-        const res = await api.post(
-          apiEndpoints.getAllemployeeDetails(0, 200),
-          { standard, division, medium }
-        );
-        const { list } = extractListAndTotal(res);
-        setTeacherOptions(list.filter((e: any) => (e.role || "").toUpperCase() === "TEACHER"));
-      } catch (error: any) {
-        // eslint-disable-next-line no-console
-        console.warn("TimeTable: filtered teacher fetch failed, keeping previous list", error);
-      }
-    },
-    []
-  );
+      console.warn("TimeTable: teacher fetch (role: Teacher) failed", error);
+    } finally {
+      teacherOptionsLoadingRef.current = false;
+    }
+  }, []);
 
   // ---------------------------------------------------------------
   // Teacher timetable
@@ -1903,27 +1950,20 @@ export default function TimeTable() {
     }
 
     try {
-      const res = await api.post(
-        getAllTimeTableByFilterEndpoint(0, 500),
-        payload
-      );
+      const res = await api.post(getAllTimeTableByFilterEndpoint(0, 500), payload);
 
       console.log("TimeTable getAllTimeTableByFilter response:", res?.data);
 
       // IMPORTANT: backend response is:
       // res.data.data["Time TableDTOS"]
-      const timetableList = Array.isArray(
-        res?.data?.data?.["Time TableDTOS"]
-      )
+      const timetableList = Array.isArray(res?.data?.data?.["Time TableDTOS"])
         ? res.data.data["Time TableDTOS"]
         : [];
 
       console.log("TimeTable class records:", timetableList);
 
       const allPeriods = timetableList.flatMap((tt: any) => {
-        const periods = Array.isArray(tt?.timeTablePeriods)
-          ? tt.timeTablePeriods
-          : [];
+        const periods = Array.isArray(tt?.timeTablePeriods) ? tt.timeTablePeriods : [];
 
         return periods.map((period: any) => ({
           ...period,
@@ -1956,8 +1996,7 @@ export default function TimeTable() {
         standard: firstTimetable?.standard ?? payload.standard,
         division: firstTimetable?.division ?? payload.division,
         medium: firstTimetable?.medium ?? payload.medium,
-        academicYear:
-          firstTimetable?.academicYear ?? getLoggedInAcademicYear(),
+        academicYear: firstTimetable?.academicYear ?? getLoggedInAcademicYear(),
         timeTablePeriods: allPeriods,
       });
 
@@ -1965,17 +2004,15 @@ export default function TimeTable() {
         standard: firstTimetable?.standard ?? payload.standard,
         division: firstTimetable?.division ?? payload.division,
         medium: firstTimetable?.medium ?? payload.medium,
-        academicYear:
-          firstTimetable?.academicYear ?? getLoggedInAcademicYear(),
+        academicYear: firstTimetable?.academicYear ?? getLoggedInAcademicYear(),
         timeTablePeriods: allPeriods,
       });
-
     } catch (error: any) {
       console.error("TimeTable getAllTimeTableByFilter failed:", error);
       message.error(
         error?.response?.data?.message ||
           error?.response?.data?.body ||
-          "Failed to load your timetable"
+          "Failed to load your timetable",
       );
       setMySchedule(null);
     } finally {
@@ -1993,11 +2030,7 @@ export default function TimeTable() {
 
     void ensureStaticData();
     void fetchMySchedule();
-  }, [
-    viewerIsTeacher,
-    ensureStaticData,
-    fetchMySchedule,
-  ]);
+  }, [viewerIsTeacher, ensureStaticData, fetchMySchedule]);
 
   const populateForm = (data: any) => {
     form.setFieldsValue({
@@ -2038,6 +2071,9 @@ export default function TimeTable() {
     setDrawerOpen(true);
     setDrawerLoading(true);
     ensureStaticData(); // loads Standard/Division/Medium/Period options on first open
+    // 🆕 also make sure the teacher list is loaded so already-assigned
+    // teachers render their real name instead of a raw id.
+    fetchTeachersByRole();
     try {
       const res = await api.get(apiEndpoints.getTimeTableById(record.timeTableId));
       const data = res.data?.data ?? res.data;
@@ -2118,14 +2154,20 @@ export default function TimeTable() {
           My Timetable{user?.firstName ? ` — ${user.firstName}` : ""}
         </h2>
         <Spin spinning={myScheduleLoading} tip="Loading your timetable...">
-          {!myScheduleLoading && (!mySchedule || mySchedule.timeTablePeriods.length === 0) ? (
-            <Empty description="No periods assigned to you yet" style={{ padding: "40px 0" }} />
+          {!myScheduleLoading &&
+          (!mySchedule || mySchedule.timeTablePeriods.length === 0) ? (
+            <Empty
+              description="No periods assigned to you yet"
+              style={{ padding: "40px 0" }}
+            />
           ) : (
             mySchedule && (
               <TimeTableErrorBoundary>
                 <TimeTableGridView
                   data={mySchedule}
-                  periodOrder={normalizeList(staticData?.["Time table periods"] ?? PERIOD_FALLBACK)}
+                  periodOrder={normalizeList(
+                    staticData?.["Time table periods"] ?? PERIOD_FALLBACK,
+                  )}
                 />
               </TimeTableErrorBoundary>
             )
@@ -2136,9 +2178,24 @@ export default function TimeTable() {
   }
 
   const columns = [
-    { title: "Standard", dataIndex: "standard", key: "standard", render: (v: string) => v || "-" },
-    { title: "Division", dataIndex: "division", key: "division", render: (v: string) => v || "-" },
-    { title: "Medium", dataIndex: "medium", key: "medium", render: (v: string) => v || "-" },
+    {
+      title: "Standard",
+      dataIndex: "standard",
+      key: "standard",
+      render: (v: string) => v || "-",
+    },
+    {
+      title: "Division",
+      dataIndex: "division",
+      key: "division",
+      render: (v: string) => v || "-",
+    },
+    {
+      title: "Medium",
+      dataIndex: "medium",
+      key: "medium",
+      render: (v: string) => v || "-",
+    },
     {
       title: "Academic Year",
       dataIndex: "academicYear",
@@ -2187,10 +2244,6 @@ export default function TimeTable() {
         }
       `}</style>
 
-      {/* 🆕 Header row — title removed. Filter dropdowns + Search/Reset
-          + Add Time Table button all grouped together on the right.
-          Admin/Principal list view ONLY (teachers never render this
-          branch). */}
       {/* 🆕 Header row — title removed. Standard/Division/Medium filter
           dropdowns sit on the left; Search, Reset, and Add Time Table
           are grouped together on the right. Admin/Principal list view
@@ -2254,9 +2307,13 @@ export default function TimeTable() {
 
       {isMobile ? (
         <div className="space-y-3">
-          {tableLoading && <div className="text-center text-sm text-gray-400 py-6">Loading...</div>}
+          {tableLoading && (
+            <div className="text-center text-sm text-gray-400 py-6">Loading...</div>
+          )}
           {!tableLoading && rows.length === 0 && (
-            <div className="text-center text-sm text-gray-400 py-6">No timetables found</div>
+            <div className="text-center text-sm text-gray-400 py-6">
+              No timetables found
+            </div>
           )}
           {!tableLoading &&
             rows.map((record) => (
@@ -2267,9 +2324,15 @@ export default function TimeTable() {
                 <p className="text-sm font-semibold text-gray-800">
                   {record.standard} - {record.division} ({record.medium})
                 </p>
-                <p className="text-xs text-gray-500">Academic Year: {record.academicYear}</p>
+                <p className="text-xs text-gray-500">
+                  Academic Year: {record.academicYear}
+                </p>
                 <div className="flex gap-2 justify-end pt-2 mt-2 border-t border-gray-50">
-                  <Button icon={<EyeOutlined />} size="small" onClick={() => openView(record)} />
+                  <Button
+                    icon={<EyeOutlined />}
+                    size="small"
+                    onClick={() => openView(record)}
+                  />
                   <Button
                     type="primary"
                     icon={<EditOutlined />}
@@ -2326,7 +2389,7 @@ export default function TimeTable() {
             staticData={staticData}
             teacherOptions={teacherOptions}
             subjectOptions={subjectOptions}
-            onClassChange={fetchTeachersForClass}
+            onTeacherDropdownOpen={fetchTeachersByRole}
           />
         </Spin>
       </Drawer>
@@ -2351,7 +2414,9 @@ export default function TimeTable() {
               <TimeTableErrorBoundary>
                 <TimeTableGridView
                   data={viewData}
-                  periodOrder={normalizeList(staticData?.["Time table periods"] ?? PERIOD_FALLBACK)}
+                  periodOrder={normalizeList(
+                    staticData?.["Time table periods"] ?? PERIOD_FALLBACK,
+                  )}
                 />
               </TimeTableErrorBoundary>
             )

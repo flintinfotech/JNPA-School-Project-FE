@@ -126,6 +126,7 @@ export default function StudentTable({
     },
     { title: "First Name", dataIndex: "firstName", key: "firstName" },
     { title: "Last Name", dataIndex: "lastName", key: "lastName" },
+    { title: "Middle Name", dataIndex: "middleName", key: "middleName" },
     { title: "Gender", dataIndex: "gender", key: "gender" },
     {
       title: "DOB",
@@ -184,7 +185,7 @@ export default function StudentTable({
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     <p className="text-sm font-semibold text-gray-800">
-                      {record.firstName} {record.lastName}
+                      {record.firstName} {record.middleName} {record.lastName}
                     </p>
                     <p className="text-xs text-gray-500">
                       Code: {(record as any).studentCode ?? "-"}

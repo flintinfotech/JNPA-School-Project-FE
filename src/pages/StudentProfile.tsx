@@ -911,6 +911,16 @@ export default function StudentProfile() {
     // student (won't re-fetch every time you switch tabs back and
     // forth) — remove the feeFetchedForId guard if you want it to
     // always refetch instead.
+    //
+    // 🛠️ FIX — extractFeesFromStudent(student) was returning a stub
+    // entry even for a student with NO real fee record (a stub with no
+    // studentFeeId), so the array length was never 0 and the "No fee
+    // records found" branch in FeeCard never triggered — instead it
+    // rendered a blank "Fee Record 1" with everything showing as
+    // ₹0/undefined. Filtering out any stub that has no real
+    // studentFeeId means a student with no actual fee record ends up
+    // with an empty feeStubs array, so FeeCard correctly falls back to
+    // "No fee records found."
     // ===========================
 
     useEffect(() => {
@@ -920,7 +930,12 @@ export default function StudentProfile() {
         const studentKey = student.studentId ?? null;
         if (feeFetchedForId === studentKey) return; // already fetched
 
-        const feeStubs = extractFeesFromStudent(student);
+        const feeStubs = extractFeesFromStudent(student).filter(
+            (stub) =>
+                stub &&
+                stub.studentFeeId !== undefined &&
+                stub.studentFeeId !== null
+        ); // 🛠️ FIX — drop placeholder stubs with no real fee record
 
         if (feeStubs.length === 0) {
             setFees([]);
