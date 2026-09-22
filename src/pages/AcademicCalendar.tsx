@@ -522,8 +522,8 @@ export default function AcademicCalendar() {
                               Edit
                             </button>
                             <Popconfirm
-                              title="Delete this event?"
-                              description={`"${event.eventTitle}" will be permanently removed.`}
+                              title="This event will be permanently removed."
+                            
                               onConfirm={() => handleDelete(event)}
                               okText="Delete"
                               okButtonProps={{
