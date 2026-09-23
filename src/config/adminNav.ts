@@ -11,7 +11,7 @@ import { RiMedalLine } from "react-icons/ri";
 import { SlCalender } from "react-icons/sl";
 import { RiShoppingBagFill } from "react-icons/ri";
 import { MdAccountBalance } from "react-icons/md";
-import { RiShoppingCartFill } from "react-icons/ri";
+import { RiShoppingCartFill ,RiPresentationLine } from "react-icons/ri";
 import {
   PiBookOpenText,
   PiCalendarBlank,
@@ -103,7 +103,8 @@ export const adminNavItems: AdminNavEntry[] = [
         {label:"Results", path:"/results",icon:PiClipboardText},
         {label:"Achievements",path:"/achievements",icon:RiMedalLine },
         {label:"Academic calendar", path:"/academic-calender", icon:SlCalender},
-        {label:"Time Table", path:"/time-table",icon:PiCalendarBlank}
+        {label:"Time Table", path:"/time-table",icon:PiCalendarBlank},
+        { label:"Student attendance", path:"/student-attendance",icon:RiPresentationLine },
     ],
   },
   {label: "Profile",path: "/profile",icon: ImProfile,hideInSidebar: true,},

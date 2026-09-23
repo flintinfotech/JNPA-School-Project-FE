@@ -277,6 +277,23 @@ getAllSchoolExpensesByFilter: (page: number, size: number) =>
  
   getAllFormerStudentByFilter: (page: number, size: number) =>
     `/jnpa-school-project/formerStudents/getAllFormerStudentByFilter?page=${page}&size=${size}&paginate=true`,
- 
+
+  // ===============================
+  // 🆕 Student Attendance
+  // ===============================
+  saveStudentAttendance: () =>
+    `/jnpa-school-project/studentAttendance/saveStudentAttendance`,
+
+  updateStudentAttendance: () =>
+    `/jnpa-school-project/studentAttendance/updateStudentAttendance`,
+
+  getStudentAttendanceById: (studentAttendanceId: number | string) =>
+    `/jnpa-school-project/studentAttendance/getStudentAttendanceById/${studentAttendanceId}`,
+
+  deleteStudentAttendance: (studentAttendanceId: number | string) =>
+    `/jnpa-school-project/studentAttendance/deleteStudentAttendance/${studentAttendanceId}`,
+
+  getAllStudentAttendanceByFilter: (page: number, size: number) =>
+    `/jnpa-school-project/studentAttendance/getAllStudentAttendanceByFilter?page=${page}&size=${size}&paginate=true`,
 
 };
