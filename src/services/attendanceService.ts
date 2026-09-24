@@ -1,13 +1,18 @@
 import dayjs from "dayjs";
 
-import axiosInstance from "../lib/axios"; 
-import { apiEndpoints } from "../services/apiEndpoints"; 
+import axiosInstance from "../lib/axios"; // 👈 adjust this path if your axios instance lives elsewhere (match whatever studentService.ts imports)
+import { apiEndpoints } from "../services/apiEndpoints"; // 👈 adjust this path to match your project structure
 
 export type AttendanceStatus = "PRESENT" | "ABSENT";
 
 export interface AttendanceRecord {
   studentId: number;
   status: AttendanceStatus;
+  /**
+   * Set when this student already has an attendance record for the date
+   * (comes from getAttendanceByDate). Presence of this field is what tells
+   * saveAttendance to PUT an update instead of POSTing a new record.
+   */
   attendanceId?: number;
 }
 
@@ -179,6 +184,48 @@ export const getAttendanceSummaryForMonth = async (
     return summary;
   } catch (error) {
     console.error("Failed to load attendance summary for month:", error);
+    return {};
+  }
+};
+
+// ===========================
+// One student's attendance for a month, keyed by date — powers the
+// calendar on that student's own "Attendance" tab (Student Profile
+// screen), as opposed to getAttendanceSummaryForMonth which is the
+// whole-class counts used on the teacher's Student Attendance screen.
+// ===========================
+export const getStudentAttendanceForMonth = async (
+  studentId: number,
+  year: number,
+  month: number // 1–12
+): Promise<Record<string, AttendanceStatus>> => {
+  const fromDate = dayjs(`${year}-${String(month).padStart(2, "0")}-01`);
+  const toDate = fromDate.endOf("month");
+  const monthPrefix = fromDate.format("YYYY-MM"); // e.g. "2026-09"
+
+  try {
+    const records = await fetchAllAttendanceRecords({
+      studentId,
+      fromDate: fromDate.format("YYYY-MM-DD"),
+      toDate: toDate.format("YYYY-MM-DD"),
+    });
+
+    const map: Record<string, AttendanceStatus> = {};
+    records
+      // Belt-and-braces: if the backend's filter body doesn't actually
+      // support fromDate/toDate (unrecognised fields are commonly just
+      // ignored), it would otherwise hand back this student's ENTIRE
+      // attendance history here, and the calendar would show every
+      // month's data at once. Filtering by the date prefix client-side
+      // guarantees only the open month ever gets counted, regardless of
+      // what the backend does with the date filter.
+      .filter((rec) => rec.attendanceDate?.startsWith(monthPrefix))
+      .forEach((rec) => {
+        map[rec.attendanceDate] = rec.attendanceStatus;
+      });
+    return map;
+  } catch (error) {
+    console.error("Failed to load this student's attendance for the month:", error);
     return {};
   }
 };

@@ -4,13 +4,7 @@ import schoolBuilding from '../assets/Eventss.jpg';
 import SportingActivities from '../assets/StudentLifeImages/Sporting.png';
 import CoCurricularAct from '../assets/StudentLifeImages/C0Curricular.png';
 import EnvironmentalIni from '../assets/StudentLifeImages/Environment.png';
-// import ServiceLernings from '../assets/StudentLifeImages/SewrviceL.png';
 import StudentConcil from '../assets/StudentLifeImages/StudentsC.png';
-// import ProjectD from '../assets/StudentLifeImages/ProjectD.png';
-// import SeedsOfP from '../assets/StudentLifeImages/SeedsOfPiece.png';
-// import StudentsAchivements from '../assets/StudentLifeImages/StudentsACh.png';
-// import RoundSq from '../assets/StudentLifeImages/RoundSq.png';
-// import HouseSys from '../assets/StudentLifeImages/HouseSys.png';
 
 export default function StudentLife() {
   const events = [
