@@ -1,7 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
-import { Spin, Empty, message, Tabs, Button } from "antd";
-import { PrinterOutlined } from "@ant-design/icons";
+import { Spin, Empty, message, Tabs, Button, DatePicker } from "antd";
+import {
+    PrinterOutlined,
+    CheckOutlined,
+    CloseOutlined,
+    LeftOutlined,
+    RightOutlined,
+    CalendarOutlined,
+} from "@ant-design/icons";
 import {
     HiCheckCircle,
     HiXCircle,
@@ -9,8 +16,10 @@ import {
     HiUser,
     HiStar,
     HiCurrencyRupee,
+    HiCalendar,
 } from "react-icons/hi";
 import dayjs from "dayjs";
+import type { Dayjs } from "dayjs";
 import FeeReceiptModal, { getPaymentReceiptNo } from "../components/FeeReceipt";
 
 import {
@@ -23,6 +32,10 @@ import {
     type StudentFeeDTO,
     type FeePaymentDTO,
 } from "../services/studentService";
+import {
+    getStudentAttendanceForMonth,
+    type AttendanceStatus,
+} from "../services/attendanceService";
 
 // ===========================
 // Base64 -> file helpers
@@ -137,12 +150,12 @@ function InfoRow({
     value?: string | number | null;
 }) {
     return (
-        <div className="grid grid-cols-[220px_1fr] border-b border-slate-200 last:border-b-0">
-            <span className="px-4 py-2 text-sm text-slate-500 bg-slate-50">
+        <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] border-b border-slate-200 last:border-b-0">
+            <span className="px-4 pt-2 pb-1 sm:py-2 text-xs sm:text-sm font-medium sm:font-normal text-slate-400 sm:text-slate-500 bg-slate-50">
                 {label}
             </span>
 
-            <span className="px-4 py-2 text-sm font-medium text-slate-800">
+            <span className="px-4 pb-2 sm:py-2 text-sm font-medium text-slate-800 break-words">
                 {value !== undefined &&
                     value !== null &&
                     value !== ""
@@ -174,7 +187,7 @@ function Card({
         <div
             className={`bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full ${className}`}
         >
-            <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-3">
+            <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-slate-100 flex items-start justify-between gap-3 flex-wrap">
                 <div>
                     <h2 className="text-base font-semibold text-indigo-700">
                         {title}
@@ -190,7 +203,7 @@ function Card({
                 {extra && <div className="shrink-0">{extra}</div>}
             </div>
 
-            <div className="p-5 flex-1">
+            <div className="p-3 sm:p-5 flex-1">
                 {children}
             </div>
         </div>
@@ -235,7 +248,7 @@ function ResultCard({
                                 : undefined
                         }
                     >
-                        <div className="flex items-start justify-between gap-3 mb-4">
+                        <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
                             <p className="text-sm text-slate-600">
                                 {res.standard
                                     ? `Std.${res.standard.replace(
@@ -259,7 +272,7 @@ function ResultCard({
                             </span>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                             <InfoRow
                                 label="Start Date"
                                 value={
@@ -287,7 +300,7 @@ function ResultCard({
                             />
                         </div>
 
-                        <div className="grid grid-cols-3 gap-3 mb-4">
+                        <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
                             <InfoStat
                                 value={`${res.obtainedMarks ?? "-"}/${res.totalMarks ?? "-"}`}
                                 label="Marks"
@@ -311,8 +324,8 @@ function ResultCard({
 
                         {res.examSubjectsDTOS &&
                             res.examSubjectsDTOS.length > 0 && (
-                                <div className="overflow-hidden rounded-lg border border-slate-100">
-                                    <table className="w-full text-sm">
+                                <div className="overflow-x-auto rounded-lg border border-slate-100">
+                                    <table className="w-full text-sm min-w-[420px]">
                                         <thead>
                                             <tr className="bg-slate-50 text-slate-500 text-xs">
                                                 <th className="text-left font-medium px-3 py-2">
@@ -475,7 +488,7 @@ function FeeCard({
 
             <Card title="Fee Summary">
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
 
                     <InfoStat
                         value={formatCurrency(totalFee)}
@@ -543,7 +556,7 @@ function FeeCard({
                             Main Fee Information
                         ================================= */}
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
 
                             {/* Total Fee */}
 
@@ -590,7 +603,7 @@ function FeeCard({
                             Fee Details
                         ================================= */}
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
 
                             <InfoRow
                                 label="Due Amount"
@@ -636,7 +649,7 @@ function FeeCard({
 
                                 <div className="overflow-x-auto rounded-lg border border-slate-100">
 
-                                    <table className="w-full text-sm">
+                                    <table className="w-full text-sm min-w-[720px]">
 
                                         <thead>
                                             <tr className="bg-slate-50 text-slate-500 text-xs">
@@ -749,6 +762,207 @@ function FeeCard({
 }
 
 // ===========================
+// Attendance Card (read-only)
+// -----------------------------------------------------------
+// Shows this one student's own attendance as a full calendar grid —
+// green check badge on days marked Present, red cross badge for Absent,
+// plain number for days nothing was marked yet, greyed-out numbers for
+// the padding days from the previous/next month. Driven by
+// getStudentAttendanceForMonth(), which filters
+// GET /studentAttendance/getAllStudentAttendanceByFilter by studentId
+// + the visible month's date range (with a client-side re-filter as a
+// safety net — see attendanceService.ts).
+//
+// Mobile layout notes:
+//   - Month-nav row wraps (flex-wrap) instead of overflowing on narrow
+//     screens, and the month DatePicker shrinks a bit below `sm`.
+//   - The two stat cards go flex-col (stacked, full width) below `sm`
+//     since a phone-width screen is too narrow to fit both side by
+//     side without squeezing their text; from `sm` up (still stacked
+//     under the calendar on tablet widths) they sit side by side; from
+//     `md` up they move next to the calendar, stacked again.
+//   - Calendar day cells shrink their min-height a bit below `sm` to
+//     save vertical space on short phone screens.
+// ===========================
+
+const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function AttendanceCard({
+    month,
+    onMonthChange,
+    attendanceMap,
+    loading,
+}: {
+    month: Dayjs;
+    onMonthChange: (next: Dayjs) => void;
+    attendanceMap: Record<string, AttendanceStatus>;
+    loading: boolean;
+}) {
+    const presentCount = Object.values(attendanceMap).filter(
+        (status) => status === "PRESENT"
+    ).length;
+
+    const absentCount = Object.values(attendanceMap).filter(
+        (status) => status === "ABSENT"
+    ).length;
+
+    // Build a Sun-Sat grid covering the whole month, padded with the
+    // trailing days of the previous month and the leading days of the
+    // next month so every week row has all 7 columns filled in.
+    const startOfMonth = month.startOf("month");
+    const daysInMonth = month.daysInMonth();
+    const startWeekday = startOfMonth.day(); // 0 (Sun) – 6 (Sat)
+    const totalCells = Math.ceil((startWeekday + daysInMonth) / 7) * 7;
+
+    const cells = Array.from({ length: totalCells }, (_, i) => {
+        const date = startOfMonth.add(i - startWeekday, "day");
+        return { date, inCurrentMonth: date.month() === month.month() };
+    });
+
+    const today = dayjs();
+    const isNextMonthDisabled = month.add(1, "month").isAfter(today, "month");
+
+    return (
+        <Card title="Attendance">
+            <div className="flex flex-col md:flex-row gap-5 items-center justify-center">
+                {/* Calendar */}
+                <div className="w-full md:w-[380px] shrink-0">
+                    {/* Month nav: ‹ September 2026 ▾ › + jump-to-today.
+                        flex-wrap so it drops to a second line instead of
+                        overflowing on very narrow phones. */}
+                    <div className="flex items-center justify-between gap-2 flex-wrap mb-3">
+                        <div className="flex items-center gap-1">
+                            <Button
+                                shape="circle"
+                                size="small"
+                                icon={<LeftOutlined />}
+                                onClick={() => onMonthChange(month.subtract(1, "month"))}
+                            />
+                            <DatePicker
+                                picker="month"
+                                value={month}
+                                onChange={(date) => date && onMonthChange(date)}
+                                allowClear={false}
+                                bordered={false}
+                                format="MMMM YYYY"
+                                className="!font-semibold !text-slate-800 !px-1 sm:!px-2 w-[120px] sm:w-[150px]"
+                            />
+                            <Button
+                                shape="circle"
+                                size="small"
+                                icon={<RightOutlined />}
+                                disabled={isNextMonthDisabled}
+                                onClick={() => onMonthChange(month.add(1, "month"))}
+                            />
+                        </div>
+
+                        <Button
+                            shape="circle"
+                            size="small"
+                            icon={<CalendarOutlined />}
+                            onClick={() => onMonthChange(dayjs())}
+                            title="Jump to current month"
+                        />
+                    </div>
+
+                    {loading ? (
+                        <div className="py-10 flex items-center justify-center">
+                            <Spin tip="Loading attendance..." />
+                        </div>
+                    ) : (
+                        <div className="rounded-xl border border-slate-200 overflow-hidden">
+                            {/* Weekday header row */}
+                            <div className="grid grid-cols-7">
+                                {WEEKDAY_LABELS.map((d) => (
+                                    <div
+                                        key={d}
+                                        className="bg-indigo-50 text-indigo-700 text-[10px] sm:text-xs font-semibold text-center py-1.5 sm:py-2 border-b border-slate-200"
+                                    >
+                                        {d}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Day cells */}
+                            <div className="grid grid-cols-7">
+                                {cells.map(({ date, inCurrentMonth }) => {
+                                    const status = attendanceMap[date.format("YYYY-MM-DD")];
+                                    const isToday = date.isSame(today, "day");
+
+                                    return (
+                                        <div
+                                            key={date.format("YYYY-MM-DD")}
+                                            className={`min-h-[44px] sm:min-h-[56px] flex flex-col items-center justify-start gap-0.5 sm:gap-1 py-1.5 sm:py-2 border-b border-r border-slate-100 last:border-r-0 ${
+                                                isToday ? "bg-indigo-50/70" : ""
+                                            }`}
+                                        >
+                                            <span
+                                                className={`text-[11px] sm:text-xs font-medium w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full ${
+                                                    !inCurrentMonth
+                                                        ? "text-slate-300"
+                                                        : isToday
+                                                        ? "bg-indigo-600 text-white"
+                                                        : "text-slate-700"
+                                                }`}
+                                            >
+                                                {date.date()}
+                                            </span>
+
+                                            {inCurrentMonth && status && (
+                                                <span
+                                                    className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center text-white ${
+                                                        status === "PRESENT" ? "bg-green-500" : "bg-red-500"
+                                                    }`}
+                                                >
+                                                    {status === "PRESENT" ? (
+                                                        <CheckOutlined style={{ fontSize: 9 }} />
+                                                    ) : (
+                                                        <CloseOutlined style={{ fontSize: 9 }} />
+                                                    )}
+                                                </span>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Present / Absent — stacked on phones (safest fit), side by
+                    side once there's a bit more room (sm), stacked again
+                    next to the calendar from md up. */}
+                <div className="flex flex-col sm:flex-row md:flex-col gap-3 w-full md:w-72 md:mt-8">
+                    <div className="flex-1 relative overflow-hidden rounded-2xl border border-green-100 bg-gradient-to-br from-green-50 to-green-100 p-4 flex items-center gap-4">
+                        <div className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full bg-green-200/40 blur-xl" />
+                        <div className="relative w-11 h-11 rounded-full bg-green-500 text-white flex items-center justify-center shadow-md shrink-0">
+                            <CheckOutlined style={{ fontSize: 18 }} />
+                        </div>
+                        <div className="relative">
+                            <p className="text-sm font-semibold text-green-800">Present</p>
+                            <p className="text-2xl font-bold text-green-900 leading-tight">{presentCount}</p>
+                            <p className="text-xs text-green-700">Days</p>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 relative overflow-hidden rounded-2xl border border-red-100 bg-gradient-to-br from-red-50 to-pink-100 p-4 flex items-center gap-4">
+                        <div className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full bg-red-200/40 blur-xl" />
+                        <div className="relative w-11 h-11 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md shrink-0">
+                            <CloseOutlined style={{ fontSize: 18 }} />
+                        </div>
+                        <div className="relative">
+                            <p className="text-sm font-semibold text-red-800">Absent</p>
+                            <p className="text-2xl font-bold text-red-900 leading-tight">{absentCount}</p>
+                            <p className="text-xs text-red-700">Days</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Card>
+    );
+}
+
+// ===========================
 // Student Profile
 // ===========================
 
@@ -794,6 +1008,17 @@ export default function StudentProfile() {
         fee: StudentFeeDTO;
         payment: FeePaymentDTO | null;
     } | null>(null);
+
+    // ===========================
+    // Attendance tab state
+    // -----------------------------------------------------------
+    // Which calendar month is showing, and that month's attendance for
+    // THIS student only (date -> PRESENT/ABSENT), fetched fresh whenever
+    // the tab is opened or the month is changed.
+    // ===========================
+    const [attendanceMonth, setAttendanceMonth] = useState<Dayjs>(dayjs());
+    const [attendanceMap, setAttendanceMap] = useState<Record<string, AttendanceStatus>>({});
+    const [attendanceLoading, setAttendanceLoading] = useState(false);
 
     // ===========================
     // Fetch Student
@@ -960,6 +1185,37 @@ export default function StudentProfile() {
     }, [activeTab, student, feeFetchedForId]);
 
     // ===========================
+    // Fetch Attendance Data
+    // -----------------------------------------------------------
+    // Fires when the Attendance tab is open, and again whenever the
+    // visible month is changed via the ‹ › buttons.
+    // ===========================
+
+    useEffect(() => {
+        if (activeTab !== "attendance") return;
+        if (!student?.studentId) return;
+
+        let cancelled = false;
+        setAttendanceLoading(true);
+
+        getStudentAttendanceForMonth(
+            student.studentId,
+            attendanceMonth.year(),
+            attendanceMonth.month() + 1
+        )
+            .then((map) => {
+                if (!cancelled) setAttendanceMap(map);
+            })
+            .finally(() => {
+                if (!cancelled) setAttendanceLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [activeTab, student?.studentId, attendanceMonth]);
+
+    // ===========================
     // Loading
     // ===========================
 
@@ -1114,7 +1370,7 @@ export default function StudentProfile() {
     // ===========================
 
     return (
-        <div className="min-h-screen bg-slate-50 px-4 py-6 sm:px-8">
+        <div className="min-h-screen bg-slate-50 px-3 py-4 sm:px-8 sm:py-6">
 
             
 
@@ -1132,14 +1388,14 @@ export default function StudentProfile() {
         {/* ===========================
             STUDENT PROFILE
         =========================== */}
-        <div className="p-6 flex flex-col items-center text-center">
+        <div className="p-4 sm:p-6 flex flex-col items-center text-center">
 
             <h2 className="text-base font-semibold text-indigo-700 mb-4">
                 {student.firstName} {student.lastName}
             </h2>
 
             {/* Profile Image */}
-            <div className="w-32 h-32 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center">
+            <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center">
 
                 {photoUrl ? (
                     <img
@@ -1149,7 +1405,7 @@ export default function StudentProfile() {
                     />
                 ) : (
                     <HiUser
-                        size={48}
+                        size={40}
                         className="text-slate-300"
                     />
                 )}
@@ -1157,7 +1413,7 @@ export default function StudentProfile() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 gap-x-10 gap-y-5 w-full max-w-sm mt-6">
+            <div className="grid grid-cols-2 gap-x-6 sm:gap-x-10 gap-y-5 w-full max-w-sm mt-6">
 
                 <InfoStat
                     value={String(student.studentId ?? "-")}
@@ -1205,7 +1461,7 @@ export default function StudentProfile() {
             + PROFILE CHECKLIST
         =========================== */}
 
-        <div className="p-6 border-t md:border-t-0 md:border-l border-slate-200 flex flex-col justify-center">
+        <div className="p-4 sm:p-6 border-t md:border-t-0 md:border-l border-slate-200 flex flex-col justify-center">
 
 
                 
@@ -1258,7 +1514,7 @@ export default function StudentProfile() {
 
                <div className="mt-4 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
 
-    <div className="px-4 pt-2">
+    <div className="px-2 sm:px-4 pt-2">
 
         <Tabs
             activeKey={activeTab}
@@ -1441,10 +1697,10 @@ export default function StudentProfile() {
                                                 {documents.map((doc, idx) => (
                                                     <div
                                                         key={doc.studentDocumentId ?? idx}
-                                                        className="flex items-center justify-between py-2 border-b border-slate-50 last:border-b-0"
+                                                        className="flex items-center justify-between gap-2 py-2 border-b border-slate-50 last:border-b-0"
                                                     >
-                                                        <div>
-                                                            <p className="text-sm text-slate-700">
+                                                        <div className="min-w-0">
+                                                            <p className="text-sm text-slate-700 truncate">
                                                                 {doc.documentName}
                                                             </p>
                                                             {doc.uploadDate && (
@@ -1455,7 +1711,7 @@ export default function StudentProfile() {
                                                         </div>
                                                         <button
                                                             onClick={() => handleViewDocument(doc)}
-                                                            className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 cursor-pointer print:hidden"
+                                                            className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 cursor-pointer print:hidden shrink-0"
                                                         >
                                                             <HiDownload size={14} />
                                                             View
@@ -1493,6 +1749,25 @@ export default function StudentProfile() {
                                             onPrintReceipt={(fee, payment) =>
                                                 setReceiptTarget({ fee, payment })
                                             }
+                                        />
+                                    </div>
+                                ),
+                            },
+                            {
+                                key: "attendance",
+                                label: (
+                                    <span className="inline-flex items-center gap-1">
+                                        <HiCalendar size={15} />
+                                        Attendance
+                                    </span>
+                                ),
+                                children: (
+                                    <div className="px-1 pb-5">
+                                        <AttendanceCard
+                                            month={attendanceMonth}
+                                            onMonthChange={setAttendanceMonth}
+                                            attendanceMap={attendanceMap}
+                                            loading={attendanceLoading}
                                         />
                                     </div>
                                 ),
