@@ -12,6 +12,7 @@ import { SlCalender } from "react-icons/sl";
 import { RiShoppingBagFill } from "react-icons/ri";
 import { MdAccountBalance } from "react-icons/md";
 import { RiShoppingCartFill ,RiPresentationLine } from "react-icons/ri";
+import { RiMoneyDollarCircleLine } from "react-icons/ri";
 import {
   PiBookOpenText,
   PiCalendarBlank,
@@ -121,7 +122,8 @@ export const adminNavItems: AdminNavEntry[] = [
     children: [
     
         {label:"Student Fees", path:"/student-fees",icon:BsCash},
-          {label:"School Expenses", path:"/school-expenses",icon:RiShoppingCartFill}
+          {label:"School Expenses", path:"/school-expenses",icon:RiShoppingCartFill},
+          {label:"Employee Salary", path:"/employeesalary",icon:RiMoneyDollarCircleLine}
        
       
     ],

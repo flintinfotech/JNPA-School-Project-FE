@@ -296,4 +296,27 @@ getAllSchoolExpensesByFilter: (page: number, size: number) =>
   getAllStudentAttendanceByFilter: (page: number, size: number) =>
     `/jnpa-school-project/studentAttendance/getAllStudentAttendanceByFilter?page=${page}&size=${size}&paginate=true`,
 
+    
+  // ===============================
+  // Employee Salary
+  // ===============================
+  saveEmployeeSalary: () =>
+    `/jnpa-school-project/employeeSalary/saveEmployeeSalary`,
+ 
+  updateEmployeeSalary: () =>
+    `/jnpa-school-project/employeeSalary/updateEmployeeSalary`,
+ 
+  getEmployeeSalary: (employeeSalaryId: number | string) =>
+    `/jnpa-school-project/employeeSalary/getEmployeeSalary/${employeeSalaryId}`,
+ 
+  deleteEmployeeSalary: (employeeSalaryId: number | string) =>
+    `/jnpa-school-project/employeeSalary/deleteEmployeeSalary/${employeeSalaryId}`,
+ 
+  getAllEmployeeSalaryByFilter: (page: number, size: number) =>
+    `/jnpa-school-project/employeeSalary/getAllEmployeeSalaryByFilter?page=${page}&size=${size}&desc&paginate=true`,
+ 
+
+
+
+
 };
