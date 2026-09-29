@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Children, useEffect, useState } from "react";
 import {
   Spin,
   Empty,
@@ -31,6 +31,10 @@ import dayjs from "dayjs";
 import api from "../lib/axios";
 import { apiEndpoints } from "../services/apiEndpoints";
 import { getEmployeeDetailsById } from "../services/userService";
+import {
+  getEmployeeSalaryByFilter,
+  type EmployeeSalaryDTO,
+} from "../services/salaryService";
 import { getSubjectsByEmployeeDetailsId } from "../services/teacherSubjectService";
 
 // ===========================
@@ -118,6 +122,7 @@ const parseClassMasterKey = (key: string) => {
     medium: mediumMatch ? mediumMatch[1].trim() : "-",
   };
 };
+
 
 // ===========================
 // Document / base64 helpers (shared by Documents tab + Homework attachment)
@@ -274,6 +279,10 @@ export default function Profile() {
   const [loggedInUser, setLoggedInUser] = useState<LoggedInUser | null>(null);
   const [teacherInfo, setTeacherInfo] = useState<TeacherInformation | null>(null);
   const [classGroups, setClassGroups] = useState<ClassSubjectGroup[]>([]);
+  const [salaryList, setSalaryList] = useState<EmployeeSalaryDTO[]>([]);
+  const [salaryLoading, setSalaryLoading] = useState(false);
+  const [salaryDetailOpen, setSalaryDetailOpen] = useState(false);
+const [selectedSalary, setSelectedSalary] = useState<EmployeeSalaryDTO | null>(null);
   const [loading, setLoading] = useState(true);
 
   // ----------------------------------------------------------
@@ -350,6 +359,14 @@ export default function Profile() {
     loadTeacherProfile();
   }, []);
 
+  useEffect(() => {
+  if (!teacherInfo?.employeeDetailsId) return;
+
+  setSalaryLoading(true);
+  getEmployeeSalaryByFilter(teacherInfo.employeeDetailsId)
+    .then(setSalaryList)
+    .finally(() => setSalaryLoading(false));
+}, [teacherInfo?.employeeDetailsId]);
   // ============================================================
   // HOMEWORK: fetch list filtered for a specific subject/class
   // ============================================================
@@ -409,6 +426,15 @@ export default function Profile() {
     setHomeworkList([]);
   };
 
+  const openSalaryDetail = (record: EmployeeSalaryDTO) => {
+  setSelectedSalary(record);
+  setSalaryDetailOpen(true);
+};
+
+const closeSalaryDetail = () => {
+  setSalaryDetailOpen(false);
+  setSelectedSalary(null);
+};
   // ============================================================
   // HOMEWORK: open Add modal (subject/standard/division/medium/academicYear
   // pre-filled & disabled, rest left empty)
@@ -731,13 +757,66 @@ export default function Profile() {
       </div>
     </TabPanel>
   );
-
+const salaryTab = (
+  <TabPanel>
+    <div className="p-4">
+      {salaryLoading ? (
+        <div className="flex justify-center py-10">
+          <Spin tip="Loading salary details..." />
+        </div>
+      ) : salaryList.length === 0 ? (
+        <Empty description="No salary records found" />
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-gray-100">
+          <table className="w-full text-sm min-w-[520px]">
+            <thead>
+              <tr className="bg-gray-50 text-gray-500 text-xs">
+                <th className="text-center font-medium px-3 py-3">Month</th>
+                <th className="text-center font-medium px-3 py-3">Academic Year</th>
+                <th className="text-center font-medium px-3 py-3">Net Salary</th>
+                <th className="text-center font-medium px-3 py-3">Salary Date</th>
+                <th className="text-center font-medium px-3 py-3">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {salaryList.map((rec) => (
+                <tr key={rec.employeeSalaryId} className="border-t border-gray-100">
+                  <td className="px-3 py-3 text-center text-gray-700 font-medium">
+                    {rec.salaryDate ? dayjs(rec.salaryDate).format("MMMM") : "-"}
+                  </td>
+                  <td className="px-3 py-3 text-center text-gray-600">{rec.academicYear || "-"}</td>
+                  <td className="px-3 py-3 text-center font-semibold text-gray-800">
+                    {rec.netSalary ?? "-"}
+                  </td>
+                  <td className="px-3 py-3 text-center text-gray-600">
+                    {rec.salaryDate ? dayjs(rec.salaryDate).format("DD-MM-YYYY") : "-"}
+                  </td>
+                 <td className="px-3 py-3 text-center">
+  <Tooltip title="View Details">
+    <button
+      onClick={() => openSalaryDetail(rec)}
+      className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-700 transition-colors"
+    >
+      <EyeOutlined />
+    </button>
+  </Tooltip>
+</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  </TabPanel>
+);
   const items = isTeacher
     ? [
         { key: "account", label: "Account Details", children: accountTab },
         { key: "teaching", label: "Teaching Details", children: teachingTab },
         { key: "documents", label: "Documents", children: documentsTab },
         { key: "classes", label: "Assigned Classes & Subjects", children: classesTab },
+        { key: "salary", label:"Salary",children: salaryTab},
       ]
     : [{ key: "account", label: "Account Details", children: accountTab }];
 
@@ -750,7 +829,7 @@ export default function Profile() {
       <style>{`
         .profile-page .ant-input[disabled],
         .profile-page .ant-input-disabled,
-        .profile-page textarea.ant-input-disabled {
+        .profile-page textarea.ant-input-disabled{
           color: rgba(0, 0, 0, 0.88) !important;
           -webkit-text-fill-color: rgba(0, 0, 0, 0.88) !important;
         }
@@ -790,6 +869,8 @@ export default function Profile() {
 
         .homework-modal .ant-modal-close {
           color: #ffffff;
+           top: 30px;
+          right: 40px;
         }
 
         .homework-modal .ant-modal-close:hover {
@@ -801,7 +882,7 @@ export default function Profile() {
 
       {/* ======================================================
           HOMEWORK: ADD / EDIT MODAL
-      ======================================================= */}
+          ======================================================= */}
       <Modal
         title={editingHomeworkId ? "Update Homework" : "Add Homework"}
         open={homeworkModalOpen}
@@ -919,7 +1000,7 @@ export default function Profile() {
 
       {/* ======================================================
           HOMEWORK: VIEW LIST MODAL
-      ======================================================= */}
+        ======================================================= */}
       <Modal
         title={
           viewContext
@@ -1000,6 +1081,50 @@ export default function Profile() {
           )}
         </Spin>
       </Modal>
+      {/* ======================================================
+    SALARY: VIEW DETAIL MODAL
+======================================================= */}
+<Modal
+  title="Salary Details"
+  open={salaryDetailOpen}
+  onCancel={closeSalaryDetail}
+  footer={null}
+  destroyOnClose
+  width={520}
+  className="homework-modal"
+  styles={{ body: { padding: 0 } }}
+>
+  {selectedSalary && (
+    <TabPanel>
+      <InfoRow
+        label="Month"
+        value={
+          selectedSalary.salaryDate
+            ? dayjs(selectedSalary.salaryDate).format("MMMM")
+            : undefined
+        }
+      />
+      <InfoRow label="Academic Year" value={selectedSalary.academicYear} />
+      <InfoRow
+        label="Salary Date"
+        value={
+          selectedSalary.salaryDate
+            ? dayjs(selectedSalary.salaryDate).format("DD-MM-YYYY")
+            : undefined
+        }
+      />
+      <InfoRow label="Basic Salary" value={selectedSalary.basicSalary} />
+      <InfoRow label="HRA" value={selectedSalary.hra} />
+      <InfoRow label="Medical Allowance" value={selectedSalary.medicalAllowance} />
+      <InfoRow label="Transport Allowance" value={selectedSalary.transportAllowance} />
+      <InfoRow label="Other Allowance" value={selectedSalary.otherAllowance} />
+      <InfoRow label="Deduction" value={selectedSalary.deduction} />
+      <InfoRow label="Net Salary" value={selectedSalary.netSalary} />
+      <InfoRow label="Remark" value={selectedSalary.remark} />
+    </TabPanel>
+  )}
+</Modal>
     </div>
+    
   );
 }
