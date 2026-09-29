@@ -1,6 +1,35 @@
 import { useCallback, useEffect, useState } from "react";
-import {Button,  Card,  Col,  DatePicker,  Drawer,  Empty,  Form,  Input,InputNumber,  Popconfirm,  Row,  Select,  Spin,  Table,  Tabs,  Tag,  Upload,message,} from "antd";
-import {DeleteOutlined,  EditOutlined,  EyeOutlined,  LockOutlined,  PlusOutlined,  PrinterOutlined,  ReloadOutlined,  SearchOutlined,  UploadOutlined,} from "@ant-design/icons";
+import {
+  Button,
+  Card,
+  Col,
+  DatePicker,
+  Drawer,
+  Empty,
+  Form,
+  Input,
+  InputNumber,
+  Popconfirm,
+  Row,
+  Select,
+  Spin,
+  Table,
+  Tabs,
+  Tag,
+  Upload,
+  message,
+} from "antd";
+import {
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  LockOutlined,
+  PlusOutlined,
+  PrinterOutlined,
+  ReloadOutlined,
+  SearchOutlined,
+  UploadOutlined,
+} from "@ant-design/icons";
 import dayjs from "dayjs";
 
 import api from "../lib/axios";
@@ -17,7 +46,9 @@ const { Option } = Select;
 interface FormerStudentDTO {
   formerStudentId?: number;
   firstName: string;
+  middleName?: string | null; // 🆕
   lastName: string;
+  motherName?: string | null; // 🆕
   gender: string;
   DOB: string; // e.g. "15-06-2008" or ISO "2026-09-01" (backend has sent both)
   address: string;
@@ -152,7 +183,7 @@ const fileToBase64 = (file: File): Promise<string> =>
 // the other *ByFilter endpoints in this app).
 // ============================================================
 const extractFormerStudentListAndTotal = (
-  raw: any
+  raw: any,
 ): { list: FormerStudentDTO[]; total: number } => {
   const body = raw?.data ?? raw ?? {};
   const data = body?.data ?? body;
@@ -167,7 +198,7 @@ const extractFormerStudentListAndTotal = (
     data?.["Total Element"] ??
       data?.["Total Elements"] ??
       data?.["total"] ??
-      (Array.isArray(list) ? list.length : 0)
+      (Array.isArray(list) ? list.length : 0),
   );
 
   return {
@@ -261,13 +292,43 @@ export default function FormerStudents() {
     setLcPrintOpen(true);
   };
 
+  // 🆕 Add Leaving Certificate — before revealing the LC fields, pre-fill
+  // whichever LC fields have a direct match in the "Former Student" tab
+  // (firstName -> studentName, lastName -> surname, gender -> gender,
+  // DOB -> dateOfBirth, religion -> religion, caste -> caste,
+  // nationality -> nationality, admissionNo -> admissionNumber,
+  // motherName -> motherName 🆕), reading straight from the form's
+  // current values so this works the same way whether it's a brand-new
+  // record or an existing one being edited. Nothing else changes — every
+  // other LC field (including Father's Name, since there's no matching
+  // field on the Former Student tab) stays exactly as before (blank on
+  // Add).
+  const handleAddLeavingCertificate = () => {
+    const currentValues = form.getFieldsValue();
+    form.setFieldsValue({
+      formerStudentLCDTO: {
+        ...(currentValues.formerStudentLCDTO || {}),
+        studentName: currentValues.firstName,
+        fatherName: currentValues.middleName, // 🆕
+        surname: currentValues.lastName,
+        gender: currentValues.gender,
+        dateOfBirth: currentValues.DOB,
+        religion: currentValues.religion,
+        caste: currentValues.caste,
+        nationality: currentValues.nationality,
+        admissionNumber: currentValues.admissionNo,
+        motherName: currentValues.motherName, // 🆕
+      },
+    });
+    setLcAdded(true);
+  };
+
   const [drawerWidth, setDrawerWidth] = useState(
-    typeof window !== "undefined" && window.innerWidth < 768 ? "100%" : 520
+    typeof window !== "undefined" && window.innerWidth < 768 ? "100%" : 520,
   );
 
   useEffect(() => {
-    const handleResize = () =>
-      setDrawerWidth(window.innerWidth < 768 ? "100%" : 520);
+    const handleResize = () => setDrawerWidth(window.innerWidth < 768 ? "100%" : 520);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
@@ -291,7 +352,7 @@ export default function FormerStudents() {
 
         const res = await api.post(
           apiEndpoints.getAllFormerStudentByFilter(pageToLoad, PAGE_SIZE),
-          payload
+          payload,
         );
 
         if (res?.data?.success === false) {
@@ -306,14 +367,12 @@ export default function FormerStudents() {
         setTotal(totalCount);
       } catch (error: any) {
         console.error("Former students fetch error:", error);
-        message.error(
-          error?.response?.data?.message || "Failed to load former students"
-        );
+        message.error(error?.response?.data?.message || "Failed to load former students");
       } finally {
         setTableLoading(false);
       }
     },
-    []
+    [],
   );
 
   useEffect(() => {
@@ -362,7 +421,7 @@ export default function FormerStudents() {
   // ============================================================
   const openViewOrEditDrawer = async (
     record: FormerStudentDTO,
-    mode: "view" | "edit"
+    mode: "view" | "edit",
   ) => {
     setDrawerMode(mode);
     setEditingId(record.formerStudentId ?? null);
@@ -371,7 +430,7 @@ export default function FormerStudents() {
 
     try {
       const res = await api.get(
-        apiEndpoints.getFormerStudent(record.formerStudentId as number)
+        apiEndpoints.getFormerStudent(record.formerStudentId as number),
       );
 
       if (res?.data?.success === false) {
@@ -408,15 +467,13 @@ export default function FormerStudents() {
                 ? documentDateParsed
                 : null,
             uploadDate:
-              uploadDateParsed && uploadDateParsed.isValid()
-                ? uploadDateParsed
-                : null,
+              uploadDateParsed && uploadDateParsed.isValid() ? uploadDateParsed : null,
             collectedDate:
               collectedDateParsed && collectedDateParsed.isValid()
                 ? collectedDateParsed
                 : null,
           };
-        }
+        },
       );
 
       // 🆕 formerStudentResultDTOS is read-only display data — store the
@@ -434,7 +491,11 @@ export default function FormerStudents() {
       const hasLcData =
         !!lcData &&
         Object.entries(lcData).some(
-          ([key, value]) => key !== "formerStudentLCId" && value !== null && value !== undefined && value !== ""
+          ([key, value]) =>
+            key !== "formerStudentLCId" &&
+            value !== null &&
+            value !== undefined &&
+            value !== "",
         );
 
       setLcAdded(hasLcData);
@@ -458,10 +519,11 @@ export default function FormerStudents() {
         });
       }
 
-
       form.setFieldsValue({
         firstName: data.firstName,
+        middleName: data.middleName, // 🆕
         lastName: data.lastName,
+        motherName: data.motherName, // 🆕
         gender: data.gender,
         DOB: dobParsed && dobParsed.isValid() ? dobParsed : null,
         address: data.address,
@@ -482,9 +544,7 @@ export default function FormerStudents() {
       });
     } catch (error: any) {
       console.error("Former student detail error:", error);
-      message.error(
-        error?.response?.data?.message || "Failed to load former student"
-      );
+      message.error(error?.response?.data?.message || "Failed to load former student");
     } finally {
       setDrawerLoading(false);
     }
@@ -516,8 +576,10 @@ export default function FormerStudents() {
           documentDate: doc?.documentDate ? doc.documentDate.format("YYYY-MM-DD") : null,
           uploadDate: doc?.uploadDate ? doc.uploadDate.format("YYYY-MM-DD") : null,
           // 🆕 collectedDate converted back to a plain string the same way.
-          collectedDate: doc?.collectedDate ? doc.collectedDate.format("YYYY-MM-DD") : null,
-        })
+          collectedDate: doc?.collectedDate
+            ? doc.collectedDate.format("YYYY-MM-DD")
+            : null,
+        }),
       );
 
       // 🆕 formerStudentResultDTOS is READ-ONLY in this UI (see the
@@ -549,6 +611,8 @@ export default function FormerStudents() {
 
       const payload = {
         ...values,
+        middleName: values.middleName, // 🆕
+        motherName: values.motherName, // 🆕
         DOB: values.DOB ? values.DOB.format("YYYY-MM-DD") : null,
         formerStudentDocuments: formattedDocuments, // 🆕
         formerStudentResultDTOS: viewResults, // 🆕 pass-through, unedited
@@ -577,9 +641,7 @@ export default function FormerStudents() {
         fetchFormerStudents(page, appliedFilters);
       } catch (error: any) {
         console.error("Save/Update former student error:", error);
-        message.error(
-          error?.response?.data?.message || "Failed to save former student"
-        );
+        message.error(error?.response?.data?.message || "Failed to save former student");
       } finally {
         setSubmitting(false);
       }
@@ -587,7 +649,8 @@ export default function FormerStudents() {
       // Ant Design validation errors are automatically displayed.
     }
   };
- const handleDelete = async (formerStudentId?: number) => {
+
+  const handleDelete = async (formerStudentId?: number) => {
     if (!formerStudentId) return;
     try {
       const res = await api.delete(apiEndpoints.deleteFormerStudent(formerStudentId));
@@ -605,9 +668,7 @@ export default function FormerStudents() {
       }
     } catch (error: any) {
       console.error("Delete former student error:", error);
-      message.error(
-        error?.response?.data?.message || "Failed to delete former student"
-      );
+      message.error(error?.response?.data?.message || "Failed to delete former student");
     }
   };
 
@@ -696,7 +757,6 @@ export default function FormerStudents() {
     <div className="p-4 md:p-6">
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:justify-end md:items-center gap-3 mb-4">
-       
         {/* <Button type="primary" icon={<PlusOutlined />} onClick={openAddDrawer}>
           Add Former Student
         </Button> */}
@@ -792,60 +852,54 @@ export default function FormerStudents() {
         )}
       </div>
 
-      {/* MOBILE CARDS */}
+      {/* ============================================================
+          🆕 MOBILE CARDS — updated to match StudentTable's mobile card
+          style + Total/Prev/Next pagination footer exactly (plain div
+          cards with bg-white rounded-xl shadow-sm border, and the same
+          Total : Prev/Next bar at the bottom). Nothing else changed.
+      ============================================================ */}
       <div className="block md:hidden">
-        {tableLoading ? (
-          <Card>
-            <div className="flex justify-center py-8">
-              <Spin />
+        <div className="space-y-3">
+          {tableLoading && (
+            <div className="text-center text-sm text-gray-400 py-6">Loading...</div>
+          )}
+          {!tableLoading && rows.length === 0 && (
+            <div className="text-center text-sm text-gray-400 py-6">
+              No former students found
             </div>
-          </Card>
-        ) : rows.length === 0 ? (
-          <Card>
-            <Empty description="No former students found" />
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {rows.map((record) => (
-              <Card key={record.formerStudentId} size="small">
-                <div className="flex justify-between items-start mb-3">
+          )}
+          {!tableLoading &&
+            rows.map((record) => (
+              <div
+                key={record.formerStudentId}
+                className="bg-white rounded-xl shadow-sm border border-gray-100 p-4"
+              >
+                <div className="flex justify-between items-start mb-2">
                   <div>
-                    <div className="text-xs text-gray-400">
-                      {record.studentCode || "-"}
-                    </div>
-                    <div className="font-semibold text-base">
+                    <p className="text-sm font-semibold text-gray-800">
                       {record.firstName} {record.lastName}
-                    </div>
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Code: {record.studentCode ?? "-"}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {record.gender} | DOB: {formatDob(record.DOB)}
+                    </p>
                   </div>
                   <Tag color={statusColor(record.status)}>
                     {record.status ? record.status.replace(/_/g, " ") : "-"}
                   </Tag>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                  <div>
-                    <span className="text-gray-500">Gender: </span>
-                    {record.gender || "-"}
-                  </div>
-                  <div>
-                    <span className="text-gray-500">DOB: </span>
-                    {formatDob(record.DOB)}
-                  </div>
-                  <div className="col-span-2">
-                    <span className="text-gray-500">Address: </span>
-                    {record.address || "-"}
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Blood Group: </span>
-                    {record.bloodGroup || "-"}
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Category: </span>
-                    {record.category || "-"}
-                  </div>
+                <div className="text-xs text-gray-500 space-y-1 mb-3">
+                  <p>{record.address || "-"}</p>
+                  <p>
+                    Blood Group: {record.bloodGroup ?? "-"} | Category:{" "}
+                    {record.category ?? "-"}
+                  </p>
                 </div>
 
-                <div className="flex justify-end gap-2">
+                <div className="flex gap-2 justify-end pt-2 border-t border-gray-50">
                   <Button
                     icon={<EyeOutlined />}
                     size="small"
@@ -868,10 +922,25 @@ export default function FormerStudents() {
                     <Button danger icon={<DeleteOutlined />} size="small" />
                   </Popconfirm>
                 </div>
-              </Card>
+              </div>
             ))}
+
+          <div className="flex items-center justify-between pt-2">
+            <span className="text-xs text-gray-500">Total: {total}</span>
+            <div className="flex gap-2">
+              <Button size="small" disabled={page <= 0} onClick={() => setPage(page - 1)}>
+                Prev
+              </Button>
+              <Button
+                size="small"
+                disabled={(page + 1) * PAGE_SIZE >= total}
+                onClick={() => setPage(page + 1)}
+              >
+                Next
+              </Button>
+            </div>
           </div>
-        )}
+        </div>
       </div>
 
       {/* ADD / EDIT / VIEW DRAWER */}
@@ -880,8 +949,8 @@ export default function FormerStudents() {
           isViewMode
             ? "View Former Student"
             : drawerMode === "edit"
-            ? "Update Former Student"
-            : "Add Former Student"
+              ? "Update Former Student"
+              : "Add Former Student"
         }
         open={drawerOpen}
         onClose={closeDrawer}
@@ -964,171 +1033,143 @@ export default function FormerStudents() {
                   forceRender: true,
                   children: (
                     <>
-            <Row gutter={12}>
-                <Col span={12}>
-                <Form.Item label="Admission No" name="admissionNo">
-                  <Input placeholder="Admission number" disabled />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item label="Student Code" name="studentCode">
-                  <Input placeholder="Student code" disabled />
-                </Form.Item>
-              </Col>
-              
-            </Row>
+                      <Row gutter={12}>
+                        <Col span={12}>
+                          <Form.Item label="Admission No" name="admissionNo">
+                            <Input placeholder="Admission number" disabled />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item label="Student Code" name="studentCode">
+                            <Input placeholder="Student code" disabled />
+                          </Form.Item>
+                        </Col>
+                      </Row>
 
-            <Row gutter={12}>
-              <Col span={12}>
-                <Form.Item
-                  label="First Name"
-                  name="firstName"
-                  rules={[{ required: true, message: "First name is required" }]}
-                >
-                  <Input placeholder="First name" />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="Last Name"
-                  name="lastName"
-                  rules={[{ required: true, message: "Last name is required" }]}
-                >
-                  <Input placeholder="Last name" />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="Gender"
-                  name="gender"
-                  rules={[{ required: true, message: "Gender is required" }]}
-                >
-                  <Select placeholder="Select gender" allowClear>
-                    {GENDER_OPTIONS.map((g) => (
-                      <Option key={g} value={g}>
-                        {g}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="Date of Birth"
-                  name="DOB"
-                  rules={[{ required: true, message: "DOB is required" }]}
-                >
-                  <DatePicker className="w-full" format="DD-MM-YYYY" />
-                </Form.Item>
-              </Col>
-             
-            </Row>
+                      <Row gutter={12}>
+                        <Col span={12}>
+                          <Form.Item
+                            label="First Name"
+                            name="firstName"
+                            rules={[
+                              { required: true, message: "First name is required" },
+                            ]}
+                          >
+                            <Input placeholder="First name" />
+                          </Form.Item>
+                        </Col>
+                        {/* 🆕 Middle Name */}
+                        <Col span={12}>
+                          <Form.Item label="Middle Name" name="middleName">
+                            <Input placeholder="Middle name" />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item
+                            label="Last Name"
+                            name="lastName"
+                            rules={[{ required: true, message: "Last name is required" }]}
+                          >
+                            <Input placeholder="Last name" />
+                          </Form.Item>
+                        </Col>
+                        {/* 🆕 Mother Name */}
+                        <Col span={12}>
+                          <Form.Item label="Mother Name" name="motherName">
+                            <Input placeholder="Mother's name" />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item
+                            label="Gender"
+                            name="gender"
+                            rules={[{ required: true, message: "Gender is required" }]}
+                          >
+                            <Select placeholder="Select gender" allowClear>
+                              {GENDER_OPTIONS.map((g) => (
+                                <Option key={g} value={g}>
+                                  {g}
+                                </Option>
+                              ))}
+                            </Select>
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item
+                            label="Date of Birth"
+                            name="DOB"
+                            rules={[{ required: true, message: "DOB is required" }]}
+                          >
+                            <DatePicker className="w-full" format="DD-MM-YYYY" />
+                          </Form.Item>
+                        </Col>
+                      </Row>
 
-            <Form.Item label="Address" name="address">
-              <Input.TextArea placeholder="Address" rows={2} />
-            </Form.Item>
+                      <Form.Item label="Address" name="address">
+                        <Input.TextArea placeholder="Address" rows={2} />
+                      </Form.Item>
 
-            <Row gutter={12}>
-              <Col span={12}>
-                <Form.Item label="Phone" name="phone">
-                  <Input placeholder="Phone number" maxLength={10} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item label="Aadhaar Card" name="aadhaarCard">
-                  <Input placeholder="Aadhaar number" maxLength={12} />
-                </Form.Item>
-              </Col>
-            </Row>
+                      <Row gutter={12}>
+                        <Col span={12}>
+                          <Form.Item label="Phone" name="phone">
+                            <Input placeholder="Phone number" maxLength={10} />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item label="Aadhaar Card" name="aadhaarCard">
+                            <Input placeholder="Aadhaar number" maxLength={12} />
+                          </Form.Item>
+                        </Col>
+                      </Row>
 
-            <Row gutter={12}>
-              <Col span={12}>
-                <Form.Item label="Blood Group" name="bloodGroup">
-                  <Input placeholder="e.g. O+" />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item label="Category" name="category">
-                  <Input placeholder="e.g. General / OBC" />
-                </Form.Item>
-              </Col>
-            </Row>
+                      <Row gutter={12}>
+                        <Col span={12}>
+                          <Form.Item label="Blood Group" name="bloodGroup">
+                            <Input placeholder="e.g. O+" />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item label="Category" name="category">
+                            <Input placeholder="e.g. General / OBC" />
+                          </Form.Item>
+                        </Col>
+                      </Row>
 
-            <Row gutter={12}>
-              <Col span={12}>
-                <Form.Item label="Caste" name="caste">
-                  <Input placeholder="Caste" />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item label="Religion" name="religion">
-                  <Input placeholder="Religion" />
-                </Form.Item>
-              </Col>
-            </Row>
+                      <Row gutter={12}>
+                        <Col span={12}>
+                          <Form.Item label="Caste" name="caste">
+                            <Input placeholder="Caste" />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item label="Religion" name="religion">
+                            <Input placeholder="Religion" />
+                          </Form.Item>
+                        </Col>
+                      </Row>
 
-            <Row gutter={12}>
-              <Col span={12}>
-                <Form.Item label="Nationality" name="nationality">
-                  <Input placeholder="Nationality" />
-                </Form.Item>
-              </Col>
-               
-            
-            </Row>
+                      <Row gutter={12}>
+                        <Col span={12}>
+                          <Form.Item label="Nationality" name="nationality">
+                            <Input placeholder="Nationality" />
+                          </Form.Item>
+                        </Col>
 
-            <Row gutter={12}>
-              
-
-
-
-              <Col span={12}>
-                <Form.Item
-                  label="Status"
-                  name="status"
-                 
-                >
-                 <Select
-             placeholder="Select status"
-               disabled={drawerMode === "edit"}
-                         >
-                    {STATUS_OPTIONS.map((s) => (
-                      <Option key={s} value={s}>
-                        {s.replace(/_/g, " ")}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={12}>
-              <Col span={12}>
-                <Form.Item label="Payment Status" name="paymentStatus">
-                  <Select placeholder="Select payment status" allowClear>
-                    {PAYMENT_STATUS_OPTIONS.map((s) => (
-                      <Option key={s} value={s}>
-                        {s.replace(/_/g, " ")}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Col span={12} />
-            </Row>
-
-            <Row gutter={12}>
-              <Col span={12}>
-                <Form.Item label="Total Fee Amount" name="totalFeeAmount">
-                  <InputNumber className="w-full" min={0} precision={2} prefix="₹" />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item label="Pending Fee Amount" name="pendingFeeAmount">
-                  <InputNumber className="w-full" min={0} precision={2} prefix="₹" />
-                </Form.Item>
-              </Col>
-            </Row>
+                        <Col span={12}>
+                          <Form.Item label="Status" name="status">
+                            <Select
+                              placeholder="Select status"
+                              disabled={drawerMode === "edit"}
+                            >
+                              {STATUS_OPTIONS.map((s) => (
+                                <Option key={s} value={s}>
+                                  {s.replace(/_/g, " ")}
+                                </Option>
+                              ))}
+                            </Select>
+                          </Form.Item>
+                        </Col>
+                      </Row>
                     </>
                   ),
                 },
@@ -1185,14 +1226,21 @@ export default function FormerStudents() {
                               key={result.formerResultId ?? result.resultId ?? idx}
                               size="small"
                               className="mb-4"
-                              style={{ background: "#fff7ed", border: "1px solid #f2e2c4" }}
+                              style={{
+                                background: "#fff7ed",
+                                border: "1px solid #f2e2c4",
+                              }}
                             >
                               <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                                 <span className="font-semibold text-slate-800">
                                   Record {idx + 1} — {result.academicYear || "-"}
                                 </span>
                                 <div className="flex items-center gap-2">
-                                  <Tag color={result.resultStatus === "PASS" ? "green" : "red"}>
+                                  <Tag
+                                    color={
+                                      result.resultStatus === "PASS" ? "green" : "red"
+                                    }
+                                  >
                                     {result.resultStatus || "-"}
                                   </Tag>
                                   <Tag icon={<LockOutlined />} color="default">
@@ -1203,51 +1251,73 @@ export default function FormerStudents() {
 
                               <Row gutter={[12, 12]}>
                                 <Col xs={24} sm={12}>
-                                  <div className="text-xs font-medium text-slate-800 mb-1">Standard</div>
+                                  <div className="text-xs font-medium text-slate-800 mb-1">
+                                    Standard
+                                  </div>
                                   <Input value={result.standard || "-"} disabled />
                                 </Col>
                                 <Col xs={24} sm={12}>
-                                  <div className="text-xs font-medium text-slate-800 mb-1">Division</div>
+                                  <div className="text-xs font-medium text-slate-800 mb-1">
+                                    Division
+                                  </div>
                                   <Input value={result.division || "-"} disabled />
                                 </Col>
 
                                 <Col xs={24} sm={12}>
-                                  <div className="text-xs font-medium text-slate-800 mb-1">Academic Year</div>
+                                  <div className="text-xs font-medium text-slate-800 mb-1">
+                                    Academic Year
+                                  </div>
                                   <Input value={result.academicYear || "-"} disabled />
                                 </Col>
                                 <Col xs={24} sm={12}>
-                                  <div className="text-xs font-medium text-slate-800 mb-1">Exam Type</div>
+                                  <div className="text-xs font-medium text-slate-800 mb-1">
+                                    Exam Type
+                                  </div>
                                   <Input value={result.examType || "-"} disabled />
                                 </Col>
 
                                 <Col xs={24} sm={12}>
-                                  <div className="text-xs font-medium text-slate-800 mb-1">Start Date</div>
+                                  <div className="text-xs font-medium text-slate-800 mb-1">
+                                    Start Date
+                                  </div>
                                   <Input value={formatDob(result.startDate)} disabled />
                                 </Col>
                                 <Col xs={24} sm={12}>
-                                  <div className="text-xs font-medium text-slate-800 mb-1">End Date</div>
+                                  <div className="text-xs font-medium text-slate-800 mb-1">
+                                    End Date
+                                  </div>
                                   <Input value={formatDob(result.endDate)} disabled />
                                 </Col>
 
                                 <Col xs={24} sm={12}>
-                                  <div className="text-xs font-medium text-slate-800 mb-1">Total Marks</div>
+                                  <div className="text-xs font-medium text-slate-800 mb-1">
+                                    Total Marks
+                                  </div>
                                   <Input value={result.totalMarks ?? "-"} disabled />
                                 </Col>
                                 <Col xs={24} sm={12}>
-                                  <div className="text-xs font-medium text-slate-800 mb-1">Obtained Marks</div>
+                                  <div className="text-xs font-medium text-slate-800 mb-1">
+                                    Obtained Marks
+                                  </div>
                                   <Input value={result.obtainedMarks ?? "-"} disabled />
                                 </Col>
 
                                 <Col xs={24} sm={8}>
-                                  <div className="text-xs font-medium text-slate-800 mb-1">Percentage</div>
+                                  <div className="text-xs font-medium text-slate-800 mb-1">
+                                    Percentage
+                                  </div>
                                   <Input value={result.percentage ?? "-"} disabled />
                                 </Col>
                                 <Col xs={24} sm={8}>
-                                  <div className="text-xs font-medium text-slate-800 mb-1">Grade</div>
+                                  <div className="text-xs font-medium text-slate-800 mb-1">
+                                    Grade
+                                  </div>
                                   <Input value={result.grade || "-"} disabled />
                                 </Col>
                                 <Col xs={24} sm={8}>
-                                  <div className="text-xs font-medium text-slate-800 mb-1">Result Status</div>
+                                  <div className="text-xs font-medium text-slate-800 mb-1">
+                                    Result Status
+                                  </div>
                                   <Input value={result.resultStatus || "-"} disabled />
                                 </Col>
                               </Row>
@@ -1263,15 +1333,29 @@ export default function FormerStudents() {
                                 dataSource={subjects}
                                 rowKey={(s: any, i: number) => s.examSubjectsId ?? i}
                                 columns={[
-                                  { title: "Subject", dataIndex: "subjectName", key: "subjectName" },
-                                  { title: "Max Marks", dataIndex: "maximumMarks", key: "maximumMarks" },
-                                  { title: "Obtained", dataIndex: "obtainedMarks", key: "obtainedMarks" },
+                                  {
+                                    title: "Subject",
+                                    dataIndex: "subjectName",
+                                    key: "subjectName",
+                                  },
+                                  {
+                                    title: "Max Marks",
+                                    dataIndex: "maximumMarks",
+                                    key: "maximumMarks",
+                                  },
+                                  {
+                                    title: "Obtained",
+                                    dataIndex: "obtainedMarks",
+                                    key: "obtainedMarks",
+                                  },
                                   {
                                     title: "Status",
                                     dataIndex: "status",
                                     key: "status",
                                     render: (s: string) => (
-                                      <Tag color={s === "PASS" ? "green" : "red"}>{s || "-"}</Tag>
+                                      <Tag color={s === "PASS" ? "green" : "red"}>
+                                        {s || "-"}
+                                      </Tag>
                                     ),
                                   },
                                 ]}
@@ -1290,222 +1374,247 @@ export default function FormerStudents() {
                   forceRender: true,
                   children: (
                     <>
-            {/* ============================================================
-                🆕 DOCUMENTS — shows every entry from formerStudentDocuments
-                (Leaving Certificate, Marksheet, Bonafide, etc. all use this
-                same shape). Backed by a Form.List so each row's fields are
-                real form fields — they travel with the rest of the form and
-                get sent back as formerStudentDocuments in the Save/Update
-                payload (see handleFinish above), no separate API needed.
+                      {/* ============================================================
+                          🆕 DOCUMENTS — shows every entry from formerStudentDocuments
+                          (Leaving Certificate, Marksheet, Bonafide, etc. all use this
+                          same shape). Backed by a Form.List so each row's fields are
+                          real form fields — they travel with the rest of the form and
+                          get sent back as formerStudentDocuments in the Save/Update
+                          payload (see handleFinish above), no separate API needed.
 
-                Starting point per your request: the section + "Add
-                Document" button are wired up now; the first real workflow
-                to build on top of this is Leaving Certificate (documentType
-                "LC") — just pick that option in the Document Type dropdown
-                below when adding one.
-            ============================================================ */}
-            <div className="mt-2 mb-2 text-sm font-semibold text-slate-700">
-              Documents
-            </div>
+                          Starting point per your request: the section + "Add
+                          Document" button are wired up now; the first real workflow
+                          to build on top of this is Leaving Certificate (documentType
+                          "LC") — just pick that option in the Document Type dropdown
+                          below when adding one.
+                      ============================================================ */}
+                      <div className="mt-2 mb-2 text-sm font-semibold text-slate-700">
+                        Documents
+                      </div>
 
-            <Form.List name="formerStudentDocuments">
-              {(docFields, { add, remove }) => (
-                <>
-                  {docFields.length === 0 && (
-                    <div className="text-xs text-slate-400 mb-3">
-                      No documents added yet.
-                    </div>
-                  )}
+                      <Form.List name="formerStudentDocuments">
+                        {(docFields, { add, remove }) => (
+                          <>
+                            {docFields.length === 0 && (
+                              <div className="text-xs text-slate-400 mb-3">
+                                No documents added yet.
+                              </div>
+                            )}
 
-                  {docFields.map((docField) => (
-                    <Card
-                      key={docField.key}
-                      size="small"
-                      className="mb-3"
-                      style={{ background: "#fafafa" }}
-                      extra={
-                        !isViewMode && (
-                          <Button
-                            type="text"
-                            danger
-                            size="small"
-                            icon={<DeleteOutlined />}
-                            onClick={() => remove(docField.name)}
-                          />
-                        )
-                      }
-                    >
-                      <Row gutter={12}>
-                        <Col span={12}>
-                          <Form.Item
-                            label="Document Name"
-                            name={[docField.name, "documentName"]}
-                            rules={[{ required: true, message: "Required" }]}
-                          >
-                            <Input placeholder="e.g. Leaving Certificate" />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            label="Document Type"
-                            name={[docField.name, "documentType"]}
-                            rules={[{ required: true, message: "Required" }]}
-                          >
-                            <Select placeholder="Select type" allowClear>
-                              {DOCUMENT_TYPE_OPTIONS.map((t) => (
-                                <Option key={t} value={t}>
-                                  {t}
-                                </Option>
-                              ))}
-                            </Select>
-                          </Form.Item>
-                        </Col>
-                      </Row>
+                            {docFields.map((docField) => (
+                              <Card
+                                key={docField.key}
+                                size="small"
+                                className="mb-3"
+                                style={{ background: "#fafafa" }}
+                                extra={
+                                  !isViewMode && (
+                                    <Button
+                                      type="text"
+                                      danger
+                                      size="small"
+                                      icon={<DeleteOutlined />}
+                                      onClick={() => remove(docField.name)}
+                                    />
+                                  )
+                                }
+                              >
+                                <Row gutter={12}>
+                                  <Col span={12}>
+                                    <Form.Item
+                                      label="Document Name"
+                                      name={[docField.name, "documentName"]}
+                                      rules={[{ required: true, message: "Required" }]}
+                                    >
+                                      <Input placeholder="e.g. Leaving Certificate" />
+                                    </Form.Item>
+                                  </Col>
+                                  <Col span={12}>
+                                    <Form.Item
+                                      label="Document Type"
+                                      name={[docField.name, "documentType"]}
+                                      rules={[{ required: true, message: "Required" }]}
+                                    >
+                                      <Select placeholder="Select type" allowClear>
+                                        {DOCUMENT_TYPE_OPTIONS.map((t) => (
+                                          <Option key={t} value={t}>
+                                            {t}
+                                          </Option>
+                                        ))}
+                                      </Select>
+                                    </Form.Item>
+                                  </Col>
+                                </Row>
 
-                      <Row gutter={12}>
-                        <Col span={12}>
-                          <Form.Item
-                            label="Document Date"
-                            name={[docField.name, "documentDate"]}
-                          >
-                            <DatePicker className="w-full" format="DD-MM-YYYY" />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            label="Upload Date"
-                            name={[docField.name, "uploadDate"]}
-                          >
-                            <DatePicker className="w-full" format="DD-MM-YYYY" />
-                          </Form.Item>
-                        </Col>
-                      </Row>
+                                <Row gutter={12}>
+                                  <Col span={12}>
+                                    <Form.Item
+                                      label="Document Date"
+                                      name={[docField.name, "documentDate"]}
+                                    >
+                                      <DatePicker
+                                        className="w-full"
+                                        format="DD-MM-YYYY"
+                                      />
+                                    </Form.Item>
+                                  </Col>
+                                  <Col span={12}>
+                                    <Form.Item
+                                      label="Upload Date"
+                                      name={[docField.name, "uploadDate"]}
+                                    >
+                                      <DatePicker
+                                        className="w-full"
+                                        format="DD-MM-YYYY"
+                                      />
+                                    </Form.Item>
+                                  </Col>
+                                </Row>
 
-                      <Row gutter={12}>
-                        <Col span={12}>
-                          <Form.Item
-                            label="Academic Year"
-                            name={[docField.name, "academicYear"]}
-                          >
-                            <Input placeholder="e.g. 2025-2026" />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item label="Standard" name={[docField.name, "standard"]}>
-                            <Input placeholder="e.g. 10" />
-                          </Form.Item>
-                        </Col>
-                      </Row>
+                                <Row gutter={12}>
+                                  <Col span={12}>
+                                    <Form.Item
+                                      label="Academic Year"
+                                      name={[docField.name, "academicYear"]}
+                                    >
+                                      <Input placeholder="e.g. 2025-2026" />
+                                    </Form.Item>
+                                  </Col>
+                                  <Col span={12}>
+                                    <Form.Item
+                                      label="Standard"
+                                      name={[docField.name, "standard"]}
+                                    >
+                                      <Input placeholder="e.g. 10" />
+                                    </Form.Item>
+                                  </Col>
+                                </Row>
 
-                      <Form.Item label="Remark" name={[docField.name, "remark"]}>
-                        <Input.TextArea rows={2} placeholder="Remark" />
-                      </Form.Item>
+                                <Form.Item
+                                  label="Remark"
+                                  name={[docField.name, "remark"]}
+                                >
+                                  <Input.TextArea rows={2} placeholder="Remark" />
+                                </Form.Item>
 
-                      {/* 🆕 Document Status */}
-                      <Row gutter={12}>
-                        <Col span={12}>
-                          <Form.Item
-                            label="Document Status"
-                            name={[docField.name, "documentStatus"]}
-                          >
-                            <Select placeholder="Select status" allowClear>
-                              {DOCUMENT_STATUS_OPTIONS.map((s) => (
-                                <Option key={s} value={s}>
-                                  {s}
-                                </Option>
-                              ))}
-                            </Select>
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            label="Collected Date"
-                            name={[docField.name, "collectedDate"]}
-                          >
-                            <DatePicker className="w-full" format="DD-MM-YYYY" />
-                          </Form.Item>
-                        </Col>
-                      </Row>
+                                {/* 🆕 Document Status */}
+                                <Row gutter={12}>
+                                  <Col span={12}>
+                                    <Form.Item
+                                      label="Document Status"
+                                      name={[docField.name, "documentStatus"]}
+                                    >
+                                      <Select placeholder="Select status" allowClear>
+                                        {DOCUMENT_STATUS_OPTIONS.map((s) => (
+                                          <Option key={s} value={s}>
+                                            {s}
+                                          </Option>
+                                        ))}
+                                      </Select>
+                                    </Form.Item>
+                                  </Col>
+                                  <Col span={12}>
+                                    <Form.Item
+                                      label="Collected Date"
+                                      name={[docField.name, "collectedDate"]}
+                                    >
+                                      <DatePicker
+                                        className="w-full"
+                                        format="DD-MM-YYYY"
+                                      />
+                                    </Form.Item>
+                                  </Col>
+                                </Row>
 
-                      {/* 🆕 Collected By / Collected Relation */}
-                      <Row gutter={12}>
-                        <Col span={12}>
-                          <Form.Item
-                            label="Collected By"
-                            name={[docField.name, "collectedBy"]}
-                          >
-                            <Input placeholder="Name of person who collected it" />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            label="Collected Relation"
-                            name={[docField.name, "collectedRelation"]}
-                          >
-                            <Input placeholder="e.g. Father, Mother, Self" />
-                          </Form.Item>
-                        </Col>
-                      </Row>
+                                {/* 🆕 Collected By / Collected Relation */}
+                                <Row gutter={12}>
+                                  <Col span={12}>
+                                    <Form.Item
+                                      label="Collected By"
+                                      name={[docField.name, "collectedBy"]}
+                                    >
+                                      <Input placeholder="Name of person who collected it" />
+                                    </Form.Item>
+                                  </Col>
+                                  <Col span={12}>
+                                    <Form.Item
+                                      label="Collected Relation"
+                                      name={[docField.name, "collectedRelation"]}
+                                    >
+                                      <Input placeholder="e.g. Father, Mother, Self" />
+                                    </Form.Item>
+                                  </Col>
+                                </Row>
 
-                      {/* 🆕 Document Upload — converts the selected file to
-                          base64 and stores it on this document's "document"
-                          field, same key the backend already sends back
-                          (currently null in every example response, but the
-                          field name/shape matches). */}
-                      <Form.Item
-                        label="Upload Document"
-                        name={[docField.name, "document"]}
-                        valuePropName="fileValue"
-                      >
-                        <Upload
-                          maxCount={1}
-                          beforeUpload={() => false}
-                          showUploadList={false}
-                          onChange={async (info) => {
-                            const file = info.fileList[0]?.originFileObj as File | undefined;
-                            if (!file) return;
-                            try {
-                              const base64 = await fileToBase64(file);
-                              const current = form.getFieldValue("formerStudentDocuments") || [];
-                              current[docField.name] = {
-                                ...current[docField.name],
-                                document: base64,
-                              };
-                              form.setFieldsValue({ formerStudentDocuments: current });
-                            } catch (err) {
-                              console.error("Failed to read file:", err);
-                              message.error("Could not read the selected file.");
-                            }
-                          }}
-                        >
-                          <Button icon={<UploadOutlined />} disabled={isViewMode}>
-                            {form.getFieldValue([
-                              "formerStudentDocuments",
-                              docField.name,
-                              "document",
-                            ])
-                              ? "Replace File"
-                              : "Select File"}
-                          </Button>
-                        </Upload>
-                      </Form.Item>
-                    </Card>
-                  ))}
+                                {/* 🆕 Document Upload — converts the selected file to
+                                    base64 and stores it on this document's "document"
+                                    field, same key the backend already sends back
+                                    (currently null in every example response, but the
+                                    field name/shape matches). */}
+                                <Form.Item
+                                  label="Upload Document"
+                                  name={[docField.name, "document"]}
+                                  valuePropName="fileValue"
+                                >
+                                  <Upload
+                                    maxCount={1}
+                                    beforeUpload={() => false}
+                                    showUploadList={false}
+                                    onChange={async (info) => {
+                                      const file = info.fileList[0]?.originFileObj as
+                                        File | undefined;
+                                      if (!file) return;
+                                      try {
+                                        const base64 = await fileToBase64(file);
+                                        const current =
+                                          form.getFieldValue("formerStudentDocuments") ||
+                                          [];
+                                        current[docField.name] = {
+                                          ...current[docField.name],
+                                          document: base64,
+                                        };
+                                        form.setFieldsValue({
+                                          formerStudentDocuments: current,
+                                        });
+                                      } catch (err) {
+                                        console.error("Failed to read file:", err);
+                                        message.error(
+                                          "Could not read the selected file.",
+                                        );
+                                      }
+                                    }}
+                                  >
+                                    <Button
+                                      icon={<UploadOutlined />}
+                                      disabled={isViewMode}
+                                    >
+                                      {form.getFieldValue([
+                                        "formerStudentDocuments",
+                                        docField.name,
+                                        "document",
+                                      ])
+                                        ? "Replace File"
+                                        : "Select File"}
+                                    </Button>
+                                  </Upload>
+                                </Form.Item>
+                              </Card>
+                            ))}
 
-                  {!isViewMode && (
-                    <Button
-                      type="dashed"
-                      block
-                      icon={<PlusOutlined />}
-                      className="mb-4"
-                      onClick={() => add({ documentType: undefined })}
-                    >
-                      Add Document
-                    </Button>
-                  )}
-                </>
-              )}
-            </Form.List>
+                            {!isViewMode && (
+                              <Button
+                                type="dashed"
+                                block
+                                icon={<PlusOutlined />}
+                                className="mb-4"
+                                onClick={() => add({ documentType: undefined })}
+                              >
+                                Add Document
+                              </Button>
+                            )}
+                          </>
+                        )}
+                      </Form.List>
                     </>
                   ),
                 },
@@ -1525,6 +1634,17 @@ export default function FormerStudents() {
                           "formerStudentLCDTO" object) and the button never
                           reappears for this record — only one LC per
                           former student.
+
+                          🆕 Clicking "+ Add Leaving Certificate" now also
+                          pre-fills whichever LC fields have a direct match
+                          on the "Former Student" tab (see
+                          handleAddLeavingCertificate above): First Name ->
+                          Student Name, Last Name -> Surname, Gender ->
+                          Gender, DOB -> Date of Birth, Religion, Caste,
+                          Nationality, Admission No -> Admission Number,
+                          and Mother Name -> Mother's Name. Father's Name
+                          has no match on the Former Student tab, so it's
+                          left blank as before.
                       ============================================================ */}
                       {!lcAdded ? (
                         !isViewMode ? (
@@ -1532,7 +1652,7 @@ export default function FormerStudents() {
                             type="dashed"
                             block
                             icon={<PlusOutlined />}
-                            onClick={() => setLcAdded(true)}
+                            onClick={handleAddLeavingCertificate}
                           >
                             Add Leaving Certificate
                           </Button>
@@ -1560,12 +1680,24 @@ export default function FormerStudents() {
                           )}
                           <Row gutter={12}>
                             <Col span={12}>
-                              <Form.Item label="LC Number" name={["formerStudentLCDTO", "lcNumber"]}>
+                              <Form.Item
+                                label="LC Number"
+                                name={["formerStudentLCDTO", "lcNumber"]}
+                                rules={[
+                                  { required: true, message: "LC Number is required" },
+                                ]}
+                              >
                                 <Input placeholder="e.g. LC20260020" />
                               </Form.Item>
                             </Col>
                             <Col span={12}>
-                              <Form.Item label="LC Date" name={["formerStudentLCDTO", "lcDate"]}>
+                              <Form.Item
+                                label="LC Date"
+                                name={["formerStudentLCDTO", "lcDate"]}
+                                rules={[
+                                  { required: true, message: "LC Date is required" },
+                                ]}
+                              >
                                 <DatePicker className="w-full" format="DD-MM-YYYY" />
                               </Form.Item>
                             </Col>
@@ -1576,8 +1708,9 @@ export default function FormerStudents() {
                               <Form.Item
                                 label="Admission Number"
                                 name={["formerStudentLCDTO", "admissionNumber"]}
+                                className="always-dark-disabled"
                               >
-                                <Input placeholder="Admission number" />
+                                <Input placeholder="Admission number" disabled />
                               </Form.Item>
                             </Col>
                             <Col span={12}>
@@ -1592,12 +1725,30 @@ export default function FormerStudents() {
 
                           <Row gutter={12}>
                             <Col span={12}>
-                              <Form.Item label="Student Name" name={["formerStudentLCDTO", "studentName"]}>
+                              <Form.Item
+                                label="Student Name"
+                                name={["formerStudentLCDTO", "studentName"]}
+                                rules={[
+                                  {
+                                    required: true,
+                                    message: "Student Name is required",
+                                  },
+                                ]}
+                              >
                                 <Input placeholder="Student's first name" />
                               </Form.Item>
                             </Col>
                             <Col span={12}>
-                              <Form.Item label="Surname" name={["formerStudentLCDTO", "surname"]}>
+                              <Form.Item
+                                label="Surname"
+                                name={["formerStudentLCDTO", "surname"]}
+                                rules={[
+                                  {
+                                    required: true,
+                                    message: "Surname is required",
+                                  },
+                                ]}
+                              >
                                 <Input placeholder="Surname" />
                               </Form.Item>
                             </Col>
@@ -1605,12 +1756,30 @@ export default function FormerStudents() {
 
                           <Row gutter={12}>
                             <Col span={12}>
-                              <Form.Item label="Father's Name" name={["formerStudentLCDTO", "fatherName"]}>
+                              <Form.Item
+                                label="Father's Name"
+                                name={["formerStudentLCDTO", "fatherName"]}
+                                rules={[
+                                  {
+                                    required: true,
+                                    message: "Father's Name is required",
+                                  },
+                                ]}
+                              >
                                 <Input placeholder="Father's name" />
                               </Form.Item>
                             </Col>
                             <Col span={12}>
-                              <Form.Item label="Mother's Name" name={["formerStudentLCDTO", "motherName"]}>
+                              <Form.Item
+                                label="Mother's Name"
+                                name={["formerStudentLCDTO", "motherName"]}
+                                rules={[
+                                  {
+                                    required: true,
+                                    message: "Mother's Name is required",
+                                  },
+                                ]}
+                              >
                                 <Input placeholder="Mother's name" />
                               </Form.Item>
                             </Col>
@@ -1618,7 +1787,16 @@ export default function FormerStudents() {
 
                           <Row gutter={12}>
                             <Col span={12}>
-                              <Form.Item label="Gender" name={["formerStudentLCDTO", "gender"]}>
+                              <Form.Item
+                                label="Gender"
+                                name={["formerStudentLCDTO", "gender"]}
+                                rules={[
+                                  {
+                                    required: true,
+                                    message: "Gender is required",
+                                  },
+                                ]}
+                              >
                                 <Select placeholder="Select gender" allowClear>
                                   {GENDER_OPTIONS.map((g) => (
                                     <Option key={g} value={g}>
@@ -1629,7 +1807,16 @@ export default function FormerStudents() {
                               </Form.Item>
                             </Col>
                             <Col span={12}>
-                              <Form.Item label="Date of Birth" name={["formerStudentLCDTO", "dateOfBirth"]}>
+                              <Form.Item
+                                label="Date of Birth"
+                                name={["formerStudentLCDTO", "dateOfBirth"]}
+                                rules={[
+                                  {
+                                    required: true,
+                                    message: "Date of Birth is required",
+                                  },
+                                ]}
+                              >
                                 <DatePicker className="w-full" format="DD-MM-YYYY" />
                               </Form.Item>
                             </Col>
@@ -1637,12 +1824,24 @@ export default function FormerStudents() {
 
                           <Row gutter={12}>
                             <Col span={12}>
-                              <Form.Item label="Place of Birth" name={["formerStudentLCDTO", "placeOfBirth"]}>
+                              <Form.Item
+                                label="Place of Birth"
+                                name={["formerStudentLCDTO", "placeOfBirth"]}
+                              >
                                 <Input placeholder="Place of birth" />
                               </Form.Item>
                             </Col>
                             <Col span={12}>
-                              <Form.Item label="Nationality" name={["formerStudentLCDTO", "nationality"]}>
+                              <Form.Item
+                                label="Nationality"
+                                name={["formerStudentLCDTO", "nationality"]}
+                                rules={[
+                                  {
+                                    required: true,
+                                    message: "Nationality is required",
+                                  },
+                                ]}
+                              >
                                 <Input placeholder="Nationality" />
                               </Form.Item>
                             </Col>
@@ -1650,12 +1849,24 @@ export default function FormerStudents() {
 
                           <Row gutter={12}>
                             <Col span={12}>
-                              <Form.Item label="Mother Tongue" name={["formerStudentLCDTO", "motherTongue"]}>
+                              <Form.Item
+                                label="Mother Tongue"
+                                name={["formerStudentLCDTO", "motherTongue"]}
+                              >
                                 <Input placeholder="Mother tongue" />
                               </Form.Item>
                             </Col>
                             <Col span={12}>
-                              <Form.Item label="Religion" name={["formerStudentLCDTO", "religion"]}>
+                              <Form.Item
+                                label="Religion"
+                                name={["formerStudentLCDTO", "religion"]}
+                                rules={[
+                                  {
+                                    required: true,
+                                    message: "Religion is required",
+                                  },
+                                ]}
+                              >
                                 <Input placeholder="Religion" />
                               </Form.Item>
                             </Col>
@@ -1663,7 +1874,16 @@ export default function FormerStudents() {
 
                           <Row gutter={12}>
                             <Col span={12}>
-                              <Form.Item label="Caste" name={["formerStudentLCDTO", "caste"]}>
+                              <Form.Item
+                                label="Caste"
+                                name={["formerStudentLCDTO", "caste"]}
+                                rules={[
+                                  {
+                                    required: true,
+                                    message: "Caste is required",
+                                  },
+                                ]}
+                              >
                                 <Input placeholder="Caste" />
                               </Form.Item>
                             </Col>
@@ -1679,12 +1899,18 @@ export default function FormerStudents() {
 
                           <Row gutter={12}>
                             <Col span={12}>
-                              <Form.Item label="Division" name={["formerStudentLCDTO", "division"]}>
+                              <Form.Item
+                                label="Division"
+                                name={["formerStudentLCDTO", "division"]}
+                              >
                                 <Input placeholder="e.g. A" />
                               </Form.Item>
                             </Col>
                             <Col span={12}>
-                              <Form.Item label="Medium" name={["formerStudentLCDTO", "medium"]}>
+                              <Form.Item
+                                label="Medium"
+                                name={["formerStudentLCDTO", "medium"]}
+                              >
                                 <Input placeholder="e.g. English" />
                               </Form.Item>
                             </Col>
@@ -1692,12 +1918,18 @@ export default function FormerStudents() {
 
                           <Row gutter={12}>
                             <Col span={12}>
-                              <Form.Item label="Academic Year" name={["formerStudentLCDTO", "academicYear"]}>
+                              <Form.Item
+                                label="Academic Year"
+                                name={["formerStudentLCDTO", "academicYear"]}
+                              >
                                 <Input placeholder="e.g. 2026-2027" />
                               </Form.Item>
                             </Col>
                             <Col span={12}>
-                              <Form.Item label="Date of Leaving" name={["formerStudentLCDTO", "dateOfLeaving"]}>
+                              <Form.Item
+                                label="Date of Leaving"
+                                name={["formerStudentLCDTO", "dateOfLeaving"]}
+                              >
                                 <DatePicker className="w-full" format="DD-MM-YYYY" />
                               </Form.Item>
                             </Col>
@@ -1712,7 +1944,10 @@ export default function FormerStudents() {
 
                           <Row gutter={12}>
                             <Col span={12}>
-                              <Form.Item label="Result" name={["formerStudentLCDTO", "result"]}>
+                              <Form.Item
+                                label="Result"
+                                name={["formerStudentLCDTO", "result"]}
+                              >
                                 <Select placeholder="Select result" allowClear>
                                   <Option value="PASS">PASS</Option>
                                   <Option value="FAIL">FAIL</Option>
@@ -1720,13 +1955,19 @@ export default function FormerStudents() {
                               </Form.Item>
                             </Col>
                             <Col span={12}>
-                              <Form.Item label="Conduct" name={["formerStudentLCDTO", "conduct"]}>
+                              <Form.Item
+                                label="Conduct"
+                                name={["formerStudentLCDTO", "conduct"]}
+                              >
                                 <Input placeholder="e.g. Good" />
                               </Form.Item>
                             </Col>
                           </Row>
 
-                          <Form.Item label="Remark" name={["formerStudentLCDTO", "remark"]}>
+                          <Form.Item
+                            label="Remark"
+                            name={["formerStudentLCDTO", "remark"]}
+                          >
                             <Input.TextArea rows={2} placeholder="Remark" />
                           </Form.Item>
                         </>

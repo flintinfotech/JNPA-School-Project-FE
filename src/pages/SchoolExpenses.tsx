@@ -832,7 +832,8 @@ export default function SchoolExpenses() {
                     <Select placeholder="Select status">
                       <Option value="PAID">PAID</Option>
                       <Option value="PENDING">PENDING</Option>
-                      <Option value="PARTIALLY_PAID">PARTIALLY PAID</Option>
+                      <Option value="PARTIAL">PARTIAL</Option>
+                       <Option value="OVERDUE">OVERDUE</Option>
                     </Select>
                   </Form.Item>
                 </Col>

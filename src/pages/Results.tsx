@@ -24,14 +24,18 @@ import {
   getAllCurrentYearStudentsData,
   type ResultStudentDTO,
   type ResultFilters,
-} from "../services/Resultservice"; // 👈 adjust path to match where you place resultService.ts
-import { useAuth } from "../hooks/useAuth"; // 👈 adjust path to match your project
-import ResultDrawer from "./ResultDrawer"; // 👈 adjust path to wherever you place ResultDrawer.tsx
+} from "../services/Resultservice";
+import { useAuth } from "../hooks/useAuth";
+import ResultDrawer from "./ResultDrawer";
 
 const { useBreakpoint } = Grid;
 
-// 👇 TODO: confirm this matches the exact role string your backend sends
+// Teacher role
 const TEACHER_ROLE = "TEACHER";
+
+// ---------------------------------------------------------------
+// Helper functions
+// ---------------------------------------------------------------
 
 const getStandard = (record: ResultStudentDTO) =>
   record.academicInformation?.[0]?.standard || "-";
@@ -48,54 +52,46 @@ const getMedium = (record: ResultStudentDTO) =>
 const getAcademicYear = (record: ResultStudentDTO) =>
   record.academicInformation?.[0]?.academicYear || "-";
 
+// ---------------------------------------------------------------
+// Results Component
+// ---------------------------------------------------------------
+
 export default function Results() {
   const screens = useBreakpoint();
   const isMobile = !screens.md;
+
   const { user } = useAuth();
 
-  // A teacher's Results screen is locked to their own class.
-  // Admins (or anyone without a role match) fall through to unscoped filters.
+  // -------------------------------------------------------------
+  // Teacher check
+  // -------------------------------------------------------------
+
   const isTeacher = user?.role === TEACHER_ROLE;
 
-  // 🛠️ FIXED — this used to read `user?.division`, but the comment right
-  // next to it already said the real userDTO field is `section`, not
-  // `division`. That meant `user?.division` was always undefined, so a
-  // teacher's class scope silently lost its division on every load —
-  // which can make the whole filtered query return the wrong rows (or
-  // none at all), independent of anything in the search bar.
-  // ⚠️ CONFIRM: if your `user` object from useAuth() uses a different
-  // field name than `section`, swap it in below.
-  const classScope: Pick<
-  ResultFilters,
-  "standard" | "division" | "medium"
-> = isTeacher
-  ? {
-      standard: user?.standard || "",
-      division: "",
-      medium: user?.medium || "",
-    }
-  : {};
+  // -------------------------------------------------------------
+  // Teacher class scope
+  // -------------------------------------------------------------
 
-  // 🛠️ FIX — pagination showing "Total: 10" (and Next never working) even
-  // when 15 students actually exist.
-  //
-  // Root cause: getAllCurrentYearStudentsData's `totalElements` field is
-  // NOT the true grand-total count — it's the number of rows actually
-  // returned for the requested `size`. Ask for size=10 and it comes back
-  // "totalElements": 10 (wrong); ask for size=2000 and — since every row
-  // fits inside 2000 — it happens to come back "totalElements": 15
-  // (accidentally correct). Because of this, requesting page-by-page with
-  // a small size makes the UI believe there are only as many students as
-  // fit on one page, so "Total" is wrong and Next is disabled after page 1.
-  //
-  // Fix (same over-fetch workaround already used for subjects in
-  // ResultDrawer.tsx's SUBJECT_FETCH_SIZE): fetch every matching row in
-  // one request using a size comfortably larger than any real school's
-  // roll count, then do pagination — and search filtering — entirely on
-  // the frontend from that full list. This also fixes the previous
-  // known limitation where First Name / Last Name / Roll No search only
-  // matched within the current page.
+  const classScope: Pick<
+    ResultFilters,
+    "standard" | "division" | "medium"
+  > = isTeacher
+    ? {
+        standard: user?.standard || "",
+        division: "",
+        medium: user?.medium || "",
+      }
+    : {};
+
+  // -------------------------------------------------------------
+  // Fetch size
+  // -------------------------------------------------------------
+
   const RESULTS_FETCH_SIZE = 2000;
+
+  // -------------------------------------------------------------
+  // State
+  // -------------------------------------------------------------
 
   const [allStudents, setAllStudents] = useState<ResultStudentDTO[]>([]);
   const [loading, setLoading] = useState(false);
@@ -109,211 +105,390 @@ export default function Results() {
     ...classScope,
   });
 
-  // --- Drawer state (View / Edit) ---
+  // -------------------------------------------------------------
+  // Drawer state
+  // -------------------------------------------------------------
+
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerMode, setDrawerMode] = useState<"view" | "edit">("view");
-  const [selectedStudent, setSelectedStudent] = useState<ResultStudentDTO | null>(
-    null
-  );
+
+  const [drawerMode, setDrawerMode] = useState<
+    "view" | "edit"
+  >("view");
+
+  const [selectedStudent, setSelectedStudent] =
+    useState<ResultStudentDTO | null>(null);
+
+  // -------------------------------------------------------------
+  // Load Results
+  // -------------------------------------------------------------
 
   const loadResults = useCallback(
-    async (appliedFilters = filters, resetPage = true) => {
+    async (
+      appliedFilters = filters,
+      resetPage = true
+    ) => {
       setLoading(true);
+
       try {
-        const response = await getAllCurrentYearStudentsData(
-          0,
-          RESULTS_FETCH_SIZE,
-          appliedFilters
-        );
+        const response =
+          await getAllCurrentYearStudentsData(
+            0,
+            RESULTS_FETCH_SIZE,
+            appliedFilters
+          );
 
         if (response.success) {
-          setAllStudents(response.data?.data || []);
+          const students = response.data?.data || [];
+
+          // -----------------------------------------------------
+          // IMPORTANT FIX
+          //
+          // API is returning latest student first.
+          //
+          // Example API:
+          //
+          // Student 5  <- Newly added
+          // Student 4
+          // Student 3
+          // Student 2
+          // Student 1  <- Oldest
+          //
+          // We reverse it so UI becomes:
+          //
+          // Student 1
+          // Student 2
+          // Student 3
+          // Student 4
+          // Student 5  <- Newly added
+          //
+          // [...students] prevents mutation of original API array.
+          // -----------------------------------------------------
+
+          setAllStudents([...students].reverse());
+
           if (resetPage) {
-            setPagination((prev) => ({ ...prev, current: 1 }));
+            setPagination((prev) => ({
+              ...prev,
+              current: 1,
+            }));
           }
         } else {
-          message.error(response.message || "Failed to load results");
+          message.error(
+            response.message ||
+              "Failed to load results"
+          );
         }
       } catch (error: any) {
-        message.error(error?.response?.data?.message || "Failed to load results");
+        message.error(
+          error?.response?.data?.message ||
+            "Failed to load results"
+        );
       } finally {
         setLoading(false);
       }
     },
+
+    // Existing behavior
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
+  // -------------------------------------------------------------
+  // Initial Load
+  // -------------------------------------------------------------
+
   useEffect(() => {
     loadResults(filters);
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 🛠️ Search bar — updates the relevant filter field as the user types.
-  // Class scope fields (standard/division/medium) are never touched here,
-  // so a teacher's locked class scope always stays intact alongside
-  // whatever they search by.
-  const handleFilterChange = (field: keyof ResultFilters, value: string) => {
-    setFilters((prev) => ({ ...prev, [field]: value }));
+  // -------------------------------------------------------------
+  // Filter Change
+  // -------------------------------------------------------------
+
+  const handleFilterChange = (
+    field: keyof ResultFilters,
+    value: string
+  ) => {
+    setFilters((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
-  // Search button — re-queries page 1 using whatever is currently typed
-  // into the First Name / Last Name / Roll No boxes (plus the pinned
-  // class scope for a teacher).
+  // -------------------------------------------------------------
+  // Search
+  // -------------------------------------------------------------
+
   const handleSearch = () => {
     loadResults(filters);
   };
 
-  // Pressing Enter in any of the search inputs searches too, so the user
-  // isn't forced to reach for the button.
-  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  // -------------------------------------------------------------
+  // Search on Enter
+  // -------------------------------------------------------------
+
+  const handleSearchKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>
+  ) => {
     if (e.key === "Enter") {
       handleSearch();
     }
   };
 
+  // -------------------------------------------------------------
+  // Reset
+  // -------------------------------------------------------------
+
   const handleReset = () => {
-    // Class scope (standard/division/medium) stays pinned for a teacher so
-    // Reset can't be used to escape their assigned class.
-    const cleared: ResultFilters = { ...classScope };
+    const cleared: ResultFilters = {
+      ...classScope,
+    };
+
     setFilters(cleared);
+
     loadResults(cleared);
   };
 
-  const openDrawer = (record: ResultStudentDTO, mode: "view" | "edit") => {
+  // -------------------------------------------------------------
+  // Open Drawer
+  // -------------------------------------------------------------
+
+  const openDrawer = (
+    record: ResultStudentDTO,
+    mode: "view" | "edit"
+  ) => {
     setSelectedStudent(record);
     setDrawerMode(mode);
     setDrawerOpen(true);
   };
+
+  // -------------------------------------------------------------
+  // Close Drawer
+  // -------------------------------------------------------------
 
   const closeDrawer = () => {
     setDrawerOpen(false);
     setSelectedStudent(null);
   };
 
+  // -------------------------------------------------------------
+  // After Save
+  // -------------------------------------------------------------
+
   const handleSaved = () => {
     closeDrawer();
-    // Refresh the full list but stay on the same page the user was on.
+
+    // Refresh list but stay on current page
     loadResults(filters, false);
   };
 
-  // ---------------------------------------------------------------
-  // Client-side search filter for First Name / Last Name / Roll No,
-  // applied over the FULL fetched list (not just one page) — see the
-  // RESULTS_FETCH_SIZE note above for why this now works correctly
-  // across the whole dataset instead of just the current page.
-  // ---------------------------------------------------------------
+  // -------------------------------------------------------------
+  // Client-side Search
+  // -------------------------------------------------------------
+
   const filteredStudents = useMemo(() => {
-    const first = filters.firstName?.trim().toLowerCase();
-    const last = filters.lastName?.trim().toLowerCase();
-    const roll = filters.rollNo?.trim().toLowerCase();
+    const first =
+      filters.firstName?.trim().toLowerCase();
 
-    if (!first && !last && !roll) return allStudents;
+    const last =
+      filters.lastName?.trim().toLowerCase();
 
-    return allStudents.filter((s) => {
+    const roll =
+      filters.rollNo?.trim().toLowerCase();
+
+    // No search values
+    if (!first && !last && !roll) {
+      return allStudents;
+    }
+
+    return allStudents.filter((student) => {
       const matchesFirst = first
-        ? (s.firstName || "").toLowerCase().includes(first)
+        ? (student.firstName || "")
+            .toLowerCase()
+            .includes(first)
         : true;
-      const matchesLast = last
-        ? (s.lastName || "").toLowerCase().includes(last)
-        : true;
-      const matchesRoll = roll
-        ? getRollNo(s).toString().toLowerCase().includes(roll)
-        : true;
-      return matchesFirst && matchesLast && matchesRoll;
-    });
-  }, [allStudents, filters.firstName, filters.lastName, filters.rollNo]);
 
-  // The true total is just how many rows matched — no more trusting the
-  // backend's per-page totalElements.
+      const matchesLast = last
+        ? (student.lastName || "")
+            .toLowerCase()
+            .includes(last)
+        : true;
+
+      const matchesRoll = roll
+        ? getRollNo(student)
+            .toString()
+            .toLowerCase()
+            .includes(roll)
+        : true;
+
+      return (
+        matchesFirst &&
+        matchesLast &&
+        matchesRoll
+      );
+    });
+  }, [
+    allStudents,
+    filters.firstName,
+    filters.lastName,
+    filters.rollNo,
+  ]);
+
+  // -------------------------------------------------------------
+  // Total
+  // -------------------------------------------------------------
+
   const total = filteredStudents.length;
 
-  // Current page's slice, computed entirely on the frontend.
+  // -------------------------------------------------------------
+  // Pagination
+  // -------------------------------------------------------------
+
   const displayedStudents = useMemo(() => {
-    const start = (pagination.current - 1) * pagination.pageSize;
-    return filteredStudents.slice(start, start + pagination.pageSize);
-  }, [filteredStudents, pagination.current, pagination.pageSize]);
+    const start =
+      (pagination.current - 1) *
+      pagination.pageSize;
+
+    return filteredStudents.slice(
+      start,
+      start + pagination.pageSize
+    );
+  }, [
+    filteredStudents,
+    pagination.current,
+    pagination.pageSize,
+  ]);
+
+  // -------------------------------------------------------------
+  // Table Columns
+  // -------------------------------------------------------------
 
   const columns: ColumnsType<ResultStudentDTO> = [
     {
       title: "Sr No",
       align: "center",
       width: 70,
+
       render: (_, __, index) =>
-        (pagination.current - 1) * pagination.pageSize + index + 1,
+        (pagination.current - 1) *
+          pagination.pageSize +
+        index +
+        1,
     },
+
     {
       title: "Student Code",
       dataIndex: "studentCode",
       align: "center",
+
       render: (value) => value || "-",
     },
+
     {
       title: "Roll No",
-      align: "center",width: 90 ,
-      render: (_, record) => getRollNo(record),
+      align: "center",
+      width: 90,
+
+      render: (_, record) =>
+        getRollNo(record),
     },
+
     {
       title: "First Name",
       dataIndex: "firstName",
       align: "center",
     },
+
     {
       title: "Last Name",
       dataIndex: "lastName",
       align: "center",
     },
+
     {
       title: "Standard",
       align: "center",
-      render: (_, record) => getStandard(record),
+
+      render: (_, record) =>
+        getStandard(record),
     },
-    // {
-    //   title: "Division",
-    //   align: "center",
-    //   render: (_, record) => getDivision(record),
-    // },
+
     {
       title: "Gender",
       dataIndex: "gender",
       align: "center",
+
       render: (value) => value || "-",
     },
+
     {
       title: "Medium",
       align: "center",
-      render: (_, record) => getMedium(record),
+
+      render: (_, record) =>
+        getMedium(record),
     },
+
     {
       title: "Status",
       dataIndex: "status",
       align: "center",
+
       render: (status: string) =>
         status ? (
-          <Tag color={status === "ACTIVE" ? "green" : "red"}>{status}</Tag>
+          <Tag
+            color={
+              status === "ACTIVE"
+                ? "green"
+                : "red"
+            }
+          >
+            {status}
+          </Tag>
         ) : (
           "-"
         ),
     },
+
+    // -----------------------------------------------------------
+    // Actions
+    // -----------------------------------------------------------
+
     {
       title: "Actions",
       align: "center",
       width: 100,
+
       render: (_, record) => (
         <Space>
+          {/* View */}
           <Tooltip title="View Result">
             <Button
               size="small"
               icon={<EyeOutlined />}
-              onClick={() => openDrawer(record, "view")}
+              onClick={() =>
+                openDrawer(
+                  record,
+                  "view"
+                )
+              }
             />
           </Tooltip>
+
+          {/* Edit */}
           <Tooltip title="Edit Result">
             <Button
               size="small"
-               type="primary"
+              type="primary"
               icon={<EditOutlined />}
-              onClick={() => openDrawer(record, "edit")}
+              onClick={() =>
+                openDrawer(
+                  record,
+                  "edit"
+                )
+              }
             />
           </Tooltip>
         </Space>
@@ -321,130 +496,326 @@ export default function Results() {
     },
   ];
 
+  // -------------------------------------------------------------
+  // UI
+  // -------------------------------------------------------------
+
   return (
     <Card>
-      {/* Filter Bar */}
-      <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
-        <Col xs={24} sm={12} md={6}>
+      {/* =========================================================
+          FILTER BAR
+      ========================================================= */}
+
+      <Row
+        gutter={[12, 12]}
+        style={{
+          marginBottom: 20,
+        }}
+      >
+        {/* First Name */}
+        <Col
+          xs={24}
+          sm={12}
+          md={6}
+        >
           <Input
             placeholder="First Name"
             value={filters.firstName}
-            onChange={(e) => handleFilterChange("firstName", e.target.value)}
-            onKeyDown={handleSearchKeyDown}
-            style={{ width: "100%" }}
+            onChange={(e) =>
+              handleFilterChange(
+                "firstName",
+                e.target.value
+              )
+            }
+            onKeyDown={
+              handleSearchKeyDown
+            }
+            style={{
+              width: "100%",
+            }}
             allowClear
           />
         </Col>
 
-        <Col xs={24} sm={12} md={6}>
+        {/* Last Name */}
+        <Col
+          xs={24}
+          sm={12}
+          md={6}
+        >
           <Input
             placeholder="Last Name"
             value={filters.lastName}
-            onChange={(e) => handleFilterChange("lastName", e.target.value)}
-            onKeyDown={handleSearchKeyDown}
-            style={{ width: "100%" }}
+            onChange={(e) =>
+              handleFilterChange(
+                "lastName",
+                e.target.value
+              )
+            }
+            onKeyDown={
+              handleSearchKeyDown
+            }
+            style={{
+              width: "100%",
+            }}
             allowClear
           />
         </Col>
 
-        <Col xs={24} sm={12} md={6}>
+        {/* Roll No */}
+        <Col
+          xs={24}
+          sm={12}
+          md={6}
+        >
           <Input
             placeholder="Roll No"
             value={filters.rollNo}
-            onChange={(e) => handleFilterChange("rollNo", e.target.value)}
-            onKeyDown={handleSearchKeyDown}
-            style={{ width: "100%" }}
+            onChange={(e) =>
+              handleFilterChange(
+                "rollNo",
+                e.target.value
+              )
+            }
+            onKeyDown={
+              handleSearchKeyDown
+            }
+            style={{
+              width: "100%",
+            }}
             allowClear
           />
         </Col>
 
-        <Col xs={24} sm={24} md={6}>
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-            <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
+        {/* Buttons */}
+        <Col
+          xs={24}
+          sm={24}
+          md={6}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent:
+                "flex-end",
+              gap: 8,
+            }}
+          >
+            <Button
+              type="primary"
+              icon={
+                <SearchOutlined />
+              }
+              onClick={
+                handleSearch
+              }
+            >
               Search
             </Button>
-            <Button icon={<ReloadOutlined />} onClick={handleReset}>
+
+            <Button
+              icon={
+                <ReloadOutlined />
+              }
+              onClick={
+                handleReset
+              }
+            >
               Reset
             </Button>
           </div>
         </Col>
       </Row>
 
+      {/* =========================================================
+          MOBILE VIEW
+      ========================================================= */}
+
       {isMobile ? (
         <div className="space-y-3">
+          {/* Loading */}
           {loading && (
-            <div className="text-center text-sm text-gray-400 py-6">Loading...</div>
+            <div className="text-center text-sm text-gray-400 py-6">
+              Loading...
+            </div>
           )}
-          {!loading && displayedStudents.length === 0 && (
-            <div className="text-center text-sm text-gray-400 py-6">No results found</div>
-          )}
+
+          {/* No Data */}
           {!loading &&
-            displayedStudents.map((record) => (
-              <div
-                key={record.studentId}
-                className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-3"
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-800">
-                      {record.firstName} {record.lastName}
+            displayedStudents.length ===
+              0 && (
+              <div className="text-center text-sm text-gray-400 py-6">
+                No results found
+              </div>
+            )}
+
+          {/* Student Cards */}
+          {!loading &&
+            displayedStudents.map(
+              (record) => (
+                <div
+                  key={
+                    record.studentId
+                  }
+                  className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-3"
+                >
+                  {/* Student Header */}
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">
+                        {
+                          record.firstName
+                        }{" "}
+                        {
+                          record.lastName
+                        }
+                      </p>
+
+                      <p className="text-xs text-gray-500">
+                        Code:{" "}
+                        {record.studentCode ||
+                          "-"}
+                      </p>
+
+                      <p className="text-xs text-gray-500">
+                        {
+                          getStandard(
+                            record
+                          )
+                        }{" "}
+                        -{" "}
+                        {
+                          getDivision(
+                            record
+                          )
+                        }{" "}
+                        | Roll No:{" "}
+                        {
+                          getRollNo(
+                            record
+                          )
+                        }
+                      </p>
+                    </div>
+
+                    {record.status && (
+                      <Tag
+                        color={
+                          record.status ===
+                          "ACTIVE"
+                            ? "green"
+                            : "red"
+                        }
+                      >
+                        {
+                          record.status
+                        }
+                      </Tag>
+                    )}
+                  </div>
+
+                  {/* Student Details */}
+                  <div className="text-xs text-gray-500 space-y-1">
+                    <p>
+                      Gender:{" "}
+                      {record.gender ||
+                        "-"}
                     </p>
-                    <p className="text-xs text-gray-500">
-                      Code: {record.studentCode || "-"}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {getStandard(record)} - {getDivision(record)} | Roll No:{" "}
-                      {getRollNo(record)}
+
+                    <p>
+                      Medium:{" "}
+                      {
+                        getMedium(
+                          record
+                        )
+                      }
                     </p>
                   </div>
-                  {record.status && (
-                    <Tag color={record.status === "ACTIVE" ? "green" : "red"}>
-                      {record.status}
-                    </Tag>
-                  )}
-                </div>
-                <div className="text-xs text-gray-500 space-y-1">
-                  <p>Gender: {record.gender || "-"}</p>
-                  <p>Medium: {getMedium(record)}</p>
-                </div>
 
-                <div className="flex justify-end gap-2 mt-3">
-                  <Tooltip title="View Result">
-                    <Button
-                      size="small"
-                      icon={<EyeOutlined />}
-                      onClick={() => openDrawer(record, "view")}
-                    />
-                  </Tooltip>
-                  <Tooltip title="Edit Result">
-                    <Button
-                      size="small"
-                      type="primary"
-                      icon={<EditOutlined />}
-                      onClick={() => openDrawer(record, "edit")}
-                    />
-                  </Tooltip>
-                </div>
-              </div>
-            ))}
+                  {/* Mobile Actions */}
+                  <div className="flex justify-end gap-2 mt-3">
+                    {/* View */}
+                    <Tooltip title="View Result">
+                      <Button
+                        size="small"
+                        icon={
+                          <EyeOutlined />
+                        }
+                        onClick={() =>
+                          openDrawer(
+                            record,
+                            "view"
+                          )
+                        }
+                      />
+                    </Tooltip>
 
+                    {/* Edit */}
+                    <Tooltip title="Edit Result">
+                      <Button
+                        size="small"
+                        type="primary"
+                        icon={
+                          <EditOutlined />
+                        }
+                        onClick={() =>
+                          openDrawer(
+                            record,
+                            "edit"
+                          )
+                        }
+                      />
+                    </Tooltip>
+                  </div>
+                </div>
+              )
+            )}
+
+          {/* Mobile Pagination */}
           <div className="flex items-center justify-between pt-2">
-            <span className="text-xs text-gray-500">Total: {total}</span>
+            <span className="text-xs text-gray-500">
+              Total: {total}
+            </span>
+
             <div className="flex gap-2">
+              {/* Previous */}
               <Button
                 size="small"
-                disabled={pagination.current <= 1}
+                disabled={
+                  pagination.current <=
+                  1
+                }
                 onClick={() =>
-                  setPagination((prev) => ({ ...prev, current: prev.current - 1 }))
+                  setPagination(
+                    (prev) => ({
+                      ...prev,
+                      current:
+                        prev.current -
+                        1,
+                    })
+                  )
                 }
               >
                 Prev
               </Button>
+
+              {/* Next */}
               <Button
                 size="small"
-                disabled={pagination.current * pagination.pageSize >= total}
+                disabled={
+                  pagination.current *
+                    pagination.pageSize >=
+                  total
+                }
                 onClick={() =>
-                  setPagination((prev) => ({ ...prev, current: prev.current + 1 }))
+                  setPagination(
+                    (prev) => ({
+                      ...prev,
+                      current:
+                        prev.current +
+                        1,
+                    })
+                  )
                 }
               >
                 Next
@@ -453,35 +824,79 @@ export default function Results() {
           </div>
         </div>
       ) : (
+        /* =======================================================
+           DESKTOP TABLE
+        ======================================================= */
+
         <div className="table-wrapper">
           <Table
             rowKey="studentId"
             columns={columns}
-            dataSource={displayedStudents}
+            dataSource={
+              displayedStudents
+            }
             loading={loading}
             bordered
             pagination={{
-              current: pagination.current,
-              pageSize: pagination.pageSize,
+              current:
+                pagination.current,
+
+              pageSize:
+                pagination.pageSize,
+
               total,
+
               showSizeChanger: false,
-              showTotal: (t) => `Total: ${t}`,
-              onChange: (page, pageSize) => {
-                setPagination({ current: page, pageSize });
+
+              showTotal: (t) =>
+                `Total: ${t}`,
+
+              onChange: (
+                page,
+                pageSize
+              ) => {
+                setPagination({
+                  current: page,
+                  pageSize,
+                });
               },
             }}
           />
         </div>
       )}
 
+      {/* =========================================================
+          RESULT DRAWER
+      ========================================================= */}
+
       <ResultDrawer
         open={drawerOpen}
         mode={drawerMode}
-        studentId={selectedStudent?.studentId ?? null}
+        studentId={
+          selectedStudent?.studentId ??
+          null
+        }
         studentInfo={{
-          standard: selectedStudent ? getStandard(selectedStudent) : undefined,
-          division: selectedStudent ? getDivision(selectedStudent) : undefined,
-          academicYear: selectedStudent ? getAcademicYear(selectedStudent) : undefined,
+          standard:
+            selectedStudent
+              ? getStandard(
+                  selectedStudent
+                )
+              : undefined,
+
+          division:
+            selectedStudent
+              ? getDivision(
+                  selectedStudent
+                )
+              : undefined,
+
+          academicYear:
+            selectedStudent
+              ? getAcademicYear(
+                  selectedStudent
+                )
+              : undefined,
         }}
         onClose={closeDrawer}
         onSaved={handleSaved}

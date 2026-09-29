@@ -187,7 +187,9 @@ export default function StudentForm({
   const fieldsByTab: Record<string, any[]> = {
     details: [
       "firstName",
+      "middleName", // 🆕
       "lastName",
+      "motherName", // 🆕
       "gender",
       "dob",
       "address",
@@ -229,6 +231,8 @@ export default function StudentForm({
         ...restValues,
         status: values.status,
         studentCode: values.studentCode, // 👈 include student code
+        middleName: values.middleName, // 🆕
+        motherName: values.motherName, // 🆕
         DOB: dob ? dayjs(dob).format("YYYY-MM-DD") : null, // 👈 send as DOB to match backend
         parentDTO: {
           ...values.parentDTO,
@@ -277,12 +281,26 @@ export default function StudentForm({
             >
               <Input placeholder="Enter first name" />
             </Form.Item>
+            {/* 🆕 Middle Name */}
+            <Form.Item
+              label="Middle Name"
+              name="middleName"
+            >
+              <Input placeholder="Enter middle name" />
+            </Form.Item>
             <Form.Item
               label="Last Name"
               name="lastName"
               rules={[{ required: true, message: "Last name is required" }]}
             >
               <Input placeholder="Enter last name" />
+            </Form.Item>
+            {/* 🆕 Mother Name */}
+            <Form.Item
+              label="Mother Name"
+              name="motherName"
+            >
+              <Input placeholder="Enter mother's name" />
             </Form.Item>
             <Form.Item
               label="Gender"
