@@ -70,17 +70,29 @@ export default function User({
   };
 
   return (
-   <Form
-  form={form}
-  layout="vertical"
-  onFinish={onFinish}
-  onFinishFailed={({ errorFields }) => {
-    message.error("Please fill the highlighted fields before submitting.");
-    console.log("Validation failed on:", errorFields);
-    // optionally: if any errorField path starts with "documents", switch to tab "2"
-  }}
-  scrollToFirstError
->
+    <Form
+      form={form}
+      layout="vertical"
+      onFinish={onFinish}
+      onFinishFailed={({ errorFields }) => {
+        message.error("Please fill the highlighted fields before submitting.");
+        console.log("Validation failed on:", errorFields);
+
+        // 👇 NEW — jump to the tab that contains the first error
+        const firstPath = errorFields?.[0]?.name?.[0] as string | undefined;
+        if (firstPath === "documents") {
+          setActiveTab("2");
+        } else if (
+          firstPath &&
+          ["bankName", "ifscCode", "accountNo"].includes(firstPath)
+        ) {
+          setActiveTab("3");
+        } else {
+          setActiveTab("1");
+        }
+      }}
+      scrollToFirstError
+    >
       <Tabs
         activeKey={activeTab}
         onChange={setActiveTab}
@@ -100,14 +112,14 @@ export default function User({
                   name="userId"
                   hidden
                 >
-                  <Input  />
+                  <Input />
                 </Form.Item>
 
                 <Form.Item
                   label="Employee Code"
                   name="employeeCode"
 
-                  // rules={[{ required: true }]}
+                // rules={[{ required: true }]}
                 >
                   <Input
                     disabled
@@ -260,9 +272,6 @@ export default function User({
                   />
                 </Form.Item>
 
-                {/* 👇 NEW — Status. Defaults to ACTIVE for a brand-new
-                    employee (set in the parent's openAddDrawer); shows
-                    whatever was saved when editing. */}
                 <Form.Item
                   label="Status"
                   name="status"
@@ -339,8 +348,6 @@ export default function User({
                         key={key}
                         className="border rounded-lg p-5 mb-4 relative bg-white"
                       >
-                        {/* Delete icon: always visible, always deletable
-                            regardless of whether a file has been uploaded */}
                         <DeleteOutlined
                           onClick={(e) => {
                             e.stopPropagation();
@@ -454,7 +461,7 @@ export default function User({
                         </div>
                       </div>
                     ))}
-                    
+
                     <div className="flex justify-center mb-6">
                       <Button
                         type="dashed"
@@ -472,15 +479,72 @@ export default function User({
                       </Button>
                     </div>
 
+                    {/* 👇 CHANGED — Save moved to the Bank Details tab; this is now "Next" */}
                     <div className="flex justify-between">
                       <Button onClick={() => setActiveTab("1")}>Back</Button>
-                      <Button type="primary" htmlType="submit" loading={loading}>
-                        {isEditing ? "Update" : "Save"}
+                      <Button type="primary" onClick={() => setActiveTab("3")}>
+                        Next
                       </Button>
                     </div>
                   </>
                 )}
               </Form.List>
+            ),
+          },
+
+          // 👇 NEW — Bank Details tab
+          {
+            key: "3",
+            label: "Bank Details",
+            // render even when the tab was never opened, so validation still runs
+            forceRender: true,
+            children: (
+              <div className="grid grid-cols-2 gap-4">
+                <Form.Item
+                  label="Bank Name"
+                  name="bankName"
+                  rules={[{ required: true, message: "Please enter bank name" }]}
+                >
+                  <Input placeholder="Enter Bank Name" />
+                </Form.Item>
+
+                <Form.Item
+                  label="IFSC Code"
+                  name="ifscCode"
+                  normalize={(value) => value?.toUpperCase()}
+                  rules={[
+                    { required: true, message: "Please enter IFSC code" },
+                    {
+                      pattern: /^[A-Z]{4}0[A-Z0-9]{6}$/,
+                      message: "Enter a valid IFSC code (e.g. SBIN0001234)",
+                    },
+                  ]}
+                >
+                  <Input maxLength={11} placeholder="Enter IFSC Code" />
+                </Form.Item>
+
+                <Form.Item
+                  label="Account No"
+                  name="accountNo"
+                  className="col-span-2"
+                  rules={[
+                    { required: true, message: "Please enter account number" },
+                    {
+                      pattern: /^\d{9,18}$/,
+                      message: "Enter a valid account number (9-18 digits)",
+                    },
+                  ]}
+                >
+                  <Input maxLength={18} placeholder="Enter Account Number" />
+                </Form.Item>
+
+                <div className="col-span-2 flex justify-between mt-4">
+                  <Button onClick={() => setActiveTab("2")}>Back</Button>
+                  <Button type="primary" htmlType="submit" loading={loading}>
+                    {isEditing ? "Update" : "Save"}
+                  </Button>
+                </div>
+              </div>
             ),
           },
         ]}

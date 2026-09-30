@@ -295,7 +295,7 @@ getAllSchoolExpensesByFilter: (page: number, size: number) =>
  
   getAllStudentAttendanceByFilter: (page: number, size: number) =>
     `/jnpa-school-project/studentAttendance/getAllStudentAttendanceByFilter?page=${page}&size=${size}&paginate=true`,
- 
+
     
   // ===============================
   // Employee Salary
@@ -314,5 +314,9 @@ getAllSchoolExpensesByFilter: (page: number, size: number) =>
  
   getAllEmployeeSalaryByFilter: (page: number, size: number) =>
     `/jnpa-school-project/employeeSalary/getAllEmployeeSalaryByFilter?page=${page}&size=${size}&desc&paginate=true`,
-};
  
+
+
+
+
+};
