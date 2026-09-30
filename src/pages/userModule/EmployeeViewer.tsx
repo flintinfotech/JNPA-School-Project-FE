@@ -20,12 +20,12 @@ export default function EmployeeViewer({ user }: any) {
   const detectMimeFromBase64 = (rawBase64: string): string => {
     const signature = rawBase64.substring(0, 12);
 
-    if (signature.startsWith("JVBERi0")) return "application/pdf";        // %PDF-
-    if (signature.startsWith("iVBORw0KGgo")) return "image/png";          // PNG
-    if (signature.startsWith("/9j/")) return "image/jpeg";                // JPEG
-    if (signature.startsWith("R0lGOD")) return "image/gif";               // GIF
-    if (signature.startsWith("UEsDB")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"; // .docx
-    if (signature.startsWith("0M8R4K")) return "application/msword";      // legacy .doc
+    if (signature.startsWith("JVBERi0")) return "application/pdf";
+    if (signature.startsWith("iVBORw0KGgo")) return "image/png";
+    if (signature.startsWith("/9j/")) return "image/jpeg";
+    if (signature.startsWith("R0lGOD")) return "image/gif";
+    if (signature.startsWith("UEsDB")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    if (signature.startsWith("0M8R4K")) return "application/msword";
 
     return "application/octet-stream";
   };
@@ -83,80 +83,75 @@ export default function EmployeeViewer({ user }: any) {
           children: (
             <Form layout="vertical">
               <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-                <div style={{ flex: "1 1 45%", }}>
+                <div style={{ flex: "1 1 45%" }}>
                   <Form.Item label="Employee Code">
-                    <Input value={user.employeeCode} disabled styles={{ input: { color: "#000", }, }} />
+                    <Input value={user.employeeCode} disabled styles={{ input: { color: "#000" } }} />
                   </Form.Item>
                 </div>
-                {/* <div style={{ flex: "1 1 45%" }}>
-                  <Form.Item label="User ID">
-                    <Input value={user.userId} disabled styles={{ input: { color: "#000", }, }} />
-                  </Form.Item>
-                </div> */}
                 <div style={{ flex: "1 1 45%" }}>
                   <Form.Item label="First Name">
-                    <Input value={user.firstName} disabled styles={{ input: { color: "#000", }, }} />
+                    <Input value={user.firstName} disabled styles={{ input: { color: "#000" } }} />
                   </Form.Item>
                 </div>
 
                 <div style={{ flex: "1 1 45%" }}>
                   <Form.Item label="Middle Name">
-                    <Input value={user.middleName} disabled styles={{ input: { color: "#000", }, }} />
+                    <Input value={user.middleName} disabled styles={{ input: { color: "#000" } }} />
                   </Form.Item>
                 </div>
                 <div style={{ flex: "1 1 45%" }}>
                   <Form.Item label="Last Name">
-                    <Input value={user.lastName} disabled styles={{ input: { color: "#000", }, }} />
+                    <Input value={user.lastName} disabled styles={{ input: { color: "#000" } }} />
                   </Form.Item>
                 </div>
                 <div style={{ flex: "1 1 45%" }}>
                   <Form.Item label="Gender">
-                    <Input value={user.gender} disabled styles={{ input: { color: "#000", }, }} />
+                    <Input value={user.gender} disabled styles={{ input: { color: "#000" } }} />
                   </Form.Item>
                 </div>
                 <div style={{ flex: "1 1 45%" }}>
                   <Form.Item label="Qualification">
-                    <Input value={user.qualification} disabled styles={{ input: { color: "#000", }, }} />
+                    <Input value={user.qualification} disabled styles={{ input: { color: "#000" } }} />
                   </Form.Item>
                 </div>
                 <div style={{ flex: "1 1 45%" }}>
                   <Form.Item label="Email">
-                    <Input value={user.email} disabled styles={{ input: { color: "#000", }, }} />
+                    <Input value={user.email} disabled styles={{ input: { color: "#000" } }} />
                   </Form.Item>
                 </div>
                 <div style={{ flex: "1 1 45%" }}>
                   <Form.Item label="Mobile No">
-                    <Input value={user.mobileNo} disabled styles={{ input: { color: "#000", }, }} />
+                    <Input value={user.mobileNo} disabled styles={{ input: { color: "#000" } }} />
                   </Form.Item>
                 </div>
                 <div style={{ flex: "1 1 45%" }}>
                   <Form.Item label="Specialization">
-                    <Input value={user.specialization} disabled styles={{ input: { color: "#000", }, }} />
+                    <Input value={user.specialization} disabled styles={{ input: { color: "#000" } }} />
                   </Form.Item>
                 </div>
                 <div style={{ flex: "1 1 45%" }}>
                   <Form.Item label="Experience">
-                    <Input value={user.experience} disabled styles={{ input: { color: "#000", }, }} />
+                    <Input value={user.experience} disabled styles={{ input: { color: "#000" } }} />
                   </Form.Item>
                 </div>
                 <div style={{ flex: "1 1 45%" }}>
                   <Form.Item label="Designation">
-                    <Input value={user.designation} disabled styles={{ input: { color: "#000", }, }} />
+                    <Input value={user.designation} disabled styles={{ input: { color: "#000" } }} />
                   </Form.Item>
                 </div>
                 <div style={{ flex: "1 1 45%" }}>
                   <Form.Item label="Blood Group">
-                    <Input value={user.bloodGroup} disabled styles={{ input: { color: "#000", }, }} />
+                    <Input value={user.bloodGroup} disabled styles={{ input: { color: "#000" } }} />
                   </Form.Item>
                 </div>
                 <div style={{ flex: "1 1 45%" }}>
                   <Form.Item label="Joining Date">
-                    <Input value={user.joiningDate} disabled styles={{ input: { color: "#000", }, }} />
+                    <Input value={user.joiningDate} disabled styles={{ input: { color: "#000" } }} />
                   </Form.Item>
                 </div>
                 <div style={{ flex: "1 1 45%" }}>
                   <Form.Item label="Leaving Date">
-                    <Input value={user.leavingDate} disabled styles={{ input: { color: "#000", }, }} />
+                    <Input value={user.leavingDate} disabled styles={{ input: { color: "#000" } }} />
                   </Form.Item>
                 </div>
                 <div style={{ flex: "1 1 45%" }}>
@@ -209,12 +204,12 @@ export default function EmployeeViewer({ user }: any) {
                       <div style={{ display: "flex", gap: 40, marginBottom: 24 }}>
                         <div style={{ flex: 1 }}>
                           <div style={{ marginBottom: 8, fontWeight: 500 }}>Document Name</div>
-                          <Input value={doc.documentName || ""} disabled styles={{ input: { color: "#000", }, }} />
+                          <Input value={doc.documentName || ""} disabled styles={{ input: { color: "#000" } }} />
                         </div>
 
                         <div style={{ flex: 1 }}>
                           <div style={{ marginBottom: 8, fontWeight: 500 }}>Upload Date</div>
-                          <Input value={doc.uploadDate || ""} disabled styles={{ input: { color: "#000", }, }} />
+                          <Input value={doc.uploadDate || ""} disabled styles={{ input: { color: "#000" } }} />
                         </div>
                       </div>
 
@@ -241,6 +236,33 @@ export default function EmployeeViewer({ user }: any) {
                 </div>
               )}
             </div>
+          ),
+        },
+
+        // 👇 NEW — Bank Details tab
+        {
+          key: "3",
+          label: "Bank Details",
+          children: (
+            <Form layout="vertical">
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                <div style={{ flex: "1 1 45%" }}>
+                  <Form.Item label="Bank Name">
+                    <Input value={user.bankName} disabled styles={{ input: { color: "#000" } }} />
+                  </Form.Item>
+                </div>
+                <div style={{ flex: "1 1 45%" }}>
+                  <Form.Item label="IFSC Code">
+                    <Input value={user.ifscCode} disabled styles={{ input: { color: "#000" } }} />
+                  </Form.Item>
+                </div>
+                <div style={{ flex: "1 1 100%" }}>
+                  <Form.Item label="Account No">
+                    <Input value={user.accountNo} disabled styles={{ input: { color: "#000" } }} />
+                  </Form.Item>
+                </div>
+              </div>
+            </Form>
           ),
         },
       ]}

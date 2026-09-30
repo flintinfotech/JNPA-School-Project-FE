@@ -16,14 +16,6 @@ import dayjs from "dayjs";
 import { getAllStaticData, type StaticDataResponse } from "../../services/staticDataService";
 import EmployeeViewer from "./EmployeeViewer";
 
-
-
-
-
-
-// svika
-
-
 export default function UpdateUserProfile() {
   const [users, setUsers] = useState<UserDTO[]>([]);
   const [total, setTotal] = useState(0);
@@ -67,26 +59,25 @@ export default function UpdateUserProfile() {
   // Detects the real mime type by inspecting the base64-decoded file signature,
   // since documentType (user-entered/selected) can't be trusted.
   const detectMimeFromBase64 = (rawBase64: string): string => {
-    const signature = rawBase64.substring(0, 12); // first ~9 raw bytes as base64 chars
+    const signature = rawBase64.substring(0, 12);
 
-    if (signature.startsWith("JVBERi0")) return "application/pdf";        // %PDF-
-    if (signature.startsWith("iVBORw0KGgo")) return "image/png";          // PNG
-    if (signature.startsWith("/9j/")) return "image/jpeg";                // JPEG
-    if (signature.startsWith("R0lGOD")) return "image/gif";               // GIF
-    if (signature.startsWith("UEsDB")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"; // .docx (zip-based)
-    if (signature.startsWith("0M8R4K")) return "application/msword";      // legacy .doc
+    if (signature.startsWith("JVBERi0")) return "application/pdf";
+    if (signature.startsWith("iVBORw0KGgo")) return "image/png";
+    if (signature.startsWith("/9j/")) return "image/jpeg";
+    if (signature.startsWith("R0lGOD")) return "image/gif";
+    if (signature.startsWith("UEsDB")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    if (signature.startsWith("0M8R4K")) return "application/msword";
 
-    return "application/octet-stream"; // fallback, browser will offer download
+    return "application/octet-stream";
   };
 
   const openAddDrawer = () => {
     setEditingUser(null);
     form.resetFields();
-    // New employees default to ACTIVE — matches the Status field's own
-    // initialValue, set explicitly here too since resetFields() runs first.
     form.setFieldsValue({ status: "ACTIVE" });
     setDrawerOpen(true);
   };
+
   // Fetches static data (role list, etc.) only on the first time the Role dropdown is opened
   const handleRoleDropdownOpen = async (open: boolean) => {
     if (!open || rolesFetched) return;
@@ -117,24 +108,24 @@ export default function UpdateUserProfile() {
   };
 
   const fetchUsers = useCallback(
-  async (pageNum: number, size: number, filters?: UserSearchFilters) => {
-    setTableLoading(true);
-    try {
-      const response = await getAllEmployeeDetailsByFilter(pageNum, size, filters);
-      if (response.success) {
-        setUsers(response.data.Data);
-        setTotal(response.data.total);
-      } else {
-        message.error(response.message || "Failed to load employees");
+    async (pageNum: number, size: number, filters?: UserSearchFilters) => {
+      setTableLoading(true);
+      try {
+        const response = await getAllEmployeeDetailsByFilter(pageNum, size, filters);
+        if (response.success) {
+          setUsers(response.data.Data);
+          setTotal(response.data.total);
+        } else {
+          message.error(response.message || "Failed to load employees");
+        }
+      } catch (error: any) {
+        message.error(error?.response?.data?.message || "Failed to load employees");
+      } finally {
+        setTableLoading(false);
       }
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || "Failed to load employees");
-    } finally {
-      setTableLoading(false);
-    }
-  },
-  []
-);
+    },
+    []
+  );
 
   useEffect(() => {
     fetchUsers(page, pageSize, searchFilters);
@@ -192,14 +183,14 @@ export default function UpdateUserProfile() {
           employeeDetailsId: user.employeeDetailsId,
           userId: record.userId,
           employeeCode: user.employeeCode,
-          userName:user.userName,
+          userName: user.userName,
           firstName: user.firstName,
           middleName: user.middleName,
           lastName: user.lastName,
           gender: user.gender,
-          role:user.role,
-          email:user.email,
-          mobileNo:user.mobileNo,
+          role: user.role,
+          email: user.email,
+          mobileNo: user.mobileNo,
           qualification: user.qualification,
           specialization: user.specialization,
           experience: user.experience,
@@ -209,7 +200,12 @@ export default function UpdateUserProfile() {
           dateOfBirth: user.dateOfBirth ? dayjs(user.dateOfBirth) : null,
           joiningDate: user.joiningDate ? dayjs(user.joiningDate) : null,
           leavingDate: user.leavingDate ? dayjs(user.leavingDate) : null,
-          status: user.status || "ACTIVE", // 👈 NEW — pulled straight from the API response
+          status: user.status || "ACTIVE",
+
+          // 👇 NEW — bank details
+          bankName: user.bankName,
+          ifscCode: user.ifscCode,
+          accountNo: user.accountNo,
 
           documents:
             user.userDocumentDTOS?.map((doc: any) => {
@@ -244,7 +240,7 @@ export default function UpdateUserProfile() {
           userId: record.userId,
           firstName: record.firstName,
           lastName: record.lastName,
-          status: "ACTIVE", // 👈 NEW — default for a record with no employee details yet
+          status: "ACTIVE",
         });
       }
 
@@ -268,22 +264,13 @@ export default function UpdateUserProfile() {
   const handleCopy = async (value: string | undefined, label: string) => {
     if (!value) return;
     try {
-      // 👇 FIX: `navigator.clipboard` only exists in a "secure context"
-      // (HTTPS, or `localhost`). Locally you open the app via
-      // `localhost:5173`, so it's available and copy works. On the
-      // development server it's most likely opened over plain HTTP via an
-      // IP/domain (not `localhost`), so `navigator.clipboard` is
-      // undefined there — calling `.writeText` on it throws immediately,
-      // landing in the catch block below as "Failed to copy". The real
-      // fix is serving the dev/staging site over HTTPS, but until then
-      // this fallback copies using the older `execCommand('copy')` API,
-      // which still works over plain HTTP.
+      // `navigator.clipboard` only exists in a secure context (HTTPS / localhost).
+      // Fallback uses execCommand('copy') so it also works over plain HTTP.
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(value);
       } else {
         const textarea = document.createElement("textarea");
         textarea.value = value;
-        // Keep it out of view but still selectable/copyable.
         textarea.style.position = "fixed";
         textarea.style.left = "-9999px";
         textarea.style.top = "0";
@@ -329,9 +316,6 @@ export default function UpdateUserProfile() {
   };
 
   // Delete triggered directly from the table's action column.
-  // Works for any role: prefers employeeDetailsId already on the row,
-  // falls back to fetching via userId only if userId is actually present
-  // (some rows may have a null userId, per the employee details payload shape).
   const handleDeleteFromTable = async (record: UserDTO) => {
     try {
       let employeeDetailsId = (record as any).employeeDetailsId;
@@ -377,14 +361,14 @@ export default function UpdateUserProfile() {
         employeeDetailsId: values.employeeDetailsId,
         userId: values.userId,
         employeeCode: values.employeeCode,
-        userName:values.userName,
+        userName: values.userName,
         firstName: values.firstName,
         middleName: values.middleName,
         lastName: values.lastName,
         gender: values.gender,
-        role:values.role,
-        email:values.email,
-        mobileNo:values.mobileNo,
+        role: values.role,
+        email: values.email,
+        mobileNo: values.mobileNo,
         qualification: values.qualification,
         specialization: values.specialization,
         experience: values.experience,
@@ -394,7 +378,13 @@ export default function UpdateUserProfile() {
         dateOfBirth: values.dateOfBirth.format("YYYY-MM-DD"),
         joiningDate: values.joiningDate.format("YYYY-MM-DD"),
         leavingDate: values.leavingDate ? values.leavingDate.format("YYYY-MM-DD") : null,
-        status: values.status, // 👈 NEW
+        status: values.status,
+
+        // 👇 NEW — bank details
+        bankName: values.bankName,
+        ifscCode: values.ifscCode,
+        accountNo: values.accountNo,
+
         userDocumentDTOS: (values.documents || [])
           .filter((doc: any) => doc.documentName || doc.document)
           .map((doc: any) => ({
@@ -422,8 +412,7 @@ export default function UpdateUserProfile() {
         closeDrawer();
         fetchUsers(page, pageSize, searchFilters);
 
-        // If the backend returned generated login credentials (userName + password),
-        // show them in a small popup so they can be shared with the employee.
+        // If the backend returned generated login credentials, show them in a popup.
         const userDetails = response.data?.["user details"];
         if (userDetails?.userName && userDetails?.password) {
           setCredsData({
@@ -452,7 +441,6 @@ export default function UpdateUserProfile() {
           Add Employee
         </Button>
       </div>
-      {/* Employee Details Navbar goes here (your existing header/navbar component) */}
 
       {/* Search Bar */}
       <Row gutter={[12, 12]} style={{ padding: "16px 0" }}>
@@ -547,8 +535,7 @@ export default function UpdateUserProfile() {
         <EmployeeViewer user={viewUser} />
       </Modal>
 
-      {/* Login Credentials popup — shown after a successful save/update
-          when the backend returns a generated userName + password */}
+      {/* Login Credentials popup */}
       <Modal
         title="Login Credentials"
         open={credsModalOpen}

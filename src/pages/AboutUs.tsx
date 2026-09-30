@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import schoolLogo from "../assets/SchoolLogo.avif";
 import schoolBuilding from "../assets/Img1.webp";
 import inspirationImage from "../assets/Img2.webp"; // TODO: replace with the real "Our Inspiration" image
@@ -127,8 +127,79 @@ Through strong collaboration between students, teachers, parents, and the commun
   },
 };
 
+// Matches the CSS breakpoint where the layout switches to a single column.
+const MOBILE_BREAKPOINT = 900;
+
+function useIsMobile(breakpoint = MOBILE_BREAKPOINT) {
+  const query = `(max-width: ${breakpoint}px)`;
+
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" ? window.matchMedia(query).matches : false
+  );
+
+  useEffect(() => {
+    const mql = window.matchMedia(query);
+    const handleChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+
+    setIsMobile(mql.matches);
+    mql.addEventListener("change", handleChange);
+    return () => mql.removeEventListener("change", handleChange);
+  }, [query]);
+
+  return isMobile;
+}
+
 export default function AboutUs() {
   const [activeItem, setActiveItem] = useState("About Us");
+  // Mobile only: whether the active item's content is expanded under its title
+  const [mobileOpen, setMobileOpen] = useState(true);
+
+  const isMobile = useIsMobile();
+
+  const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const shouldScrollRef = useRef(false);
+
+  const handleItemClick = (item: string) => {
+    if (isMobile) {
+      if (item === activeItem) {
+        // Tap the open item again to collapse / expand it
+        setMobileOpen((prev) => !prev);
+      } else {
+        setActiveItem(item);
+        setMobileOpen(true);
+        shouldScrollRef.current = true;
+      }
+    } else {
+      setActiveItem(item);
+    }
+  };
+
+  // After a new item opens on mobile, bring its title to the top of the screen
+  useEffect(() => {
+    if (!isMobile || !shouldScrollRef.current) return;
+    shouldScrollRef.current = false;
+
+    itemRefs.current[activeItem]?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [activeItem, isMobile]);
+
+  const renderSectionBody = (item: string) => (
+    <>
+      <h2 className="section-title">{sectionContent[item].title}</h2>
+
+      <div className="text-columns">
+        {sectionContent[item].columns.map((column, colIndex) => (
+          <div key={colIndex}>
+            {column.map((paragraph, pIndex) => (
+              <p key={pIndex}>{paragraph}</p>
+            ))}
+          </div>
+        ))}
+      </div>
+    </>
+  );
 
   return (
     <div className="dais-about">
@@ -300,6 +371,7 @@ export default function AboutUs() {
           font-size: 18px;
           font-weight: 700;
           line-height: 1;
+          transition: transform 0.2s ease;
         }
 
         .dais-about .main-content {
@@ -328,6 +400,44 @@ export default function AboutUs() {
 
         .dais-about .text-columns p {
           margin: 0 0 18px;
+        }
+
+        /* ---------- mobile accordion panel (content under its title) ---------- */
+        .dais-about .mobile-panel {
+          padding: 26px 22px 12px;
+          background: #f7fafd;
+          border-bottom: 1px solid #e3ebf3;
+          animation: daisPanelIn 0.25s ease;
+        }
+
+        .dais-about .mobile-panel .section-title {
+          font-size: 22px;
+          margin-bottom: 16px;
+        }
+
+        .dais-about .mobile-panel .text-columns {
+          gap: 0;
+          font-size: 14.5px;
+          line-height: 1.75;
+        }
+
+        .dais-about .sidebar-item {
+          scroll-margin-top: 8px;
+        }
+
+        .dais-about .sidebar-item.open .chevron {
+          transform: rotate(90deg);
+        }
+
+        @keyframes daisPanelIn {
+          from {
+            opacity: 0;
+            transform: translateY(-6px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
 
         /* ---------- parent login ---------- */
@@ -438,31 +548,39 @@ export default function AboutUs() {
 
       <div className="content-wrap">
         <aside className="sidebar">
-          {sidebarItems.map((item) => (
-            <button
-              key={item}
-              className={`sidebar-item ${item === activeItem ? "active" : ""}`}
-              onClick={() => setActiveItem(item)}
-            >
-              <span className="chevron">›</span>
-              {item}
-            </button>
-          ))}
+          {sidebarItems.map((item) => {
+            const isActive = item === activeItem;
+            const isOpenOnMobile = isMobile && isActive && mobileOpen;
+
+            return (
+              <div key={item} style={{ display: "flex", flexDirection: "column" }}>
+                <button
+                  ref={(el) => {
+                    itemRefs.current[item] = el;
+                  }}
+                  className={`sidebar-item ${isActive ? "active" : ""} ${
+                    isOpenOnMobile ? "open" : ""
+                  }`}
+                  onClick={() => handleItemClick(item)}
+                  aria-expanded={isMobile ? isOpenOnMobile : undefined}
+                >
+                  <span className="chevron">›</span>
+                  {item}
+                </button>
+
+                {/* Mobile: content appears right below the tapped title */}
+                {isOpenOnMobile && (
+                  <div className="mobile-panel">{renderSectionBody(item)}</div>
+                )}
+              </div>
+            );
+          })}
         </aside>
 
-        <main className="main-content">
-          <h2 className="section-title">{sectionContent[activeItem].title}</h2>
-
-          <div className="text-columns">
-            {sectionContent[activeItem].columns.map((column, colIndex) => (
-              <div key={colIndex}>
-                {column.map((paragraph, pIndex) => (
-                  <p key={pIndex}>{paragraph}</p>
-                ))}
-              </div>
-            ))}
-          </div>
-        </main>
+        {/* Desktop / tablet: content on the right side, as before */}
+        {!isMobile && (
+          <main className="main-content">{renderSectionBody(activeItem)}</main>
+        )}
       </div>
     </div>
   );
