@@ -36,6 +36,7 @@ import {
   type EmployeeSalaryDTO,
 } from "../services/salaryService";
 import { getSubjectsByEmployeeDetailsId } from "../services/teacherSubjectService";
+import SalarySlipModal from "./SalarySlip";
 
 // ===========================
 // Types (matches actual API response)
@@ -77,6 +78,9 @@ interface TeacherInformation {
   employeeCode?: string;
   bloodGroup?: string;
   address?: string;
+  accountNo?: string;
+  bankName?: string;
+  ifscCode?: string;
   userDocumentDTOS?: UserDocumentDTO[];
 }
 
@@ -649,6 +653,7 @@ const closeSalaryDetail = () => {
       <InfoRow label="Blood Group" value={teacherInfo?.bloodGroup} />
       <InfoRow label="Joining Date" value={teacherInfo?.joiningDate} />
       <InfoRow label="Address" value={teacherInfo?.address} />
+      
     </TabPanel>
   );
 
@@ -792,7 +797,7 @@ const salaryTab = (
                     {rec.salaryDate ? dayjs(rec.salaryDate).format("DD-MM-YYYY") : "-"}
                   </td>
                  <td className="px-3 py-3 text-center">
-  <Tooltip title="View Details">
+  <Tooltip title="View Salary Slip">
     <button
       onClick={() => openSalaryDetail(rec)}
       className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-700 transition-colors"
@@ -1082,48 +1087,18 @@ const salaryTab = (
         </Spin>
       </Modal>
       {/* ======================================================
-    SALARY: VIEW DETAIL MODAL
-======================================================= */}
-<Modal
-  title="Salary Details"
-  open={salaryDetailOpen}
-  onCancel={closeSalaryDetail}
-  footer={null}
-  destroyOnClose
-  width={520}
-  className="homework-modal"
-  styles={{ body: { padding: 0 } }}
->
-  {selectedSalary && (
-    <TabPanel>
-      <InfoRow
-        label="Month"
-        value={
-          selectedSalary.salaryDate
-            ? dayjs(selectedSalary.salaryDate).format("MMMM")
-            : undefined
-        }
+          SALARY: SALARY SLIP (same details as the salary form)
+      ======================================================= */}
+      <SalarySlipModal
+        open={salaryDetailOpen}
+        onClose={closeSalaryDetail}
+        salary={selectedSalary}
+        bank={{
+          accountNo: teacherInfo?.accountNo,
+          bankName: teacherInfo?.bankName,
+          ifscCode: teacherInfo?.ifscCode,
+        }}
       />
-      <InfoRow label="Academic Year" value={selectedSalary.academicYear} />
-      <InfoRow
-        label="Salary Date"
-        value={
-          selectedSalary.salaryDate
-            ? dayjs(selectedSalary.salaryDate).format("DD-MM-YYYY")
-            : undefined
-        }
-      />
-      <InfoRow label="Basic Salary" value={selectedSalary.basicSalary} />
-      <InfoRow label="HRA" value={selectedSalary.hra} />
-      <InfoRow label="Medical Allowance" value={selectedSalary.medicalAllowance} />
-      <InfoRow label="Transport Allowance" value={selectedSalary.transportAllowance} />
-      <InfoRow label="Other Allowance" value={selectedSalary.otherAllowance} />
-      <InfoRow label="Deduction" value={selectedSalary.deduction} />
-      <InfoRow label="Net Salary" value={selectedSalary.netSalary} />
-      <InfoRow label="Remark" value={selectedSalary.remark} />
-    </TabPanel>
-  )}
-</Modal>
     </div>
     
   );
