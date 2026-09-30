@@ -13,6 +13,9 @@ import { RiShoppingBagFill } from "react-icons/ri";
 import { MdAccountBalance } from "react-icons/md";
 import { RiShoppingCartFill ,RiPresentationLine } from "react-icons/ri";
 import { RiMoneyDollarCircleLine } from "react-icons/ri";
+import { AiOutlineCode } from "react-icons/ai";
+import { AiOutlineCheckSquare } from "react-icons/ai";
+
 import {
   PiBookOpenText,
   PiCalendarBlank,
@@ -123,7 +126,23 @@ export const adminNavItems: AdminNavEntry[] = [
     
         {label:"Student Fees", path:"/student-fees",icon:BsCash},
           {label:"School Expenses", path:"/school-expenses",icon:RiShoppingCartFill},
-          {label:"Employee Salary", path:"/employeesalary",icon:RiMoneyDollarCircleLine}
+          {label:"Employee Salary", path:"/employeesalary",icon:RiMoneyDollarCircleLine},
+        
+
+       
+      
+    ],
+    
+    
+  },
+   {
+    label: "Reports",
+    icon: AiOutlineCheckSquare,
+    children: [
+    
+      
+         {label: "Employee Salary Report", path: "/employee-salary-report",icon: AiOutlineCode},
+
        
       
     ],
