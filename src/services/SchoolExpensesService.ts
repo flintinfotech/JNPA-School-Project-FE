@@ -19,6 +19,8 @@ export interface SchoolExpensesDTO {
   quantity: number;
   price: number;
   total: number | null;
+  paidAmount?: number | null;
+  pendingAmount?: number | null;
   // 🆕 New field, inserted before "status".
   purchaseDate: string;
   status: string;
@@ -51,6 +53,8 @@ export const saveSchoolExpenses = async (
     quantity: number;
     total: number;
     purchaseId: number;
+    paidAmount: number;
+    pendingAmount: number;
     // 🆕
     purchaseDate: string;
     status: string;
@@ -91,6 +95,8 @@ export const updateSchoolExpenses = async (
     total: number;
     schoolExpenseId: number;
     purchaseId: number;
+    paidAmount: number;
+    pendingAmount: number;
     // 🆕
     purchaseDate: string;
     status: string;

@@ -34,6 +34,8 @@ interface SchoolExpenseRow {
   quantity: number;
   price: number;
   total: number | null;
+  paidAmount?: number | null;
+  pendingAmount?: number | null;
   status: string;
   [key: string]: any;
 }
@@ -267,7 +269,7 @@ export default function SchoolExpenses() {
     setEditingExpenseId(null);
     setSelectedPurchase(null);
     form.resetFields();
-    form.setFieldsValue({ quantity: 1, price: 0, total: 0, status: "PAID", categoryFilter: undefined });
+    form.setFieldsValue({ quantity: 1, price: 0, total: 0, paidAmount: 0, pendingAmount: 0, status: "PAID", categoryFilter: undefined });
     setDrawerOpen(true);
   };
 
@@ -303,6 +305,14 @@ export default function SchoolExpenses() {
         total: record.total !== null && record.total !== undefined
           ? record.total
           : Number(record.quantity || 0) * Number(record.price || 0),
+        paidAmount: record.paidAmount ?? 0,
+        pendingAmount:
+          record.pendingAmount ??
+          Math.max(
+            (record.total ?? Number(record.quantity || 0) * Number(record.price || 0)) -
+              Number(record.paidAmount || 0),
+            0
+          ),
         status: record.status,
       });
     } catch (error: any) {
@@ -359,7 +369,16 @@ export default function SchoolExpenses() {
   const updateTotal = () => {
     const quantity = Number(form.getFieldValue("quantity") || 0);
     const price = Number(form.getFieldValue("price") || 0);
-    form.setFieldsValue({ total: quantity * price });
+    const total = quantity * price;
+    const paid = Number(form.getFieldValue("paidAmount") || 0);
+    form.setFieldsValue({ total, pendingAmount: Math.max(total - paid, 0) });
+  };
+
+  // Pending Amount = Total - Paid Amount (auto, read-only in the form)
+  const updatePending = () => {
+    const total = Number(form.getFieldValue("total") || 0);
+    const paid = Number(form.getFieldValue("paidAmount") || 0);
+    form.setFieldsValue({ pendingAmount: Math.max(total - paid, 0) });
   };
 
   // ============================================================
@@ -373,14 +392,19 @@ export default function SchoolExpenses() {
         const quantity = Number(values.quantity || 0);
         const price = Number(values.price || 0);
         const total = quantity * price;
+        const paidAmount = Number(values.paidAmount || 0);
+        const pendingAmount = Math.max(total - paidAmount, 0);
 
         // UPDATE
         if (isEditing && editingExpenseId !== null) {
           const payload = {
             price,
             quantity,
+            total,
             schoolExpenseId: editingExpenseId,
             purchaseId: Number(values.purchaseId),
+            paidAmount,
+            pendingAmount,
             status: values.status,
           };
           console.log("UPDATE SCHOOL EXPENSE PAYLOAD:", payload);
@@ -398,7 +422,7 @@ export default function SchoolExpenses() {
         }
 
         // SAVE
-        const payload = { price, quantity, total, purchaseId: Number(values.purchaseId), status: values.status };
+        const payload = { price, quantity, total, purchaseId: Number(values.purchaseId), paidAmount, pendingAmount, status: values.status };
         console.log("SAVE SCHOOL EXPENSE PAYLOAD:", payload);
 
         const res = await api.post(apiEndpoints.saveSchoolExpenses(), payload);
@@ -482,6 +506,18 @@ export default function SchoolExpenses() {
           ? record.total
           : Number(record.quantity || 0) * Number(record.price || 0);
         return `₹ ${Number(total || 0).toFixed(2)}`;
+      },
+    },
+    {
+      title: "Paid Amount", key: "paidAmount",
+      render: (_: any, record: SchoolExpenseRow) => `₹ ${Number(record.paidAmount || 0).toFixed(2)}`,
+    },
+    {
+      title: "Pending Amount", key: "pendingAmount",
+      render: (_: any, record: SchoolExpenseRow) => {
+        const total = record.total ?? Number(record.quantity || 0) * Number(record.price || 0);
+        const pending = record.pendingAmount ?? Math.max(Number(total || 0) - Number(record.paidAmount || 0), 0);
+        return `₹ ${Number(pending || 0).toFixed(2)}`;
       },
     },
     {
@@ -632,6 +668,22 @@ export default function SchoolExpenses() {
                   <div className="border-t mt-4 pt-3 flex justify-between">
                     <span className="font-medium">Total</span>
                     <span className="font-bold text-lg">₹ {Number(calculatedTotal || 0).toFixed(2)}</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    <div>
+                      <div className="text-xs text-gray-500">Paid Amount</div>
+                      <div className="font-medium">₹ {Number(record.paidAmount || 0).toFixed(2)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500">Pending Amount</div>
+                      <div className="font-medium">
+                        ₹ {Number(
+                          record.pendingAmount ??
+                            Math.max(Number(calculatedTotal || 0) - Number(record.paidAmount || 0), 0)
+                        ).toFixed(2)}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="flex justify-end gap-2 mt-4">
@@ -835,6 +887,42 @@ export default function SchoolExpenses() {
                       <Option value="PARTIAL">PARTIAL</Option>
                        <Option value="OVERDUE">OVERDUE</Option>
                     </Select>
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Row gutter={12}>
+                <Col span={12}>
+                  <Form.Item
+                    label="Paid Amount"
+                    name="paidAmount"
+                    dependencies={["total"]}
+                    rules={[
+                      { type: "number", min: 0, message: "Paid amount cannot be negative" },
+                      ({ getFieldValue }) => ({
+                        validator(_, value) {
+                          if (value === undefined || value === null) return Promise.resolve();
+                          if (Number(value) > Number(getFieldValue("total") || 0)) {
+                            return Promise.reject(new Error("Paid amount cannot be more than Total"));
+                          }
+                          return Promise.resolve();
+                        },
+                      }),
+                    ]}
+                  >
+                    <InputNumber
+                      className="w-full"
+                      min={0}
+                      precision={2}
+                      prefix="₹"
+                      placeholder="Enter paid amount"
+                      onChange={updatePending}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item label="Pending Amount" name="pendingAmount">
+                    <InputNumber className="w-full" precision={2} prefix="₹" disabled />
                   </Form.Item>
                 </Col>
               </Row>

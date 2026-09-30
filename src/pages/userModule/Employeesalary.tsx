@@ -27,6 +27,7 @@ import {
   SaveOutlined,
   EyeOutlined,
   EditOutlined,
+  PrinterOutlined,
 } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import {
@@ -43,6 +44,7 @@ import {
   type EmployeeSalaryDTO,
 } from "../../services/employeeSalaryService";
 import { getAllStaticData } from "../../services/staticDataService";
+import { printSalarySlip, type SalarySlipBank } from "../SalarySlip";
 import CommonTable from "../../components/commonTable"; // 👈 same table component as Purchase Master (change path if needed)
 
 type EmployeeRow = UserDTO;
@@ -105,6 +107,7 @@ export default function EmployeeSalary() {
   const [viewOpen, setViewOpen] = useState(false);
   const [viewSalaries, setViewSalaries] = useState<EmployeeSalaryDTO[]>([]);
   const [viewEmployee, setViewEmployee] = useState<{ id: number; name: string } | null>(null);
+  const [viewBank, setViewBank] = useState<SalarySlipBank | null>(null); // bank details printed on the slip
 
   // Search bar state
   const [searchFilters, setSearchFilters] = useState<UserSearchFilters>({
@@ -235,7 +238,23 @@ export default function EmployeeSalary() {
     const id = await resolveEmployeeDetailsId(record);
     if (!id) return;
     const list = await fetchSalaryList(id);
+
+    // bank details for the salary slip (same fields as Profile > Salary)
+    let bank: SalarySlipBank | null = null;
+    try {
+      const res: any = await getEmployeeDetailsById(record.userId);
+      const info = res?.data || res;
+      bank = {
+        accountNo: info?.accountNo,
+        bankName: info?.bankName,
+        ifscCode: info?.ifscCode,
+      };
+    } catch (error) {
+      console.error("Could not load bank details:", error);
+    }
+
     setViewEmployee({ id, name: fullName(record) });
+    setViewBank(bank);
     setViewSalaries(list);
     setViewOpen(true);
   };
@@ -244,6 +263,7 @@ export default function EmployeeSalary() {
     setViewOpen(false);
     setViewSalaries([]);
     setViewEmployee(null);
+    setViewBank(null);
   };
 
   // Deletes ONLY the clicked record (DELETE .../deleteEmployeeSalary/{employeeSalaryId})
@@ -723,14 +743,23 @@ export default function EmployeeSalary() {
               style={{ marginBottom: 20 }}
               title={`Salary ${i + 1}`}
               extra={
-                <Popconfirm
-                  title="Delete this salary record?"
-                  okText="Yes"
-                  cancelText="No"
-                  onConfirm={() => handleDeleteFromView(s)}
-                >
-                  <Button type="text" danger icon={<DeleteOutlined />} />
-                </Popconfirm>
+                <Space size={4}>
+                  <Tooltip title="Print Salary Slip">
+                    <Button
+                      type="text"
+                      icon={<PrinterOutlined />}
+                      onClick={() => printSalarySlip(s, viewBank)}
+                    />
+                  </Tooltip>
+                  <Popconfirm
+                    title="Delete this salary record?"
+                    okText="Yes"
+                    cancelText="No"
+                    onConfirm={() => handleDeleteFromView(s)}
+                  >
+                    <Button type="text" danger icon={<DeleteOutlined />} />
+                  </Popconfirm>
+                </Space>
               }
             >
               <Descriptions.Item label="Academic Year">{s.academicYear}</Descriptions.Item>
