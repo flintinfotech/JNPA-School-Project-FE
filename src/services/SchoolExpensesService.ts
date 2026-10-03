@@ -140,3 +140,79 @@ export const getAllSchoolExpensesByFilter = async (
 
   return response.data;
 };
+
+// =====================================================
+// School Expenses REPORT (one block per product, with all its purchases)
+// POST schoolExpenses/getSchoolExpensesReportData?page=&size=&desc&paginate=true   body: {}
+// =====================================================
+
+export interface SchoolExpenseReportEntry {
+  academicYear: string | null;
+  paidAmount: number | null;
+  pendingAmount: number | null;
+  price: number | null;
+  purchaseDate: string | null;
+  quantity: number | null;
+  total: number | null;
+}
+
+export interface SchoolExpenseReportProduct {
+  category: string;
+  productCode?: string;
+  productName: string;
+  printDate?: string;
+  printTime?: string;
+  reportDataDTOList: SchoolExpenseReportEntry[];
+}
+
+// The backend paginates, so we read ALL pages here and the screen
+// applies the search bar filters in the browser.
+export const getAllSchoolExpensesReportData = async (): Promise<SchoolExpenseReportProduct[]> => {
+  const size = 50;
+  let pageNo = 0;
+  let totalCount = 0;
+  const all: SchoolExpenseReportProduct[] = [];
+
+  do {
+    const res = await axiosInstance.post(
+      apiEndpoints.getSchoolExpensesReportData(pageNo, size),
+      {}
+    );
+    const data = res.data;
+    if (!data?.success) throw new Error(data?.message || "Failed to load school expenses report");
+
+    const list: SchoolExpenseReportProduct[] = data.data?.Data || [];
+    totalCount = data.data?.total ?? list.length;
+    all.push(...list);
+
+    if (list.length === 0) break; // safety: never loop forever
+    pageNo += 1;
+  } while (all.length < totalCount);
+
+  return all;
+};
+
+// ---------- report helpers (shared by the screen and the PDF) ----------
+const n = (v: any) => Number(v) || 0;
+
+// The report API has no status field, so it is worked out from the amounts:
+//   pending > 0                 -> PENDING
+//   nothing pending, paid > 0   -> PAID
+//   no payment info             -> "-"
+export const reportEntryStatus = (e: SchoolExpenseReportEntry): string => {
+  if (n(e.pendingAmount) > 0) return "PENDING";
+  if (n(e.paidAmount) > 0) return "PAID";
+  return "-";
+};
+
+export const reportProductStatus = (entries: SchoolExpenseReportEntry[]): string => {
+  const statuses = entries.map(reportEntryStatus);
+  if (statuses.includes("PENDING")) return "PENDING";
+  if (statuses.includes("PAID")) return "PAID";
+  return "-";
+};
+
+export const sumReport = (
+  entries: SchoolExpenseReportEntry[],
+  key: keyof SchoolExpenseReportEntry
+): number => entries.reduce((acc, e) => acc + n(e[key]), 0);
