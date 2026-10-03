@@ -1,4 +1,3 @@
-
 import axiosInstance from "../lib/axios";
 import { apiEndpoints } from "./apiEndpoints";
 
@@ -18,6 +17,8 @@ export interface UserDTO {
   lastName: string;
   mobileNo: string;
   role: string;
+  department?: string; // <-- added (shown in Employee Salary table + used for filter)
+  designation?: string;
   section?: string;
   medium?: string;
   standard?: string;
@@ -117,8 +118,10 @@ export interface UserSearchFilters {
   firstName?: string;
   lastName?: string;
   role?: string;
+  department?: string; // <-- added
 }
 
+// Users API: unchanged (department is NOT sent here)
 export const getAllUsers = async (
   page: number,
   size: number,
@@ -143,6 +146,8 @@ export const getEmployeeDetailsById = async (id: number) => {
 
   return response.data;
 };
+
+// Employee Details list API: department is now sent in the payload
 export const getAllEmployeeDetailsByFilter = async (
   page: number,
   size: number,
@@ -152,6 +157,7 @@ export const getAllEmployeeDetailsByFilter = async (
     firstName: filters?.firstName || undefined,
     lastName: filters?.lastName || undefined,
     role: filters?.role || undefined,
+    department: filters?.department || undefined, // <-- added
   };
 
   const response = await axiosInstance.post<ApiResponse<GetAllUsersData>>(

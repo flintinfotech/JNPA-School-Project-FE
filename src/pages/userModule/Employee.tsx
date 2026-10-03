@@ -39,6 +39,9 @@ export default function User({
   const [roles, setRoles] = useState<string[]>([]);
   const [rolesLoading, setRolesLoading] = useState(false);
 
+  // 👇 NEW — Department dropdown state (comes from the same static data API as roles)
+  const [departments, setDepartments] = useState<string[]>([]);
+
   useEffect(() => {
     const fetchRoles = async () => {
       setRolesLoading(true);
@@ -46,6 +49,7 @@ export default function User({
         const res = await getAllStaticData();
         if (res?.success) {
           setRoles(res.data?.role || []);
+          setDepartments(res.data?.department || []); // 👈 NEW
         }
       } catch (err) {
         console.error("Failed to fetch roles", err);
@@ -250,6 +254,21 @@ export default function User({
                   rules={[{ required: true }]}
                 >
                   <Input />
+                </Form.Item>
+
+                {/* 👇 NEW — Department dropdown (options from static data "department") */}
+                <Form.Item
+                  label="Department"
+                  name="department"
+                  rules={[{ required: true, message: "Please select department" }]}
+                >
+                  <Select placeholder="Select Department" loading={rolesLoading}>
+                    {departments.map((dept) => (
+                      <Select.Option key={dept} value={dept}>
+                        {dept}
+                      </Select.Option>
+                    ))}
+                  </Select>
                 </Form.Item>
 
                 <Form.Item

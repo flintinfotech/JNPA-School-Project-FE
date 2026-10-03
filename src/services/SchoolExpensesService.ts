@@ -143,7 +143,7 @@ export const getAllSchoolExpensesByFilter = async (
 
 // =====================================================
 // School Expenses REPORT (one block per product, with all its purchases)
-// POST schoolExpenses/getSchoolExpensesReportData?page=&size=&desc&paginate=true   body: {}
+// POST schoolExpenses/getSchoolExpensesReportData?page=&size=&desc&paginate=true
 // =====================================================
 
 export interface SchoolExpenseReportEntry {
@@ -165,18 +165,45 @@ export interface SchoolExpenseReportProduct {
   reportDataDTOList: SchoolExpenseReportEntry[];
 }
 
-// The backend paginates, so we read ALL pages here and the screen
-// applies the search bar filters in the browser.
-export const getAllSchoolExpensesReportData = async (): Promise<SchoolExpenseReportProduct[]> => {
+// 🆕 Body sent to the report API. Empty values are NOT sent, so the body is {}
+// when nothing is selected. Dates are "YYYY-MM-DD". Example:
+// {
+//   "productName": "Carrom",
+//   "category": "Physics Lab Equipment",
+//   "range:purchaseDate": { "start": "2026-10-01", "end": "2026-11-04" }
+// }
+export interface SchoolExpenseReportPayload {
+  category?: string;
+  productName?: string;
+  "range:purchaseDate"?: { start?: string; end?: string };
+}
+
+// The backend paginates, so we read ALL pages here. The screen also re-checks
+// the filters in the browser as a safety net.
+export const getAllSchoolExpensesReportData = async (
+  payload: SchoolExpenseReportPayload = {}
+): Promise<SchoolExpenseReportProduct[]> => {
   const size = 50;
   let pageNo = 0;
   let totalCount = 0;
   const all: SchoolExpenseReportProduct[] = [];
 
+  // remove empty values (strings and the nested date range)
+  const body: Record<string, any> = {};
+  if (payload.productName?.trim()) body.productName = payload.productName.trim();
+  if (payload.category?.trim()) body.category = payload.category.trim();
+  const range = payload["range:purchaseDate"];
+  if (range?.start || range?.end) {
+    body["range:purchaseDate"] = {
+      ...(range.start ? { start: range.start } : {}),
+      ...(range.end ? { end: range.end } : {}),
+    };
+  }
+
   do {
     const res = await axiosInstance.post(
       apiEndpoints.getSchoolExpensesReportData(pageNo, size),
-      {}
+      body
     );
     const data = res.data;
     if (!data?.success) throw new Error(data?.message || "Failed to load school expenses report");

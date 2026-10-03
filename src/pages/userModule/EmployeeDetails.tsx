@@ -195,6 +195,7 @@ export default function UpdateUserProfile() {
           specialization: user.specialization,
           experience: user.experience,
           designation: user.designation,
+          department: user.department, // 👈 NEW
           bloodGroup: user.bloodGroup,
           address: user.address,
           dateOfBirth: user.dateOfBirth ? dayjs(user.dateOfBirth) : null,
@@ -373,6 +374,7 @@ export default function UpdateUserProfile() {
         specialization: values.specialization,
         experience: values.experience,
         designation: values.designation,
+        department: values.department, // 👈 NEW
         bloodGroup: values.bloodGroup,
         address: values.address,
         dateOfBirth: values.dateOfBirth.format("YYYY-MM-DD"),

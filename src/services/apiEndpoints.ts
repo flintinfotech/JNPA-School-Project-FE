@@ -325,6 +325,8 @@ getEmployeeSalaryReportData: (page: number, size: number) =>
 
 
 
+
+
   
 // School Expenses Report
 getSchoolExpensesReportData: (page: number, size: number) =>

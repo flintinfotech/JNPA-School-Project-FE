@@ -55,6 +55,9 @@ import axiosInstance from "../../lib/axios"; // your axios instance
 import { apiEndpoints } from "../../services/apiEndpoints"; // the file that contains apiEndpoints
 
 type EmployeeRow = UserDTO;
+// search bar filters = existing filters + department
+type SearchFilters = UserSearchFilters & { department?: string };
+type MonthRange = [Dayjs | null, Dayjs | null] | null;
 
 // ---------- helpers ----------
 const num = (v: any) => Number(v) || 0;
@@ -112,6 +115,7 @@ interface SalaryReportRow {
 
 interface SalaryReportEmployee {
   designation: string;
+  department?: string; // <-- if your backend uses another key name, change it here and in the PDF below
   firstName: string;
   lastName: string;
   middleName?: string;
@@ -147,17 +151,30 @@ const sumOf = (rows: any[], key: string) => rows.reduce((acc, r) => acc + num(r?
 
 // POST employeeDetails/getEmployeeSalaryReportData?page=&size=&paginate=true   body: {}
 // The backend gets an EMPTY payload and returns everyone, so we read ALL pages and then
-// apply the search bar (role / first name / last name) here in the browser.
-// Select "Teacher" and only teachers come in the report.
-const fetchSalaryReport = async (filters: UserSearchFilters): Promise<SalaryReportEmployee[]> => {
+// apply the search bar (role / first name / last name) AND the month range (From - To)
+// here in the browser, using salaryDate of every salary row.
+const fetchSalaryReport = async (
+  filters: SearchFilters,
+  monthRange: MonthRange
+): Promise<SalaryReportEmployee[]> => {
   const size = 20;
   let pageNo = 0;
   let totalCount = 0;
   const all: SalaryReportEmployee[] = [];
 
+  // Payload: selected dates go to the backend (YYYY-MM-DD).
+  // If your backend uses different key names, change "fromDate" / "toDate" below.
+  // Empty values are NOT sent, so the body stays {} when nothing is selected.
+  const payload: Record<string, string> = {};
+  if (monthRange?.[0]) payload.fromDate = monthRange[0].format("YYYY-MM-DD");
+  if (monthRange?.[1]) payload.toDate = monthRange[1].format("YYYY-MM-DD");
+  if (filters.department) payload.department = filters.department;
+  if (filters.role) payload.role = filters.role;
+  if (filters.firstName?.trim()) payload.firstName = filters.firstName.trim();
+  if (filters.lastName?.trim()) payload.lastName = filters.lastName.trim();
+
   do {
-    // empty payload {}
-    const res = await axiosInstance.post(apiEndpoints.getEmployeeSalaryReportData(pageNo, size), {});
+    const res = await axiosInstance.post(apiEndpoints.getEmployeeSalaryReportData(pageNo, size), payload);
     const data = res.data;
     if (!data?.success) throw new Error(data?.message || "Failed to load salary report");
 
@@ -169,17 +186,37 @@ const fetchSalaryReport = async (filters: UserSearchFilters): Promise<SalaryRepo
     pageNo += 1;
   } while (all.length < totalCount);
 
-  // Backend returns everyone, so the search bar filters are applied here
+  // Search bar filters
   const role = (filters.role || "").toUpperCase();
   const first = (filters.firstName || "").trim().toLowerCase();
   const last = (filters.lastName || "").trim().toLowerCase();
+  const dept = (filters.department || "").trim().toLowerCase();
 
-  return all.filter(
+  const filtered = all.filter(
     (e) =>
       (!role || (e.role || "").toUpperCase() === role) &&
+      (!dept || (e.department || "").trim().toLowerCase() === dept) &&
       (!first || (e.firstName || "").toLowerCase().includes(first)) &&
       (!last || (e.lastName || "").toLowerCase().includes(last))
   );
+
+  // Date range filter (safety net, in case the backend ignores fromDate / toDate):
+  // from the start of the "From" day to the end of the "To" day
+  const from = monthRange?.[0] ? monthRange[0].startOf("day") : null;
+  const to = monthRange?.[1] ? monthRange[1].endOf("day") : null;
+
+  if (!from && !to) return filtered;
+
+  return filtered.map((e) => ({
+    ...e,
+    reportDataDTOList: (e.reportDataDTOList || []).filter((r) => {
+      if (!r.salaryDate) return false;
+      const d = dayjs(r.salaryDate);
+      if (from && d.isBefore(from)) return false;
+      if (to && d.isAfter(to)) return false;
+      return true;
+    }),
+  }));
 };
 
 // Builds the report in the same layout as the reference "Party Outstanding" PDF
@@ -248,18 +285,21 @@ const buildSalaryReportPdf = (
     const hasSalary = rows.length > 0;
 
     // keep one employee block together on a page
-    const estimatedHeight = ((hasSalary ? 2 : 1) + rows.length + 2) * 6.5 + 6;
+    const estimatedHeight = ((hasSalary ? 3 : 2) + rows.length + 2) * 6.5 + 6;
     if (cursorY + estimatedHeight > pageHeight - PDF_MARGIN.bottom) {
       doc.addPage();
       cursorY = PDF_MARGIN.top;
     }
 
-    // Employee info row (+ column titles only when the employee has salary — empty ones stay blank)
+    // Employee info rows (+ column titles only when the employee has salary — empty ones stay blank)
     const head: any[] = [
       [
-        { content: `Employee Name: ${reportName(emp)}`, colSpan: 3, styles: { halign: "left" } },
-        { content: `Designation: ${emp.designation || "-"}`, colSpan: 3, styles: { halign: "left" } },
-        { content: `Role: ${capitalize(emp.role)}`, colSpan: 2, styles: { halign: "right" } },
+        { content: `Employee Name: ${reportName(emp)}`, colSpan: 4, styles: { halign: "left" } },
+        { content: `Designation: ${emp.designation || "-"}`, colSpan: 4, styles: { halign: "left" } },
+      ],
+      [
+        { content: `Department: ${emp.department || "-"}`, colSpan: 4, styles: { halign: "left" } },
+        { content: `Role: ${capitalize(emp.role)}`, colSpan: 4, styles: { halign: "left" } },
       ],
     ];
     if (hasSalary) {
@@ -432,11 +472,15 @@ export default function EmployeeSalary() {
   const [reportFileName, setReportFileName] = useState("Employee_Salary_Report.pdf");
 
   // Search bar state
-  const [searchFilters, setSearchFilters] = useState<UserSearchFilters>({
+  const [searchFilters, setSearchFilters] = useState<SearchFilters>({
     firstName: "",
     lastName: "",
     role: "",
+    department: "",
   });
+
+  // Month range filter (From month -> To month), used by Export Report
+  const [monthRange, setMonthRange] = useState<MonthRange>(null);
 
   // Role dropdown (fetched on first click, not on mount)
   const [roleOptions, setRoleOptions] = useState<{ label: string; value: string }[]>([]);
@@ -464,9 +508,64 @@ export default function EmployeeSalary() {
     }
   };
 
+  // Department dropdown (fetched on first click, same static-data API as Role)
+  const [deptOptions, setDeptOptions] = useState<{ label: string; value: string }[]>([]);
+  const [deptLoading, setDeptLoading] = useState(false);
+  const [deptFetched, setDeptFetched] = useState(false);
+
+  // finds the department list inside the static-data response, whatever the key is called
+  // (department / departments / departmentList ...) and whether items are strings or objects
+  const extractDepartments = (data: any): string[] => {
+    if (!data || typeof data !== "object") return [];
+    const key = Object.keys(data).find((k) => k.toLowerCase().includes("department"));
+    const arr = key ? data[key] : [];
+    if (!Array.isArray(arr)) return [];
+    return arr
+      .map((d: any) =>
+        typeof d === "string" ? d : d?.departmentName ?? d?.name ?? d?.label ?? d?.value ?? ""
+      )
+      .filter(Boolean);
+  };
+
+  const handleDeptDropdownOpen = async (open: boolean) => {
+    if (!open || deptFetched) return;
+    setDeptLoading(true);
+    try {
+      let list: string[] = [];
+
+      // 1) static data API
+      try {
+        const response = await getAllStaticData();
+        if (response.success) list = extractDepartments(response.data);
+      } catch (e) {
+        console.error("Static data departments failed:", e);
+      }
+
+      // 2) fallback: departments that actually exist on employees (report API)
+      if (!list.length) {
+        const emps = await fetchSalaryReport({ firstName: "", lastName: "", role: "" } as SearchFilters, null);
+        list = emps.map((e) => e.department || "").filter(Boolean);
+      }
+
+      // 3) also add departments of the employees already visible in the table
+      list = [...list, ...users.map((u) => (u as any).department || "").filter(Boolean)];
+
+      const unique = Array.from(new Set(list.map((d) => d.trim()).filter(Boolean))).sort((x, y) =>
+        x.localeCompare(y)
+      );
+      setDeptOptions(unique.map((d) => ({ label: d, value: d })));
+      if (unique.length) setDeptFetched(true); // if empty, try again on the next open
+      else message.warning("No departments found");
+    } catch (error: any) {
+      message.error(error?.response?.data?.message || error?.message || "Failed to load departments");
+    } finally {
+      setDeptLoading(false);
+    }
+  };
+
   // ---------- EMPLOYEE LIST (same API as Employee Details) ----------
   const fetchUsers = useCallback(
-    async (pageNum: number, size: number, filters?: UserSearchFilters) => {
+    async (pageNum: number, size: number, filters?: SearchFilters) => {
       setTableLoading(true);
       try {
         const response = await getAllEmployeeDetailsByFilter(pageNum, size, filters);
@@ -498,7 +597,7 @@ export default function EmployeeSalary() {
     };
   }, [reportUrl]);
 
-  const handleFilterChange = (field: keyof UserSearchFilters, value: string) => {
+  const handleFilterChange = (field: keyof SearchFilters, value: string) => {
     setSearchFilters((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -508,34 +607,53 @@ export default function EmployeeSalary() {
   };
 
   const handleResetFilters = () => {
-    const cleared: UserSearchFilters = { firstName: "", lastName: "", role: "" };
+    const cleared: SearchFilters = { firstName: "", lastName: "", role: "", department: "" };
     setSearchFilters(cleared);
+    setMonthRange(null);
     setPage(0);
     fetchUsers(0, pageSize, cleared);
   };
 
   // ---------- EXPORT REPORT ----------
-  // Uses whatever is selected/typed in the search bar:
-  // Role = Teacher -> only teachers in the report, Role = Admin -> only admins, etc.
+  // Uses whatever is selected/typed in the search bar + the month range:
+  // Role = Teacher -> only teachers, From = Jun 2026 & To = Aug 2026 -> salaries of Jun, Jul, Aug only.
   const handleExportReport = async () => {
+    // both months must be chosen together (or none)
+    const hasFrom = !!monthRange?.[0];
+    const hasTo = !!monthRange?.[1];
+    if (hasFrom !== hasTo) {
+      message.warning("Please select both From date and To date");
+      return;
+    }
+
     setExporting(true);
     try {
-      const employees = await fetchSalaryReport(searchFilters);
+      const employees = await fetchSalaryReport(searchFilters, monthRange);
 
       if (!employees.length) {
         message.warning("No data found for the selected filters");
         return;
       }
 
-      // Report period = current academic year (1 Apr – 31 Mar)
-      const startYear = Number(getAcademicYear().split("-")[0]);
+      // when a month range is selected, at least one salary must exist inside it
+      if (hasFrom && employees.every((e) => (e.reportDataDTOList || []).length === 0)) {
+        message.warning("No salary found in the selected dates");
+        return;
+      }
 
-      const blob = buildSalaryReportPdf(
-        employees,
-        dayjs(`${startYear}-04-01`),
-        dayjs(`${startYear + 1}-03-31`),
-        searchFilters.role || undefined
-      );
+      // Report period: selected months, otherwise current academic year (1 Apr – 31 Mar)
+      let fromDate: Dayjs;
+      let toDate: Dayjs;
+      if (hasFrom && hasTo) {
+        fromDate = monthRange![0]!.startOf("day");
+        toDate = monthRange![1]!.endOf("day");
+      } else {
+        const startYear = Number(getAcademicYear().split("-")[0]);
+        fromDate = dayjs(`${startYear}-04-01`);
+        toDate = dayjs(`${startYear + 1}-03-31`);
+      }
+
+      const blob = buildSalaryReportPdf(employees, fromDate, toDate, searchFilters.role || undefined);
 
       setReportFileName(
         `Employee_Salary_Report${searchFilters.role ? `_${capitalize(searchFilters.role)}` : ""}_${dayjs().format("DD-MM-YYYY")}.pdf`
@@ -803,7 +921,7 @@ export default function EmployeeSalary() {
     }
   };
 
-  // ---------- TABLE COLUMNS (Action column with View + Edit removed) ----------
+  // ---------- TABLE COLUMNS (Email removed, Department added) ----------
   const columns = [
     {
       title: "Employee Code",
@@ -823,9 +941,9 @@ export default function EmployeeSalary() {
       render: (v: string) => (v ? v.charAt(0) + v.slice(1).toLowerCase() : "-"),
     },
     {
-      title: "Email",
-      dataIndex: "email",
-      key: "email",
+      title: "Department",
+      dataIndex: "department",
+      key: "department",
       render: (v: string) => v || "-",
     },
     {
@@ -885,7 +1003,7 @@ export default function EmployeeSalary() {
           >
             {cardRow("Employee Code", (r as any).employeeCode)}
             {cardRow("Role", r.role ? r.role.charAt(0) + r.role.slice(1).toLowerCase() : "-")}
-            {cardRow("Email", r.email)}
+            {cardRow("Department", (r as any).department)}
             {cardRow("Mobile No", (r as any).mobileNo)}
             {cardRow("Designation", (r as any).designation)}
           </Card>
@@ -909,7 +1027,7 @@ export default function EmployeeSalary() {
     <div>
       {/* Search Bar */}
       <Row gutter={[12, 12]} style={{ padding: "16px 0" }}>
-        <Col xs={24} sm={12} md={5}>
+        <Col xs={24} sm={12} md={4}>
           <Input
             placeholder="First Name"
             value={searchFilters.firstName}
@@ -919,7 +1037,7 @@ export default function EmployeeSalary() {
           />
         </Col>
 
-        <Col xs={24} sm={12} md={5}>
+        <Col xs={24} sm={12} md={4}>
           <Input
             placeholder="Last Name"
             value={searchFilters.lastName}
@@ -929,7 +1047,7 @@ export default function EmployeeSalary() {
           />
         </Col>
 
-        <Col xs={24} sm={12} md={5}>
+        <Col xs={24} sm={12} md={4}>
           <Select
             placeholder="Role"
             value={searchFilters.role || undefined}
@@ -942,7 +1060,34 @@ export default function EmployeeSalary() {
           />
         </Col>
 
-        <Col xs={24} sm={12} md={9}>
+        <Col xs={24} sm={12} md={5}>
+          <Select
+            placeholder="Department"
+            value={searchFilters.department || undefined}
+            onChange={(value) => handleFilterChange("department", value || "")}
+            onDropdownVisibleChange={handleDeptDropdownOpen}
+            loading={deptLoading}
+            style={{ width: "100%" }}
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            options={deptOptions}
+          />
+        </Col>
+
+        {/* From date -> To date (sent to backend + used by Export Report) */}
+        <Col xs={24} sm={12} md={7}>
+          <DatePicker.RangePicker
+            format="DD-MM-YYYY"
+            placeholder={["From Date", "To Date"]}
+            value={monthRange as any}
+            onChange={(v) => setMonthRange(v as MonthRange)}
+            style={{ width: "100%" }}
+            allowClear
+          />
+        </Col>
+
+        <Col xs={24}>
           <div
             style={{
               display: "flex",
