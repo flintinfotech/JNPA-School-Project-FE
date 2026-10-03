@@ -111,15 +111,21 @@ export default function App() {
   const isStudentAttendence = location.pathname === "/student-attendance";
   const isEmployeesalaryPage = location.pathname === "/employeesalary";
  const isEmployeeSalaryReportPage = location.pathname === "/employee-salary-report";
- const isStudentFeeReportPage = location.pathname === "/student-fee-report";
+
 
 
  const isSchoolExpensesReportPage=location.pathname ==="/school-expenses-report";
   const isHomePage = location.pathname === "/";
 
-  const hideNavbarFooter = isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage || isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage || isStudentProfile|| isResultsPage || isAchievementsPage || isAcademicCalendarPage || isStudentFeesPage || isTimeTablePage || isPurchaseMasterPage || isSchoolExpensesPage ||isStudentHomeworkPage || isFormerStudentPage || isStudentAttendence|| isEmployeesalaryPage || isEmployeeSalaryReportPage|| isStudentFeeReportPage|| isSchoolExpensesReportPage;
-  const hideFooter = isHomePage || isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage ||	isTeacherSubjectsPage ||	isAdmissionInquiryPage	||	isDashboardPage	||	isProfilePage	||	isStudentProfile||	isResultsPage	||	isAchievementsPage	||	isAcademicCalendarPage	||	isStudentFeesPage	||	isTimeTablePage ||  isPurchaseMasterPage || isSchoolExpensesPage||isStudentHomeworkPage  || isFormerStudentPage ||isStudentAttendence || isEmployeesalaryPage || isEmployeeSalaryReportPage || isStudentFeeReportPage|| isSchoolExpensesReportPage;
- 
+  const hideNavbarFooter = isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage || isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage || isStudentProfile|| isResultsPage || isAchievementsPage || isAcademicCalendarPage || isStudentFeesPage || isTimeTablePage || isPurchaseMasterPage || isSchoolExpensesPage ||isStudentHomeworkPage || isFormerStudentPage || isStudentAttendence|| isEmployeesalaryPage || isEmployeeSalaryReportPage || isSchoolExpensesReportPage ;
+  const hideFooter = isHomePage || isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage ||	isTeacherSubjectsPage ||	isAdmissionInquiryPage	||	isDashboardPage	||	isProfilePage	||	isStudentProfile||	isResultsPage	||	isAchievementsPage	||	isAcademicCalendarPage	||	isStudentFeesPage	||	isTimeTablePage ||  isPurchaseMasterPage || isSchoolExpensesPage||isStudentHomeworkPage  || isFormerStudentPage ||isStudentAttendence || isEmployeesalaryPage || isEmployeeSalaryReportPage ||isSchoolExpensesReportPage
+
+ const isStudentFeeReportPage = location.pathname === "/student-fee-report";
+  const isHomePage = location.pathname === "/";
+
+  const hideNavbarFooter = isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage || isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage || isStudentProfile|| isResultsPage || isAchievementsPage || isAcademicCalendarPage || isStudentFeesPage || isTimeTablePage || isPurchaseMasterPage || isSchoolExpensesPage ||isStudentHomeworkPage || isFormerStudentPage || isStudentAttendence|| isEmployeesalaryPage || isEmployeeSalaryReportPage|| isStudentFeeReportPage;
+  const hideFooter = isHomePage || isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage ||	isTeacherSubjectsPage ||	isAdmissionInquiryPage	||	isDashboardPage	||	isProfilePage	||	isStudentProfile||	isResultsPage	||	isAchievementsPage	||	isAcademicCalendarPage	||	isStudentFeesPage	||	isTimeTablePage ||  isPurchaseMasterPage || isSchoolExpensesPage||isStudentHomeworkPage  || isFormerStudentPage ||isStudentAttendence || isEmployeesalaryPage || isEmployeeSalaryReportPage || isStudentFeeReportPage;
+
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -182,7 +188,7 @@ export default function App() {
             <Route path="/student-attendance" element={<StudentAttendance/>} />
             <Route path="/employeesalary" element={<Employeesalary />} />
           <Route path="/employee-salary-report" element={<Employeesalaryreport />}/>
-          <Route path="/student-fee-report" element={<Studentfeereport />} />
+
 
           <Route path="/school-expenses-report" element={<SchoolExpensesReport/>}/>
           </Route>
