@@ -15,6 +15,7 @@ import { RiShoppingCartFill ,RiPresentationLine } from "react-icons/ri";
 import { RiMoneyDollarCircleLine } from "react-icons/ri";
 import { AiOutlineCode } from "react-icons/ai";
 import { AiOutlineCheckSquare } from "react-icons/ai";
+import { GiExpense } from "react-icons/gi";
 
 import {
   PiBookOpenText,
@@ -145,7 +146,7 @@ export const adminNavItems: AdminNavEntry[] = [
         {label: "Student Fee Report", path: "/student-fee-report",icon: AiOutlineCode},
 
        
-      
+        {label: "School expenses report",path:"/school-expenses-report",icon:RiShoppingBagFill}
     ],
     
     
