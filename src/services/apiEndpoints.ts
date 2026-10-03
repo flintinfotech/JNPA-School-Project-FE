@@ -329,5 +329,8 @@ getAllSchoolExpensesByFilter: (page: number, size: number) =>
 getSchoolExpensesReportData: (page: number, size: number) =>
   `/jnpa-school-project/schoolExpenses/getSchoolExpensesReportData?page=${page}&size=${size}&desc&paginate=true`,
 
+getStudentFeeReportData: (page: number, size: number) =>
+  `/jnpa-school-project/studentFee/getStudentFeeReportData?page=${page}&size=${size}&desc&paginate=true`,
+
 
 };

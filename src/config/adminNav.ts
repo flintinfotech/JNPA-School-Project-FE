@@ -143,6 +143,7 @@ export const adminNavItems: AdminNavEntry[] = [
     
       
          {label: "Employee Salary Report", path: "/employee-salary-report",icon: AiOutlineCode},
+        {label: "Student Fee Report", path: "/student-fee-report",icon: AiOutlineCode},
 
        
         {label: "School expenses report",path:"/school-expenses-report",icon:RiShoppingBagFill}
