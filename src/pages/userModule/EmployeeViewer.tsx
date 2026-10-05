@@ -139,6 +139,12 @@ export default function EmployeeViewer({ user }: any) {
                     <Input value={user.designation} disabled styles={{ input: { color: "#000" } }} />
                   </Form.Item>
                 </div>
+                {/* 👇 NEW — Department */}
+                <div style={{ flex: "1 1 45%" }}>
+                  <Form.Item label="Department">
+                    <Input value={user.department} disabled styles={{ input: { color: "#000" } }} />
+                  </Form.Item>
+                </div>
                 <div style={{ flex: "1 1 45%" }}>
                   <Form.Item label="Blood Group">
                     <Input value={user.bloodGroup} disabled styles={{ input: { color: "#000" } }} />

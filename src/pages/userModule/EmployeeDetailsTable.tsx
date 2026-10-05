@@ -69,9 +69,11 @@ export default function UserUpdateProfileTable({
       key: "lastName",width: 150 
     },
     {
-      title: "Email",
-      dataIndex: "email",
-      key: "email",width: 190 
+      // 👇 CHANGED — Email column replaced with Department
+      title: "Department",
+      dataIndex: "department",
+      key: "department",width: 190,
+      render: (department: string) => department || "-",
     },
     {
       title: "Mobile No",

@@ -20,9 +20,11 @@ import jsPDF from "jspdf"; // npm install jspdf jspdf-autotable
 import autoTable from "jspdf-autotable";
 import { getAllStaticData } from "../services/staticDataService";
 import CommonTable from "../components/commonTable";
+ 
 // Same two imports as the Employee Salary screen (only the paths may need a change)
 import axiosInstance from "../lib/axios";
 import { apiEndpoints } from "../services/apiEndpoints";
+ 
 // Search bar: Standard, Division, From date, To date, First name, Last name
 interface StudentSearchFilters {
   firstName: string;
@@ -32,6 +34,7 @@ interface StudentSearchFilters {
   fromDate: Dayjs | null;
   toDate: Dayjs | null;
 }
+ 
 const EMPTY_FILTERS: StudentSearchFilters = {
   firstName: "",
   lastName: "",
@@ -40,26 +43,31 @@ const EMPTY_FILTERS: StudentSearchFilters = {
   fromDate: null,
   toDate: null,
 };
+ 
 // static data may come as plain strings or as objects -> always give the Select a string
 const toOption = (item: any): { label: string; value: string } => {
   const v = typeof item === "string" ? item : String(item?.name ?? item?.value ?? item?.label ?? item);
   return { label: v, value: v };
 };
+ 
 // ---------- helpers ----------
 const num = (v: any) => Number(v) || 0;
- 
+
 const money = (v?: number | null) =>
   v === null || v === undefined
     ? "-"
     : Number(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+ 
 // Academic year starts in April: Sep 2026 -> "2026-2027", Feb 2027 -> "2026-2027"
 const getAcademicYear = (d: Dayjs = dayjs()) => {
   const y = d.year();
   return d.month() >= 3 ? `${y}-${y + 1}` : `${y - 1}-${y}`;
 };
+ 
 /* =====================================================================
    EXPORT REPORT (report API + PDF builder, all inside this file)
    ===================================================================== */
+ 
 interface FeeReportRow {
   academicYear: string;
   feeName: string;
@@ -67,6 +75,7 @@ interface FeeReportRow {
   pendingAmount: number;
   totalFeeAmount: number;
 }
+ 
 interface FeeReportStudent {
   firstName: string;
   lastName: string;
@@ -76,6 +85,7 @@ interface FeeReportStudent {
   printTime?: string;
   feeReportDataDTOS: FeeReportRow[];
 }
+ 
 // Put your real school details here (they appear in the report header)
 const SCHOOL = {
   name: "JNPV School",
@@ -84,6 +94,7 @@ const SCHOOL = {
   contact: "Contact No: 0000000000",
   email: "Email: school@example.com",
 };
+ 
 const MAROON: [number, number, number] = [128, 0, 0];
 const PDF_MARGIN = { top: 15, left: 10, right: 10, bottom: 18 };
 const PDF_COLUMNS = ["Academic Year", "Fee Name", "Total Fee", "Paid Amount", "Pending Amount"];
@@ -92,10 +103,12 @@ const pdfColumnStyles = PDF_COL_WIDTHS.reduce((acc, w, i) => {
   acc[i] = { cellWidth: w };
   return acc;
 }, {} as Record<number, { cellWidth: number }>);
+ 
 const fix2 = (v: any) => num(v).toFixed(2);
 const capitalize = (v?: string) => (v ? v.charAt(0).toUpperCase() + v.slice(1).toLowerCase() : "-");
 const reportName = (s: FeeReportStudent) => [s.firstName, s.lastName].filter(Boolean).join(" ").trim();
 const sumOf = (rows: any[], key: string) => rows.reduce((acc, r) => acc + num(r?.[key]), 0);
+ 
 // POST studentFee/getStudentFeeReportData?page=&size=&desc&paginate=true
 // Body example (only the selected filters are sent, nothing selected -> {}):
 // {
@@ -111,27 +124,32 @@ const fetchStudentFeeReport = async (filters: StudentSearchFilters): Promise<Fee
   let pageNo = 0;
   let totalCount = 0;
   const all: FeeReportStudent[] = [];
- 
+
   // Only the selected filters go in the payload
   const payload: Record<string, string> = {};
   if (filters.standard) payload.standard = filters.standard;
   if (filters.division) payload.division = filters.division;
   if (filters.fromDate) payload.fromDate = filters.fromDate.format("YYYY-MM-DD");
   if (filters.toDate) payload.toDate = filters.toDate.format("YYYY-MM-DD");
+ 
   do {
     const res = await axiosInstance.post(apiEndpoints.getStudentFeeReportData(pageNo, size), payload);
     const data = res.data;
     if (!data?.success) throw new Error(data?.message || "Failed to load fee report");
+ 
     const list: FeeReportStudent[] = data.data?.Data || [];
     // this API sends the count as "Total elements"
     totalCount = data.data?.["Total elements"] ?? data.data?.Total ?? list.length;
     all.push(...list);
+ 
     if (list.length === 0) break; // safety: never loop forever
     pageNo += 1;
   } while (all.length < totalCount);
+ 
   // First / last name are filtered here in the browser
   const first = (filters.firstName || "").trim().toLowerCase();
   const last = (filters.lastName || "").trim().toLowerCase();
+ 
   return all.filter(
     (s) =>
       (!first || (s.firstName || "").trim().toLowerCase().includes(first)) &&
@@ -141,6 +159,7 @@ const fetchStudentFeeReport = async (filters: StudentSearchFilters): Promise<Fee
       (!filters.division || !(s as any).division || (s as any).division === filters.division)
   );
 };
+ 
 // Builds the report in the same layout as the Employee Salary report
 // and returns it as a Blob (shown in a preview popup, can be downloaded from there).
 const buildFeeReportPdf = (
@@ -152,12 +171,14 @@ const buildFeeReportPdf = (
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const centerX = pageWidth / 2;
+ 
   // ----- header (first page only) -----
   let y = 14;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
   doc.setTextColor(...MAROON);
   doc.text(SCHOOL.name, centerX, y, { align: "center" });
+ 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(0, 0, 0);
@@ -167,6 +188,7 @@ const buildFeeReportPdf = (
       y += 5;
       doc.text(line, centerX, y, { align: "center" });
     });
+ 
   y += 9;
   const title = "Student Fee Report";
   doc.setFont("helvetica", "bold");
@@ -177,10 +199,12 @@ const buildFeeReportPdf = (
   doc.setDrawColor(...MAROON);
   doc.setLineWidth(0.4);
   doc.line(centerX - titleWidth / 2, y + 1, centerX + titleWidth / 2, y + 1);
+ 
   y += 8;
   doc.setFontSize(9);
   doc.setTextColor(0, 0, 0);
   doc.text(`Academic Year: ${academicYear}`, centerX, y, { align: "center" });
+ 
   // applied filters (only the ones that were selected)
   const filterParts = [
     filters.standard ? `Standard: ${filters.standard}` : "",
@@ -192,24 +216,30 @@ const buildFeeReportPdf = (
     y += 5;
     doc.text(filterParts.join("      "), centerX, y, { align: "center" });
   }
+ 
   y += 4;
   doc.setDrawColor(...MAROON);
   doc.setLineWidth(0.3);
   doc.line(PDF_MARGIN.left, y, pageWidth - PDF_MARGIN.right, y);
+ 
   let cursorY = y + 6;
+ 
   // ----- one block per student -----
   const allRows: FeeReportRow[] = [];
   const bold = { fontStyle: "bold" as const };
+ 
   students.forEach((stu) => {
     const rows = stu.feeReportDataDTOS || [];
     allRows.push(...rows);
     const hasFees = rows.length > 0;
+ 
     // keep one student block together on a page
     const estimatedHeight = ((hasFees ? 2 : 1) + rows.length + 2) * 6.5 + 6;
     if (cursorY + estimatedHeight > pageHeight - PDF_MARGIN.bottom) {
       doc.addPage();
       cursorY = PDF_MARGIN.top;
     }
+ 
     // Student info row (+ column titles only when the student has fees — empty ones stay blank)
     const head: any[] = [
       [
@@ -221,6 +251,7 @@ const buildFeeReportPdf = (
     if (hasFees) {
       head.push(PDF_COLUMNS.map((c) => ({ content: c, styles: { fontSize: 7.5, halign: "left" } })));
     }
+ 
     const body: any[] = rows.map((r) => [
       r.academicYear || "-",
       r.feeName || "-",
@@ -228,7 +259,9 @@ const buildFeeReportPdf = (
       fix2(r.paidAmount),
       fix2(r.pendingAmount),
     ]);
+ 
     const totalPending = sumOf(rows, "pendingAmount");
+ 
     // Total row (0.00 when there are no fees)
     body.push([
       { content: "Total", colSpan: 2, styles: bold },
@@ -236,6 +269,7 @@ const buildFeeReportPdf = (
       { content: fix2(sumOf(rows, "paidAmount")), styles: bold },
       { content: fix2(totalPending), styles: bold },
     ]);
+ 
     // closing line, right aligned
     body.push([
       {
@@ -244,8 +278,10 @@ const buildFeeReportPdf = (
         styles: { halign: "right", fontStyle: "bold" },
       },
     ]);
+ 
     const totalRowIndex = body.length - 2;
     const closingRowIndex = body.length - 1;
+ 
     autoTable(doc, {
       startY: cursorY,
       margin: PDF_MARGIN,
@@ -280,13 +316,16 @@ const buildFeeReportPdf = (
         }
       },
     });
+ 
     cursorY = (doc as any).lastAutoTable.finalY + 6;
   });
+ 
   // ----- grand total -----
   if (cursorY + 14 > pageHeight - PDF_MARGIN.bottom) {
     doc.addPage();
     cursorY = PDF_MARGIN.top;
   }
+ 
   autoTable(doc, {
     startY: cursorY,
     margin: PDF_MARGIN,
@@ -306,16 +345,19 @@ const buildFeeReportPdf = (
       data.cell.styles.lineWidth = { top: 0.3, right: 0, bottom: 0.3, left: 0 } as any;
     },
   });
+ 
   // ----- footer on every page: Print Date / Time / Page x of y -----
   const firstStu = students[0];
   const printDate = firstStu?.printDate ? dayjs(firstStu.printDate) : dayjs();
   const printTime = firstStu?.printTime ? firstStu.printTime.toUpperCase() : dayjs().format("hh:mm A");
+ 
   const totalPages = doc.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     doc.setDrawColor(150, 150, 150);
     doc.setLineWidth(0.2);
     doc.line(PDF_MARGIN.left, pageHeight - 14, pageWidth - PDF_MARGIN.right, pageHeight - 14);
+ 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8.5);
     doc.setTextColor(0, 0, 0);
@@ -328,28 +370,36 @@ const buildFeeReportPdf = (
       align: "right",
     });
   }
+ 
   return doc.output("blob");
 };
+ 
 /* ===================================================================== */
+ 
 export default function StudentFeeReport() {
   // ---------- responsive (mobile) ----------
   const screens = Grid.useBreakpoint();
   const isMobile = screens.md === false; // below 768px
+ 
   // table data = fee report API result (all pages), paginated in the browser
   const [allStudents, setAllStudents] = useState<FeeReportStudent[]>([]);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [tableLoading, setTableLoading] = useState(false);
+ 
   // Export report
   const [exporting, setExporting] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportUrl, setReportUrl] = useState<string | null>(null);
   const [reportFileName, setReportFileName] = useState("Student_Fee_Report.pdf");
+ 
   // Search bar state
   const [searchFilters, setSearchFilters] = useState<StudentSearchFilters>(EMPTY_FILTERS);
+ 
   // Standard / Division dropdown options (same static data as Class Master)
   const [standardOptions, setStandardOptions] = useState<{ label: string; value: string }[]>([]);
   const [divisionOptions, setDivisionOptions] = useState<{ label: string; value: string }[]>([]);
+ 
   useEffect(() => {
     getAllStaticData()
       .then((res) => {
@@ -360,10 +410,11 @@ export default function StudentFeeReport() {
       })
       .catch((e) => console.error("Failed to load standard / division", e));
   }, []);
- 
+
   // both dates are optional, but From can never be after To
   const datesInvalid = (f: StudentSearchFilters) =>
     !!f.fromDate && !!f.toDate && f.fromDate.isAfter(f.toDate, "day");
+ 
   // ---------- LOAD DATA (fee report API with the payload) — used by first load, Search and Reset ----------
   const loadReport = useCallback(async (filters: StudentSearchFilters) => {
     setTableLoading(true);
@@ -377,24 +428,28 @@ export default function StudentFeeReport() {
       setTableLoading(false);
     }
   }, []);
+ 
   // first load: nothing selected -> payload {}
   useEffect(() => {
     loadReport(EMPTY_FILTERS);
   }, [loadReport]);
+ 
   // free the blob URL if the screen is closed while the report is open
   useEffect(() => {
     return () => {
       if (reportUrl) URL.revokeObjectURL(reportUrl);
     };
   }, [reportUrl]);
- 
+
   const displayedRows = useMemo(() => {
     const start = page * pageSize;
     return allStudents.slice(start, start + pageSize);
   }, [allStudents, page, pageSize]);
+ 
   const handleFilterChange = (field: keyof StudentSearchFilters, value: any) => {
     setSearchFilters((prev) => ({ ...prev, [field]: value }));
   };
+ 
   // ---------- SEARCH -> calls the fee report API with the payload ----------
   const handleSearch = () => {
     if (datesInvalid(searchFilters)) {
@@ -404,11 +459,13 @@ export default function StudentFeeReport() {
     setPage(0);
     loadReport(searchFilters);
   };
+ 
   const handleResetFilters = () => {
     setSearchFilters({ ...EMPTY_FILTERS });
     setPage(0);
     loadReport(EMPTY_FILTERS);
   };
+ 
   // ---------- EXPORT REPORT -> calls the fee report API again with the payload, then builds the PDF ----------
   // Uses the search bar: Standard, Division, From date - To date, first / last name.
   const handleExportReport = async () => {
@@ -419,11 +476,14 @@ export default function StudentFeeReport() {
     setExporting(true);
     try {
       const list = await fetchStudentFeeReport(searchFilters);
+ 
       if (!list.length) {
         message.warning("No data found for the selected filters");
         return;
       }
+ 
       const blob = buildFeeReportPdf(list, getAcademicYear(searchFilters.fromDate || dayjs()), searchFilters);
+ 
       setReportFileName(`Student_Fee_Report_${dayjs().format("DD-MM-YYYY")}.pdf`);
       setReportUrl(URL.createObjectURL(blob));
       setReportOpen(true);
@@ -434,11 +494,13 @@ export default function StudentFeeReport() {
       setExporting(false);
     }
   };
+ 
   const closeReport = () => {
     setReportOpen(false);
     if (reportUrl) URL.revokeObjectURL(reportUrl);
     setReportUrl(null);
   };
+ 
   const downloadReport = () => {
     if (!reportUrl) return;
     const a = document.createElement("a");
@@ -448,12 +510,13 @@ export default function StudentFeeReport() {
     a.click();
     document.body.removeChild(a);
   };
+ 
   // Mobile browsers often cannot show a PDF inside an iframe, so this opens it in a new tab
   const openReportInNewTab = () => {
     if (!reportUrl) return;
     window.open(reportUrl, "_blank");
   };
- 
+
   // totals of one student (from the fee report rows)
   const totalsOf = (s: FeeReportStudent) => {
     const rows = s.feeReportDataDTOS || [];
@@ -463,6 +526,7 @@ export default function StudentFeeReport() {
       pending: sumOf(rows, "pendingAmount"),
     };
   };
+ 
   // ---------- TABLE COLUMNS (from the fee report API) ----------
   const columns = [
     {
@@ -491,6 +555,7 @@ export default function StudentFeeReport() {
       render: (_: any, r: FeeReportStudent) => `₹ ${money(totalsOf(r).pending)}`,
     },
   ];
+ 
   // ---------- MOBILE: one row inside a student card ----------
   const cardRow = (label: string, value?: string | null) => (
 <div
@@ -506,33 +571,35 @@ export default function StudentFeeReport() {
 <span style={{ fontSize: 13, textAlign: "right", wordBreak: "break-word" }}>{value || "-"}</span>
 </div>
   );
+ 
   // ---------- MOBILE: all students as cards ----------
   const renderStudentCards = () => (
-<Spin spinning={tableLoading}>
-<div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <Spin spinning={tableLoading}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {displayedRows.map((r, i) => {
           const t = totalsOf(r);
           return (
-<Card
+            <Card
               key={`${r.firstName}-${r.lastName}-${r.phone}-${page * pageSize + i}`}
               size="small"
               title={
-<span style={{ fontWeight: 600, whiteSpace: "normal", wordBreak: "break-word" }}>
+                <span style={{ fontWeight: 600, whiteSpace: "normal", wordBreak: "break-word" }}>
                   {reportName(r) || "-"}
-</span>
+                </span>
               }
->
+            >
               {cardRow("Gender", r.gender ? capitalize(r.gender) : "-")}
               {cardRow("Phone", r.phone)}
               {cardRow("Total Fee", `₹ ${money(t.total)}`)}
               {cardRow("Paid Amount", `₹ ${money(t.paid)}`)}
               {cardRow("Pending Amount", `₹ ${money(t.pending)}`)}
-</Card>
+            </Card>
           );
         })}
-</div>
-<div style={{ display: "flex", justifyContent: "center", padding: "16px 0" }}>
-<Pagination
+      </div>
+ 
+      <div style={{ display: "flex", justifyContent: "center", padding: "16px 0" }}>
+        <Pagination
           simple
           current={page + 1}
           pageSize={pageSize}
@@ -543,12 +610,13 @@ export default function StudentFeeReport() {
 </div>
 </Spin>
   );
+ 
   return (
 <div>
       {/* Search Bar */}
-<Row gutter={[12, 12]} style={{ padding: "16px 0" }}>
-<Col xs={24} sm={12} md={4}>
-<Select
+      <Row gutter={[12, 12]} style={{ padding: "16px 0" }}>
+        <Col xs={24} sm={12} md={4}>
+          <Select
             placeholder="Standard"
             value={searchFilters.standard}
             onChange={(value) => handleFilterChange("standard", value)}
@@ -556,9 +624,10 @@ export default function StudentFeeReport() {
             style={{ width: "100%" }}
             allowClear
           />
-</Col>
-<Col xs={24} sm={12} md={4}>
-<Select
+        </Col>
+ 
+        <Col xs={24} sm={12} md={4}>
+          <Select
             placeholder="Division"
             value={searchFilters.division}
             onChange={(value) => handleFilterChange("division", value)}
@@ -566,9 +635,10 @@ export default function StudentFeeReport() {
             style={{ width: "100%" }}
             allowClear
           />
-</Col>
-<Col xs={24} sm={12} md={4}>
-<DatePicker
+        </Col>
+ 
+        <Col xs={24} sm={12} md={4}>
+          <DatePicker
             placeholder="From Date"
             format="DD-MM-YYYY"
             value={searchFilters.fromDate}
@@ -576,9 +646,10 @@ export default function StudentFeeReport() {
             disabledDate={(d) => !!searchFilters.toDate && d.isAfter(searchFilters.toDate, "day")}
             style={{ width: "100%" }}
           />
-</Col>
-<Col xs={24} sm={12} md={4}>
-<DatePicker
+        </Col>
+ 
+        <Col xs={24} sm={12} md={4}>
+          <DatePicker
             placeholder="To Date"
             format="DD-MM-YYYY"
             value={searchFilters.toDate}
@@ -586,9 +657,10 @@ export default function StudentFeeReport() {
             disabledDate={(d) => !!searchFilters.fromDate && d.isBefore(searchFilters.fromDate, "day")}
             style={{ width: "100%" }}
           />
-</Col>
-<Col xs={24} sm={12} md={4}>
-<Input
+        </Col>
+ 
+        <Col xs={24} sm={12} md={4}>
+          <Input
             placeholder="First Name"
             value={searchFilters.firstName}
             onChange={(e) => handleFilterChange("firstName", e.target.value)}
@@ -596,9 +668,10 @@ export default function StudentFeeReport() {
             style={{ width: "100%" }}
             allowClear
           />
-</Col>
-<Col xs={24} sm={12} md={4}>
-<Input
+        </Col>
+ 
+        <Col xs={24} sm={12} md={4}>
+          <Input
             placeholder="Last Name"
             value={searchFilters.lastName}
             onChange={(e) => handleFilterChange("lastName", e.target.value)}
@@ -606,9 +679,10 @@ export default function StudentFeeReport() {
             style={{ width: "100%" }}
             allowClear
           />
-</Col>
-<Col xs={24}>
-<div
+        </Col>
+ 
+        <Col xs={24}>
+          <div
             style={{
               display: "flex",
               justifyContent: isMobile ? "flex-start" : "flex-end",
@@ -643,19 +717,20 @@ export default function StudentFeeReport() {
               }}
 >
               Export Report
-</Button>
-</div>
-</Col>
-</Row>
+            </Button>
+          </div>
+        </Col>
+      </Row>
+ 
       {!tableLoading && allStudents.length === 0 ? (
-<Empty description="No students found" style={{ padding: "40px 0" }} />
+        <Empty description="No students found" style={{ padding: "40px 0" }} />
       ) : isMobile ? (
         // MOBILE: students in card view
         renderStudentCards()
       ) : (
         // DESKTOP: table
-<div style={{ width: "100%", overflowX: "auto" }}>
-<CommonTable
+        <div style={{ width: "100%", overflowX: "auto" }}>
+          <CommonTable
             data={displayedRows}
             columns={columns}
             loading={tableLoading}
@@ -672,6 +747,7 @@ export default function StudentFeeReport() {
           />
 </div>
       )}
+ 
       {/* ---------- Report preview (opens when Export Report is clicked) ---------- */}
 <Modal
         title="Student Fee Report"

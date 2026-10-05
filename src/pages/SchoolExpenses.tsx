@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Button, Card, Col, Divider, Drawer, Empty, Form, Input, InputNumber,
+  Button, Card, Col, DatePicker, Divider, Drawer, Empty, Form, Input, InputNumber,
   Popconfirm, Row, Select, Spin, Tag, message,
 } from "antd";
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, ShoppingOutlined } from "@ant-design/icons";
+import dayjs from "dayjs";
 
 import CommonTable from "../components/commonTable";
 import api from "../lib/axios";
@@ -36,6 +37,8 @@ interface SchoolExpenseRow {
   total: number | null;
   paidAmount?: number | null;
   pendingAmount?: number | null;
+  // 🆕 comes from the backend, sent back on save / update
+  purchaseDate?: string | null;
   status: string;
   [key: string]: any;
 }
@@ -269,7 +272,11 @@ export default function SchoolExpenses() {
     setEditingExpenseId(null);
     setSelectedPurchase(null);
     form.resetFields();
-    form.setFieldsValue({ quantity: 1, price: 0, total: 0, paidAmount: 0, pendingAmount: 0, status: "PAID", categoryFilter: undefined });
+    form.setFieldsValue({
+      quantity: 1, price: 0, total: 0, paidAmount: 0, pendingAmount: 0, status: "PAID",
+      categoryFilter: undefined,
+      purchaseDate: dayjs(), // 🆕 defaults to today, can be changed
+    });
     setDrawerOpen(true);
   };
 
@@ -300,6 +307,8 @@ export default function SchoolExpenses() {
       form.setFieldsValue({
         categoryFilter: purchase?.category,
         purchaseId: record.purchaseId,
+        // 🆕 purchase date coming from the backend
+        purchaseDate: record.purchaseDate ? dayjs(record.purchaseDate) : undefined,
         quantity: record.quantity,
         price: record.price,
         total: record.total !== null && record.total !== undefined
@@ -394,6 +403,8 @@ export default function SchoolExpenses() {
         const total = quantity * price;
         const paidAmount = Number(values.paidAmount || 0);
         const pendingAmount = Math.max(total - paidAmount, 0);
+        // 🆕 sent to the backend as YYYY-MM-DD
+        const purchaseDate = dayjs(values.purchaseDate).format("YYYY-MM-DD");
 
         // UPDATE
         if (isEditing && editingExpenseId !== null) {
@@ -405,6 +416,7 @@ export default function SchoolExpenses() {
             purchaseId: Number(values.purchaseId),
             paidAmount,
             pendingAmount,
+            purchaseDate,
             status: values.status,
           };
           console.log("UPDATE SCHOOL EXPENSE PAYLOAD:", payload);
@@ -422,7 +434,13 @@ export default function SchoolExpenses() {
         }
 
         // SAVE
-        const payload = { price, quantity, total, purchaseId: Number(values.purchaseId), paidAmount, pendingAmount, status: values.status };
+        const payload = {
+          price, quantity, total,
+          purchaseId: Number(values.purchaseId),
+          paidAmount, pendingAmount,
+          purchaseDate,
+          status: values.status,
+        };
         console.log("SAVE SCHOOL EXPENSE PAYLOAD:", payload);
 
         const res = await api.post(apiEndpoints.saveSchoolExpenses(), payload);
@@ -785,7 +803,6 @@ export default function SchoolExpenses() {
                 label={<span className="font-medium">Product Name</span>}
                 name="purchaseId"
                 rules={[{ required: true, message: "Please select product" }]}
-                className="!mb-0"
               >
                 <Select
                   placeholder="Select product"
@@ -804,6 +821,20 @@ export default function SchoolExpenses() {
                     </Option>
                   ))}
                 </Select>
+              </Form.Item>
+
+              {/* 🆕 PURCHASE DATE — right below Product Name, sent to the backend on save / update */}
+              <Form.Item
+                label={<span className="font-medium">Purchase Date</span>}
+                name="purchaseDate"
+                rules={[{ required: true, message: "Please select purchase date" }]}
+                className="!mb-0"
+              >
+                <DatePicker
+                  className="w-full"
+                  format="DD-MM-YYYY"
+                  placeholder="Select purchase date"
+                />
               </Form.Item>
 
               {/* SELECTED PRODUCT INFORMATION — shows automatically as

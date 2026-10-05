@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Card, Col, Empty, Input, Modal, Pagination, Row, Select, Spin, Tag, message } from "antd";
+import { Button, Card, Col, DatePicker, Empty, Input, Modal, Pagination, Row, Select, Spin, message } from "antd";
 import {
   DownloadOutlined,
   ExportOutlined,
@@ -7,13 +7,14 @@ import {
   ReloadOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
-import dayjs from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 
 import CommonTable from "../components/commonTable";
 import {
   getAllSchoolExpensesReportData,
   reportProductStatus,
   sumReport,
+  type SchoolExpenseReportPayload,
   type SchoolExpenseReportProduct,
 } from "../services/SchoolExpensesService";
 import { buildSchoolExpensesReportPdf } from "../services/SchoolExpensesReportPdf";
@@ -24,12 +25,67 @@ interface ReportFilters {
   status?: string;
 }
 
+type DateRange = [Dayjs | null, Dayjs | null] | null;
+
 const money = (v?: number | null) =>
   v === null || v === undefined
     ? "-"
     : Number(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 // const statusColor = (s?: string) => (s === "PAID" ? "green" : s === "PENDING" ? "orange" : "default");
+
+// Payload sent to the report API (empty values are skipped, so it stays {} when nothing is selected):
+// {
+//   "productName": "Carrom",
+//   "category": "Physics Lab Equipment",
+//   "range:purchaseDate": { "start": "2026-10-01", "end": "2026-11-04" }
+// }
+const buildPayload = (filters: ReportFilters, range: DateRange): SchoolExpenseReportPayload => {
+  const payload: SchoolExpenseReportPayload = {};
+  if (filters.productName?.trim()) payload.productName = filters.productName.trim();
+  if (filters.category) payload.category = filters.category;
+  if (range?.[0] || range?.[1]) {
+    payload["range:purchaseDate"] = {
+      ...(range?.[0] ? { start: range[0].format("YYYY-MM-DD") } : {}),
+      ...(range?.[1] ? { end: range[1].format("YYYY-MM-DD") } : {}),
+    };
+  }
+  return payload;
+};
+
+// Safety net, in case the backend ignores some payload keys: the same filters are re-checked here.
+// With a date range selected, only purchases inside it are kept (and products with none are hidden).
+const applyClientFilters = (
+  products: SchoolExpenseReportProduct[],
+  filters: ReportFilters,
+  range: DateRange
+): SchoolExpenseReportProduct[] => {
+  const name = filters.productName?.trim().toLowerCase();
+  const from = range?.[0] ? range[0].startOf("day") : null;
+  const to = range?.[1] ? range[1].endOf("day") : null;
+
+  return products
+    .filter(
+      (p) =>
+        (!filters.category || p.category === filters.category) &&
+        (!name || (p.productName || "").toLowerCase().includes(name))
+    )
+    .map((p) => {
+      if (!from && !to) return p;
+      return {
+        ...p,
+        reportDataDTOList: (p.reportDataDTOList || []).filter((e) => {
+          if (!e.purchaseDate) return false;
+          const d = dayjs(e.purchaseDate);
+          if (from && d.isBefore(from)) return false;
+          if (to && d.isAfter(to)) return false;
+          return true;
+        }),
+      };
+    })
+    .filter((p) => (!from && !to) || (p.reportDataDTOList || []).length > 0)
+    .filter((p) => !filters.status || reportProductStatus(p.reportDataDTOList || []) === filters.status);
+};
 
 // Switches to the mobile card layout below `breakpoint`px (same idea as Purchase Master)
 function useIsMobile(breakpoint = 768) {
@@ -55,17 +111,35 @@ export default function SchoolExpensesReport() {
   const [searchFilters, setSearchFilters] = useState<ReportFilters>({});
   const [appliedFilters, setAppliedFilters] = useState<ReportFilters>({});
 
+  // From date -> To date (purchase date), sent to the backend on Search and Export Report
+  const [dateRange, setDateRange] = useState<DateRange>(null);
+  const [appliedRange, setAppliedRange] = useState<DateRange>(null);
+
+  // Category dropdown options. Kept in their own state (and only ever added to), because after a
+  // filtered search the API returns fewer products and the list would otherwise shrink.
+  const [categories, setCategories] = useState<string[]>([]);
+
   // Export report
   const [exporting, setExporting] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportUrl, setReportUrl] = useState<string | null>(null);
   const [reportFileName, setReportFileName] = useState("School_Expenses_Report.pdf");
 
-  // ---------- DATA (School Expenses REPORT API, all pages) ----------
-  const fetchExpenses = useCallback(async () => {
+  const rememberCategories = (list: SchoolExpenseReportProduct[]) => {
+    setCategories((prev) => {
+      const set = new Set(prev);
+      list.forEach((p) => p.category && set.add(p.category));
+      return Array.from(set).sort((a, b) => a.localeCompare(b));
+    });
+  };
+
+  // ---------- DATA (School Expenses REPORT API, all pages) — called with the payload ----------
+  const fetchExpenses = useCallback(async (filters: ReportFilters, range: DateRange) => {
     setTableLoading(true);
     try {
-      setAllProducts(await getAllSchoolExpensesReportData());
+      const list = await getAllSchoolExpensesReportData(buildPayload(filters, range));
+      rememberCategories(list);
+      setAllProducts(list);
     } catch (error: any) {
       console.error("School expenses report error:", error);
       message.error(error?.response?.data?.message || error?.message || "Failed to load school expenses report");
@@ -75,8 +149,9 @@ export default function SchoolExpensesReport() {
     }
   }, []);
 
+  // first load: nothing selected -> payload {}
   useEffect(() => {
-    fetchExpenses();
+    fetchExpenses({}, null);
   }, [fetchExpenses]);
 
   // free the blob URL if the screen is closed while the report is open
@@ -86,26 +161,13 @@ export default function SchoolExpensesReport() {
     };
   }, [reportUrl]);
 
-  // Category dropdown options come from the report data itself
-  const categoryOptions = useMemo(() => {
-    const set = new Set<string>();
-    allProducts.forEach((p) => {
-      if (p.category) set.add(p.category);
-    });
-    return Array.from(set).map((c) => ({ label: c, value: c }));
-  }, [allProducts]);
+  const categoryOptions = useMemo(() => categories.map((c) => ({ label: c, value: c })), [categories]);
 
-  // ---------- FILTERING (applies on Search click) ----------
-  const filteredProducts = useMemo(() => {
-    const { category, productName, status } = appliedFilters;
-    const name = productName?.trim().toLowerCase();
-    return allProducts.filter(
-      (p) =>
-        (!category || p.category === category) &&
-        (!name || (p.productName || "").toLowerCase().includes(name)) &&
-        (!status || reportProductStatus(p.reportDataDTOList || []) === status)
-    );
-  }, [allProducts, appliedFilters]);
+  // ---------- FILTERED LIST + PAGE SLICE ----------
+  const filteredProducts = useMemo(
+    () => applyClientFilters(allProducts, appliedFilters, appliedRange),
+    [allProducts, appliedFilters, appliedRange]
+  );
 
   const displayedRows = useMemo(() => {
     const start = page * pageSize;
@@ -116,33 +178,56 @@ export default function SchoolExpensesReport() {
     setSearchFilters((prev) => ({ ...prev, [field]: value || undefined }));
   };
 
+  // both dates must be chosen together (or none)
+  const rangeIsIncomplete = (range: DateRange) => !!range?.[0] !== !!range?.[1];
+
+  // ---------- SEARCH -> calls the report API with the payload ----------
   const handleSearch = () => {
+    if (rangeIsIncomplete(dateRange)) {
+      message.warning("Please select both From date and To date");
+      return;
+    }
     setPage(0);
     setAppliedFilters(searchFilters);
+    setAppliedRange(dateRange);
+    fetchExpenses(searchFilters, dateRange);
   };
 
   const handleReset = () => {
     setSearchFilters({});
     setAppliedFilters({});
+    setDateRange(null);
+    setAppliedRange(null);
     setPage(0);
+    fetchExpenses({}, null);
   };
 
-  // ---------- EXPORT REPORT ----------
-  // Exports whatever the search bar currently filtered (all pages, not just the visible one)
-  const handleExportReport = () => {
-    if (!filteredProducts.length) {
-      message.warning("No data found for the selected filters");
+  // ---------- EXPORT REPORT -> calls the report API again with the payload, then builds the PDF ----------
+  // Uses whatever is selected/typed in the search bar right now.
+  const handleExportReport = async () => {
+    if (rangeIsIncomplete(dateRange)) {
+      message.warning("Please select both From date and To date");
       return;
     }
+
     setExporting(true);
     try {
-      const blob = buildSchoolExpensesReportPdf(filteredProducts, appliedFilters);
+      const fetched = await getAllSchoolExpensesReportData(buildPayload(searchFilters, dateRange));
+      rememberCategories(fetched);
+      const products = applyClientFilters(fetched, searchFilters, dateRange);
+
+      if (!products.length) {
+        message.warning("No data found for the selected filters");
+        return;
+      }
+
+      const blob = buildSchoolExpensesReportPdf(products, searchFilters);
       setReportFileName(`School_Expenses_Report_${dayjs().format("DD-MM-YYYY")}.pdf`);
       setReportUrl(URL.createObjectURL(blob));
       setReportOpen(true);
     } catch (error: any) {
       console.error("Export report failed:", error);
-      message.error(error?.message || "Failed to generate report");
+      message.error(error?.response?.data?.message || error?.message || "Failed to generate report");
     } finally {
       setExporting(false);
     }
@@ -225,6 +310,18 @@ export default function SchoolExpensesReport() {
             allowClear
           />
         </Col>
+
+        {/* From date -> To date (purchase date), sent to the backend */}
+        <Col xs={24} sm={12} md={7}>
+          <DatePicker.RangePicker
+            format="DD-MM-YYYY"
+            placeholder={["From Date", "To Date"]}
+            value={dateRange as any}
+            onChange={(v) => setDateRange(v as DateRange)}
+            style={{ width: "100%" }}
+            allowClear
+          />
+        </Col>
 {/* 
         <Col xs={24} sm={12} md={5}>
           <Select
@@ -240,7 +337,7 @@ export default function SchoolExpensesReport() {
           />
         </Col> */}
 
-        <Col xs={24} sm={12} md={14}>
+        <Col xs={24} sm={12} md={7}>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
             <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
               Search
@@ -277,7 +374,6 @@ export default function SchoolExpensesReport() {
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {displayedRows.map((r, index) => {
               const entries = r.reportDataDTOList || [];
-              const st = reportProductStatus(entries);
               return (
                 <Card key={r.productCode || `${r.category}-${r.productName}`} size="small" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
