@@ -140,13 +140,13 @@ export const adminNavItems: AdminNavEntry[] = [
     label: "Reports",
     icon: AiOutlineCheckSquare,
     children: [
-    
-      
+          {label: "Student Fee Report", path: "/student-fee-report",icon: AiOutlineCode},
+          {label: "School expenses report",path:"/school-expenses-report",icon:RiShoppingBagFill},
          {label: "Employee Salary Report", path: "/employee-salary-report",icon: AiOutlineCode},
-        {label: "Student Fee Report", path: "/student-fee-report",icon: AiOutlineCode},
+        
 
        
-        {label: "School expenses report",path:"/school-expenses-report",icon:RiShoppingBagFill}
+        
     ],
     
     
