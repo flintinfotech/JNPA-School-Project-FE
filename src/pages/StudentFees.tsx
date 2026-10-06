@@ -1038,66 +1038,72 @@ export default function StudentFeesManagement() {
   };
 
   const handleFormSubmit = async (values: any) => {
-    if (!selectedStudent) return;
-    setSubmitting(true);
-    try {
-      const fees = values.studentFeeDTOS || [];
+  if (!selectedStudent) return;
 
-      // Each fee is sent as its own flat request — studentId lives INSIDE
-      // the object (matching the backend's actual payload shape), not as a
-      // separate wrapper. New fees (no studentFeeId yet) go to the save/create
-      // endpoint; existing ones go to update.
-      await Promise.all(
-        fees.map((fee: any) => {
-          const payload = {
+  const fees = values.studentFeeDTOS || [];
+
+  // ✅ CHANGE 1: check on the screen first, before calling the API
+  const overpaid = fees.find(
+    (fee: any) => (Number(fee.paidAmount) || 0) > (Number(fee.totalFeeAmount) || 0),
+  );
+  if (overpaid) {
+    message.error("Paid amount cannot be greater than total amount");
+    return;
+  }
+
+  setSubmitting(true);
+  try {
+    const responses = await Promise.all(
+      fees.map((fee: any) => {
+        const payload = {
+          ...(fee.studentFeeId ? { studentFeeId: fee.studentFeeId } : {}),
+          studentId: selectedStudent.studentId,
+          academicYear: fee.academicYear,
+          feeName: fee.feeName,
+          totalFeeAmount: fee.totalFeeAmount,
+          dueDate: fee.dueDate,
+          paidAmount: fee.paidAmount,
+          pendingAmount: fee.pendingAmount,
+          dueAmount: fee.dueAmount,
+          ...(fee.status ? { status: fee.status } : {}),
+          feePaymentDTOS: (fee.feePaymentDTOS || []).map((p: any) => ({
+            ...(p.feePaymentId != null ? { feePaymentId: Number(p.feePaymentId) } : {}),
             ...(fee.studentFeeId ? { studentFeeId: fee.studentFeeId } : {}),
-            studentId: selectedStudent.studentId,
-            academicYear: fee.academicYear,
-            feeName: fee.feeName,
-            totalFeeAmount: fee.totalFeeAmount,
-            dueDate: fee.dueDate,
-            paidAmount: fee.paidAmount,
-            pendingAmount: fee.pendingAmount,
-            dueAmount: fee.dueAmount,
-            // 👇 NEW — pass status through on update so it isn't wiped out;
-            // on a new fee this is undefined and the backend presumably
-            // assigns it (e.g. "PENDING").
-            ...(fee.status ? { status: fee.status } : {}),
-            feePaymentDTOS: (fee.feePaymentDTOS || []).map((p: any) => ({
-              ...(p.feePaymentId != null ? { feePaymentId: Number(p.feePaymentId) } : {}),
-              // 👇 NEW — required by the backend: FEE_PAYMENT_ENTITY.STUDENT_FEE_ID
-              // is NOT NULL, so every payment row (new or existing) needs it set
-              // explicitly. Without this, adding a new payment while updating an
-              // existing fee fails with a NULL constraint violation on insert.
-              ...(fee.studentFeeId ? { studentFeeId: fee.studentFeeId } : {}),
-              // 👇 NEW — pass receiptNo through on update so it isn't wiped
-              // out; on a new payment this is undefined and the backend
-              // presumably assigns it.
-              ...(p.receiptNo ? { receiptNo: p.receiptNo } : {}),
-              amount: p.amount,
-              paymentMode: p.paymentMode,
-              paymentDate: p.paymentDate,
-              transactionId: p.transactionId,
-              remarks: p.remarks,
-            })),
-          };
+            ...(p.receiptNo ? { receiptNo: p.receiptNo } : {}),
+            amount: p.amount,
+            paymentMode: p.paymentMode,
+            paymentDate: p.paymentDate,
+            transactionId: p.transactionId,
+            remarks: p.remarks,
+          })),
+        };
 
-          return fee.studentFeeId
-            ? api.put(apiEndpoints.updateStudentFee(), payload)
-            : api.post(apiEndpoints.saveStudentFee(), payload);
-        })
-      );
+        return fee.studentFeeId
+          ? api.put(apiEndpoints.updateStudentFee(), payload)
+          : api.post(apiEndpoints.saveStudentFee(), payload);
+      }),
+    );
 
-      message.success(hasExistingFees ? "Fee records updated successfully" : "Fee records saved successfully");
-      closeDrawer();
-      fetchStudents(page, pageSize, searchFilters);
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || "Failed to save fee record");
-    } finally {
-      setSubmitting(false);
+    // ✅ CHANGE 2: the backend may send "success": false with a normal HTTP 200,
+    // so check every response body before showing the success message
+    const failed = responses.find((r: any) => r?.data?.success === false);
+    if (failed) {
+      message.error(failed.data?.message || "Failed to save fee record");
+      return; // drawer stays open, nothing is refreshed
     }
-  };
 
+    message.success(
+      hasExistingFees ? "Fee records updated successfully" : "Fee records saved successfully",
+    );
+    closeDrawer();
+    fetchStudents(page, pageSize, searchFilters);
+  } catch (error: any) {
+    // still handles real HTTP errors (412 etc.) and shows the backend message
+    message.error(error?.response?.data?.message || "Failed to save fee record");
+  } finally {
+    setSubmitting(false);
+  }
+};
   const handleDeleteFee = async (studentFeeId: number) => {
     try {
       await api.delete(apiEndpoints.deleteStudentFee(studentFeeId));

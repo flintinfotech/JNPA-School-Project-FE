@@ -336,4 +336,20 @@ getStudentFeeReportData: (page: number, size: number) =>
   `/jnpa-school-project/studentFee/getStudentFeeReportData?page=${page}&size=${size}&desc&paginate=true`,
 
 
+
+//Request Approval 
+saveRequestApproval: () =>
+  `/jnpa-school-project/requestApproval/saveRequestApproval`,
+
+getAllRequestApprovalByFilter: (page: number, size: number) =>
+  `/jnpa-school-project/requestApproval/getAllRequestApprovalByFilter?page=${page}&size=${size}&desc&paginate=true`,
+
+getRequestApprovalById: (requestApprovalId: number | string) =>
+  `/jnpa-school-project/requestApproval/getRequestApproval/${requestApprovalId}`,
+
+updateRequestApproval: () =>
+  `/jnpa-school-project/requestApproval/updateRequestApproval`,
+
+deleteRequestApproval: (requestApprovalId: number | string) =>
+    `/jnpa-school-project/requestApproval/deleteRequestApproval/${requestApprovalId}`,
 };

@@ -75,6 +75,7 @@ import Employeesalary from "./pages/userModule/Employeesalary";
 import Employeesalaryreport from "./pages/userModule/Employeesalaryreport";
 import SchoolExpensesReport from "./pages/SchoolExpensesReport";
 import Studentfeereport from "./pages/Studentfeereport";
+import RequestApproval from "./pages/RequestApproval";
  
 export default function App() {
  
@@ -113,10 +114,11 @@ export default function App() {
  const isEmployeeSalaryReportPage = location.pathname === "/employee-salary-report";
  const isStudentFeeReportPage = location.pathname === "/student-fee-report";
  const isSchoolExpensesReportPage = location.pathname ==="/school-expenses-report";
+ const isRequestApprovalPage = location.pathname ==="/request-approval";
   const isHomePage = location.pathname === "/";
  
-  const hideNavbarFooter = isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage || isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage || isStudentProfile|| isResultsPage || isAchievementsPage || isAcademicCalendarPage || isStudentFeesPage || isTimeTablePage || isPurchaseMasterPage || isSchoolExpensesPage ||isStudentHomeworkPage || isFormerStudentPage || isStudentAttendence|| isEmployeesalaryPage || isEmployeeSalaryReportPage|| isStudentFeeReportPage ||  isSchoolExpensesReportPage;
-  const hideFooter = isHomePage || isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage ||  isTeacherSubjectsPage ||  isAdmissionInquiryPage  ||  isDashboardPage ||  isProfilePage ||  isStudentProfile||  isResultsPage ||  isAchievementsPage  ||  isAcademicCalendarPage  ||  isStudentFeesPage ||  isTimeTablePage ||  isPurchaseMasterPage || isSchoolExpensesPage||isStudentHomeworkPage  || isFormerStudentPage ||isStudentAttendence || isEmployeesalaryPage || isEmployeeSalaryReportPage || isStudentFeeReportPage || isSchoolExpensesReportPage;
+  const hideNavbarFooter = isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage || isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage || isStudentProfile|| isResultsPage || isAchievementsPage || isAcademicCalendarPage || isStudentFeesPage || isTimeTablePage || isPurchaseMasterPage || isSchoolExpensesPage ||isStudentHomeworkPage || isFormerStudentPage || isStudentAttendence|| isEmployeesalaryPage || isEmployeeSalaryReportPage|| isStudentFeeReportPage ||  isSchoolExpensesReportPage ||isRequestApprovalPage;
+  const hideFooter = isHomePage || isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage ||  isTeacherSubjectsPage ||  isAdmissionInquiryPage  ||  isDashboardPage ||  isProfilePage ||  isStudentProfile||  isResultsPage ||  isAchievementsPage  ||  isAcademicCalendarPage  ||  isStudentFeesPage ||  isTimeTablePage ||  isPurchaseMasterPage || isSchoolExpensesPage||isStudentHomeworkPage  || isFormerStudentPage ||isStudentAttendence || isEmployeesalaryPage || isEmployeeSalaryReportPage || isStudentFeeReportPage || isSchoolExpensesReportPage ||isRequestApprovalPage;
  
   return (
     <div className="min-h-screen flex flex-col">
@@ -181,6 +183,7 @@ export default function App() {
           <Route path="/employee-salary-report" element={<Employeesalaryreport />}/>
           <Route path="/student-fee-report" element={<Studentfeereport />} />
           <Route path="/school-expenses-report" element={<SchoolExpensesReport/>}/>
+          <Route path="/request-approval" element={<RequestApproval/>}/>
           </Route>
  
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />

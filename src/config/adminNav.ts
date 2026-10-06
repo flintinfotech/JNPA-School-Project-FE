@@ -10,11 +10,12 @@ import { GrCircleInformation } from "react-icons/gr";
 import { RiMedalLine } from "react-icons/ri";
 import { SlCalender } from "react-icons/sl";
 import { RiShoppingBagFill } from "react-icons/ri";
-import { MdAccountBalance } from "react-icons/md";
+import { MdAccountBalance,MdApproval  } from "react-icons/md";
 import { RiShoppingCartFill ,RiPresentationLine } from "react-icons/ri";
 import { RiMoneyDollarCircleLine } from "react-icons/ri";
 import { AiOutlineCode } from "react-icons/ai";
 import { AiOutlineCheckSquare } from "react-icons/ai";
+// import { MdApproval } from "react-icons/md";
 import { GiExpense } from "react-icons/gi";
 
 import {
@@ -75,6 +76,7 @@ export const adminNavItems: AdminNavEntry[] = [
     { label: "Students", path: "/students", icon: PiStudent },
     { label: "Admission Inquiry", path:"/admission-inquiry",icon:GrCircleInformation},
     { label: "Former Student", path:"/former-student",icon:PiStudentFill},
+    { label: "Request Approval",path:"/request-approval",icon:MdApproval  },
   ],
 },
 
@@ -151,7 +153,6 @@ export const adminNavItems: AdminNavEntry[] = [
     
     
   },
- 
  
  
 ];
