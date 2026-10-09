@@ -5,23 +5,19 @@ import { apiEndpoints } from "../services/apiEndpoints";
 // Types
 // =====================================================
 
-export interface PurchaseDTO {
-  purchaseId: number;
+// One school expense. The backend now sends the product details FLAT on every row
+// (no purchaseId / purchaseDTO any more).
+export interface SchoolExpensesDTO {
+  schoolExpenseId: number;
+  academicYear: string;
   category: string;
   productCode?: string;
   productName: string;
-}
-
-export interface SchoolExpensesDTO {
-  schoolExpenseId: number;
-  purchaseId: number;
-  purchaseDTO: PurchaseDTO;
-  quantity: number;
   price: number;
+  quantity: number;
   total: number | null;
   paidAmount?: number | null;
   pendingAmount?: number | null;
-  // 🆕 New field, inserted before "status".
   purchaseDate: string;
   status: string;
 }
@@ -43,22 +39,33 @@ export interface SchoolExpensesListResponse {
   timestamp?: string;
 }
 
+// Body for POST saveSchoolExpenses
+export interface SaveSchoolExpensePayload {
+  price: number;
+  quantity: number;
+  total: number;
+  paidAmount: number;
+  pendingAmount: number;
+  academicYear: string;
+  purchaseDate: string;
+  status: string;
+  productCode?: string;
+  category: string;
+  productName: string;
+}
+
+// Body for PUT updateSchoolExpenses (same as save + schoolExpenseId)
+export interface UpdateSchoolExpensePayload extends SaveSchoolExpensePayload {
+  schoolExpenseId: number;
+}
+
 // =====================================================
 // Save School Expenses
+// POST schoolExpenses/saveSchoolExpenses
 // =====================================================
 
 export const saveSchoolExpenses = async (
-  payload: {
-    price: number;
-    quantity: number;
-    total: number;
-    purchaseId: number;
-    paidAmount: number;
-    pendingAmount: number;
-    // 🆕
-    purchaseDate: string;
-    status: string;
-  }
+  payload: SaveSchoolExpensePayload
 ): Promise<SchoolExpensesResponse> => {
   const response = await axiosInstance.post(
     apiEndpoints.saveSchoolExpenses(),
@@ -70,6 +77,7 @@ export const saveSchoolExpenses = async (
 
 // =====================================================
 // Get School Expenses By ID
+// GET schoolExpenses/getSchoolExpenses/{schoolExpenseId}
 // =====================================================
 
 export const getSchoolExpensesById = async (
@@ -84,23 +92,11 @@ export const getSchoolExpensesById = async (
 
 // =====================================================
 // Update School Expenses
+// PUT schoolExpenses/updateSchoolExpenses
 // =====================================================
 
 export const updateSchoolExpenses = async (
-  payload: {
-    price: number;
-    quantity: number;
-    // 🛠️ FIX — total must be sent on update too, or the backend stores
-    // it as null and dashboard expense totals come out wrong.
-    total: number;
-    schoolExpenseId: number;
-    purchaseId: number;
-    paidAmount: number;
-    pendingAmount: number;
-    // 🆕
-    purchaseDate: string;
-    status: string;
-  }
+  payload: UpdateSchoolExpensePayload
 ): Promise<SchoolExpensesResponse> => {
   const response = await axiosInstance.put(
     apiEndpoints.updateSchoolExpenses(),
@@ -112,6 +108,7 @@ export const updateSchoolExpenses = async (
 
 // =====================================================
 // Delete School Expenses
+// DELETE schoolExpenses/deleteSchoolExpenses/{schoolExpenseId}
 // =====================================================
 
 export const deleteSchoolExpenses = async (
@@ -126,23 +123,35 @@ export const deleteSchoolExpenses = async (
 
 // =====================================================
 // Get All School Expenses
+// POST schoolExpenses/getAllSchoolExpensesByFilter?page=&size=&desc&paginate=true
+// Body: { "productName": "Carrom", "category": "Physics Lab Equipment" }  (only what is selected)
 // =====================================================
+
+export interface SchoolExpenseListPayload {
+  productName?: string;
+  category?: string;
+}
 
 export const getAllSchoolExpensesByFilter = async (
   page: number,
   size: number,
-  payload: object = {}
+  payload: SchoolExpenseListPayload = {}
 ): Promise<SchoolExpensesListResponse> => {
+  // empty values are NOT sent
+  const body: Record<string, string> = {};
+  if (payload.productName?.trim()) body.productName = payload.productName.trim();
+  if (payload.category?.trim()) body.category = payload.category.trim();
+
   const response = await axiosInstance.post(
     apiEndpoints.getAllSchoolExpensesByFilter(page, size),
-    payload
+    body
   );
 
   return response.data;
 };
 
 // =====================================================
-// School Expenses REPORT (one block per product, with all its purchases)
+// School Expenses REPORT
 // POST schoolExpenses/getSchoolExpensesReportData?page=&size=&desc&paginate=true
 // =====================================================
 
@@ -156,6 +165,8 @@ export interface SchoolExpenseReportEntry {
   total: number | null;
 }
 
+// One block per product, with all its purchases. This is the shape the report screen and
+// the PDF already use, so they keep working without any change.
 export interface SchoolExpenseReportProduct {
   category: string;
   productCode?: string;
@@ -165,7 +176,16 @@ export interface SchoolExpenseReportProduct {
   reportDataDTOList: SchoolExpenseReportEntry[];
 }
 
-// 🆕 Body sent to the report API. Empty values are NOT sent, so the body is {}
+// The backend now sends ONE FLAT ROW per purchase (category, productName, quantity, total ...).
+interface SchoolExpenseReportFlatRow extends SchoolExpenseReportEntry {
+  category: string;
+  productCode?: string;
+  productName: string;
+  printDate?: string;
+  printTime?: string;
+}
+
+// Body sent to the report API. Empty values are NOT sent, so the body is {}
 // when nothing is selected. Dates are "YYYY-MM-DD". Example:
 // {
 //   "productName": "Carrom",
@@ -178,6 +198,38 @@ export interface SchoolExpenseReportPayload {
   "range:purchaseDate"?: { start?: string; end?: string };
 }
 
+// Groups the flat rows by product, so each product has its list of purchases.
+const groupReportRows = (rows: SchoolExpenseReportFlatRow[]): SchoolExpenseReportProduct[] => {
+  const map = new Map<string, SchoolExpenseReportProduct>();
+
+  rows.forEach((r) => {
+    const key = r.productCode || `${r.category}|${(r.productName || "").trim()}`;
+    let product = map.get(key);
+    if (!product) {
+      product = {
+        category: r.category,
+        productCode: r.productCode,
+        productName: r.productName,
+        printDate: r.printDate,
+        printTime: r.printTime,
+        reportDataDTOList: [],
+      };
+      map.set(key, product);
+    }
+    product.reportDataDTOList.push({
+      academicYear: r.academicYear ?? null,
+      paidAmount: r.paidAmount ?? null,
+      pendingAmount: r.pendingAmount ?? null,
+      price: r.price ?? null,
+      purchaseDate: r.purchaseDate ?? null,
+      quantity: r.quantity ?? null,
+      total: r.total ?? null,
+    });
+  });
+
+  return Array.from(map.values());
+};
+
 // The backend paginates, so we read ALL pages here. The screen also re-checks
 // the filters in the browser as a safety net.
 export const getAllSchoolExpensesReportData = async (
@@ -186,7 +238,7 @@ export const getAllSchoolExpensesReportData = async (
   const size = 50;
   let pageNo = 0;
   let totalCount = 0;
-  const all: SchoolExpenseReportProduct[] = [];
+  const all: SchoolExpenseReportFlatRow[] = [];
 
   // remove empty values (strings and the nested date range)
   const body: Record<string, any> = {};
@@ -208,7 +260,7 @@ export const getAllSchoolExpensesReportData = async (
     const data = res.data;
     if (!data?.success) throw new Error(data?.message || "Failed to load school expenses report");
 
-    const list: SchoolExpenseReportProduct[] = data.data?.Data || [];
+    const list: SchoolExpenseReportFlatRow[] = data.data?.Data || [];
     totalCount = data.data?.total ?? list.length;
     all.push(...list);
 
@@ -216,7 +268,7 @@ export const getAllSchoolExpensesReportData = async (
     pageNo += 1;
   } while (all.length < totalCount);
 
-  return all;
+  return groupReportRows(all);
 };
 
 // ---------- report helpers (shared by the screen and the PDF) ----------

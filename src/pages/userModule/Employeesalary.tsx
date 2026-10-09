@@ -18,6 +18,8 @@ import {
   Empty,
   Tooltip,
   Tag,
+  Pagination,
+  Spin,
 } from "antd";
 import {
   SearchOutlined,
@@ -88,7 +90,25 @@ const rowSignature = (r: any) =>
     r?.remark ?? "",
   ]);
 
+// 🔴 NEW: true when the screen is narrower than 768px (updates on resize)
+const useIsMobile = (breakpoint = 768) => {
+  const [isMobile, setIsMobile] = useState<boolean>(
+    typeof window !== "undefined" ? window.innerWidth < breakpoint : false
+  );
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < breakpoint);
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [breakpoint]);
+
+  return isMobile;
+};
+
 export default function EmployeeSalary() {
+  const isMobile = useIsMobile(); // 🔴 NEW
+
   const [users, setUsers] = useState<EmployeeRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -497,6 +517,65 @@ export default function EmployeeSalary() {
 
   const moneyInput = <InputNumber style={{ width: "100%" }} min={0} precision={2} placeholder="0.00" />;
 
+  // 🔴 NEW: mobile view — one card per employee (same data + same View / Edit actions as the table)
+  const renderMobileCards = () => (
+    <Spin spinning={tableLoading}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {users.map((u, idx) => (
+          <Card
+            key={(u as any).userId ?? (u as any).employeeCode ?? idx}
+            size="small"
+            title={fullName(u) || "-"}
+            extra={
+              u.status ? <Tag color={u.status === "ACTIVE" ? "green" : "red"}>{u.status}</Tag> : null
+            }
+            actions={[
+              <Button
+                key="view"
+                type="text"
+                icon={<EyeOutlined />}
+                onClick={() => openViewModal(u)}
+              >
+                View
+              </Button>,
+              <Button
+                key="edit"
+                type="text"
+                icon={<EditOutlined />}
+                onClick={() => openEditDrawer(u)}
+              >
+                Edit
+              </Button>,
+            ]}
+          >
+            <Descriptions column={1} size="small" colon>
+              <Descriptions.Item label="Employee Code">{(u as any).employeeCode || "-"}</Descriptions.Item>
+              <Descriptions.Item label="Role">
+                {u.role ? u.role.charAt(0) + u.role.slice(1).toLowerCase() : "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Email">
+                <span style={{ wordBreak: "break-all" }}>{u.email || "-"}</span>
+              </Descriptions.Item>
+              <Descriptions.Item label="Mobile No">{u.mobileNo || "-"}</Descriptions.Item>
+              <Descriptions.Item label="Designation">{(u as any).designation || "-"}</Descriptions.Item>
+            </Descriptions>
+          </Card>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
+        <Pagination
+          size="small"
+          current={page + 1}
+          pageSize={pageSize}
+          total={total}
+          showSizeChanger={false}
+          onChange={(newPage: number) => setPage(newPage - 1)}
+        />
+      </div>
+    </Spin>
+  );
+
   return (
     <div>
       {/* Search Bar */}
@@ -535,7 +614,7 @@ export default function EmployeeSalary() {
         </Col>
 
         <Col xs={24} sm={12} md={6}>
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          <div style={{ display: "flex", justifyContent: isMobile ? "flex-start" : "flex-end", gap: 8 }}>
             <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
               Search
             </Button>
@@ -548,6 +627,9 @@ export default function EmployeeSalary() {
 
       {!tableLoading && users.length === 0 ? (
         <Empty description="No employees found" style={{ padding: "40px 0" }} />
+      ) : isMobile ? (
+        // 🔴 NEW: cards on mobile
+        renderMobileCards()
       ) : (
         <CommonTable
           data={users}
@@ -570,7 +652,7 @@ export default function EmployeeSalary() {
         title={`Employee Salary${activeEmployee?.name ? ` — ${activeEmployee.name}` : ""}`}
         open={drawerOpen}
         onClose={closeDrawer}
-        width={750}
+        width={isMobile ? "100%" : 750}
         destroyOnClose
       >
         <Form form={form} layout="vertical">
@@ -609,12 +691,12 @@ export default function EmployeeSalary() {
                     </Form.Item>
 
                     <Row gutter={16}>
-                      <Col span={12}>
+                      <Col xs={24} sm={12}>
                         <Form.Item label="Academic Year" name={[name, "academicYear"]}>
                           <Input disabled />
                         </Form.Item>
                       </Col>
-                      <Col span={12}>
+                      <Col xs={24} sm={12}>
                         <Form.Item
                           label="Salary Date"
                           name={[name, "salaryDate"]}
@@ -634,7 +716,7 @@ export default function EmployeeSalary() {
                         </Form.Item>
                       </Col>
 
-                      <Col span={12}>
+                      <Col xs={24} sm={12}>
                         <Form.Item
                           label="Basic Salary"
                           name={[name, "basicSalary"]}
@@ -643,35 +725,35 @@ export default function EmployeeSalary() {
                           {moneyInput}
                         </Form.Item>
                       </Col>
-                      <Col span={12}>
+                      <Col xs={24} sm={12}>
                         <Form.Item label="HRA" name={[name, "hra"]}>
                           {moneyInput}
                         </Form.Item>
                       </Col>
 
-                      <Col span={12}>
+                      <Col xs={24} sm={12}>
                         <Form.Item label="Transport Allowance" name={[name, "transportAllowance"]}>
                           {moneyInput}
                         </Form.Item>
                       </Col>
-                      <Col span={12}>
+                      <Col xs={24} sm={12}>
                         <Form.Item label="Medical Allowance" name={[name, "medicalAllowance"]}>
                           {moneyInput}
                         </Form.Item>
                       </Col>
 
-                      <Col span={12}>
+                      <Col xs={24} sm={12}>
                         <Form.Item label="Other Allowance" name={[name, "otherAllowance"]}>
                           {moneyInput}
                         </Form.Item>
                       </Col>
-                      <Col span={12}>
+                      <Col xs={24} sm={12}>
                         <Form.Item label="Deduction" name={[name, "deduction"]}>
                           {moneyInput}
                         </Form.Item>
                       </Col>
 
-                      <Col span={12}>
+                      <Col xs={24} sm={12}>
                         <Form.Item label="Net Salary (auto)" shouldUpdate>
                           {() => (
                             <Input
@@ -728,7 +810,7 @@ export default function EmployeeSalary() {
         open={viewOpen}
         onCancel={closeViewModal}
         footer={null}
-        width={850}
+        width={isMobile ? "95%" : 850}
         destroyOnClose
       >
         {viewSalaries.length === 0 ? (
@@ -738,8 +820,8 @@ export default function EmployeeSalary() {
             <Descriptions
               key={s.employeeSalaryId ?? i}
               bordered
-              column={2}
-              size="middle"
+              column={isMobile ? 1 : 2}
+              size={isMobile ? "small" : "middle"}
               style={{ marginBottom: 20 }}
               title={`Salary ${i + 1}`}
               extra={
@@ -772,10 +854,10 @@ export default function EmployeeSalary() {
               <Descriptions.Item label="Medical Allowance">₹ {money(s.medicalAllowance)}</Descriptions.Item>
               <Descriptions.Item label="Other Allowance">₹ {money(s.otherAllowance)}</Descriptions.Item>
               <Descriptions.Item label="Deduction">₹ {money(s.deduction)}</Descriptions.Item>
-              <Descriptions.Item label="Net Salary" span={2}>
+              <Descriptions.Item label="Net Salary" span={isMobile ? 1 : 2}>
                 <b>₹ {money(s.netSalary)}</b>
               </Descriptions.Item>
-              <Descriptions.Item label="Remark" span={2}>
+              <Descriptions.Item label="Remark" span={isMobile ? 1 : 2}>
                 {s.remark || "-"}
               </Descriptions.Item>
             </Descriptions>
