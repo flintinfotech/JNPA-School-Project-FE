@@ -474,8 +474,6 @@ export default function RequestApproval() {
           productCode: product.productCode,
           category: product.category,
           productName: product.productName,
-          // order number of the approved request (from the backend) -> links the expense to it
-          orderNumber: values.orderNumber ?? editingRecord?.orderNumber,
           // REQUIRED by the backend: id of the product in Purchase Master
           purchaseId: Number(product.purchaseId),
           // vendor chosen in the Vendor dropdown

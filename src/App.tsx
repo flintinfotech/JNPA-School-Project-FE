@@ -76,6 +76,9 @@ import Employeesalaryreport from "./pages/userModule/Employeesalaryreport";
 import SchoolExpensesReport from "./pages/SchoolExpensesReport";
 import Studentfeereport from "./pages/Studentfeereport";
 import RequestApproval from "./pages/RequestApproval";
+import Vendormaster from "./pages/userModule/Vendormaster";
+import Purchaserequest from "./pages/Purchaserequest";
+import Approvedrequest from "./pages/Approvedrequest";
  
 export default function App() {
  
@@ -115,10 +118,13 @@ export default function App() {
  const isStudentFeeReportPage = location.pathname === "/student-fee-report";
  const isSchoolExpensesReportPage = location.pathname ==="/school-expenses-report";
  const isRequestApprovalPage = location.pathname ==="/request-approval";
+const isVendormasterPage = location.pathname === "/vendor-master";
+const isPurchaseRequestPage = location.pathname === "/purchase-request";
+const isApprovedRequestPage = location.pathname === "/approved-request";
   const isHomePage = location.pathname === "/";
  
-  const hideNavbarFooter = isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage || isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage || isStudentProfile|| isResultsPage || isAchievementsPage || isAcademicCalendarPage || isStudentFeesPage || isTimeTablePage || isPurchaseMasterPage || isSchoolExpensesPage ||isStudentHomeworkPage || isFormerStudentPage || isStudentAttendence|| isEmployeesalaryPage || isEmployeeSalaryReportPage|| isStudentFeeReportPage ||  isSchoolExpensesReportPage ||isRequestApprovalPage;
-  const hideFooter = isHomePage || isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage ||  isTeacherSubjectsPage ||  isAdmissionInquiryPage  ||  isDashboardPage ||  isProfilePage ||  isStudentProfile||  isResultsPage ||  isAchievementsPage  ||  isAcademicCalendarPage  ||  isStudentFeesPage ||  isTimeTablePage ||  isPurchaseMasterPage || isSchoolExpensesPage||isStudentHomeworkPage  || isFormerStudentPage ||isStudentAttendence || isEmployeesalaryPage || isEmployeeSalaryReportPage || isStudentFeeReportPage || isSchoolExpensesReportPage ||isRequestApprovalPage;
+  const hideNavbarFooter = isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage || isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage || isStudentProfile|| isResultsPage || isAchievementsPage || isAcademicCalendarPage || isStudentFeesPage || isTimeTablePage || isPurchaseMasterPage || isSchoolExpensesPage ||isStudentHomeworkPage || isFormerStudentPage || isStudentAttendence|| isEmployeesalaryPage || isEmployeeSalaryReportPage|| isStudentFeeReportPage ||  isSchoolExpensesReportPage ||isRequestApprovalPage||isVendormasterPage||isPurchaseRequestPage||isApprovedRequestPage;
+  const hideFooter = isHomePage || isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage ||  isTeacherSubjectsPage ||  isAdmissionInquiryPage  ||  isDashboardPage ||  isProfilePage ||  isStudentProfile||  isResultsPage ||  isAchievementsPage  ||  isAcademicCalendarPage  ||  isStudentFeesPage ||  isTimeTablePage ||  isPurchaseMasterPage || isSchoolExpensesPage||isStudentHomeworkPage  || isFormerStudentPage ||isStudentAttendence || isEmployeesalaryPage || isEmployeeSalaryReportPage || isStudentFeeReportPage || isSchoolExpensesReportPage ||isRequestApprovalPage||isVendormasterPage||isPurchaseRequestPage||isApprovedRequestPage;
  
   return (
     <div className="min-h-screen flex flex-col">
@@ -168,7 +174,7 @@ export default function App() {
             <Route path="/admission-inquiry" element={<AdmissionInquiry />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<Profile />} />
-           <Route path="/student-profile/:studentId?" element={<StudentProfile/>}/>
+            <Route path="/student-profile/:studentId?" element={<StudentProfile/>}/>
             <Route path="/results" element={<Results />} />
             <Route path="/achievements" element={<Achievements/>}/>
             <Route path="/academic-calender" element={<AcademicCalendar/>}/>
@@ -184,6 +190,10 @@ export default function App() {
           <Route path="/student-fee-report" element={<Studentfeereport />} />
           <Route path="/school-expenses-report" element={<SchoolExpensesReport/>}/>
           <Route path="/request-approval" element={<RequestApproval/>}/>
+          <Route path="/vendor-master" element={<Vendormaster />} />
+          <Route path="/purchase-request" element={<Purchaserequest />} />
+          <Route path="/approved-request" element={<Approvedrequest />} />
+          
           </Route>
  
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />

@@ -77,6 +77,7 @@ export const adminNavItems: AdminNavEntry[] = [
     { label: "Admission Inquiry", path:"/admission-inquiry",icon:GrCircleInformation},
     { label: "Former Student", path:"/former-student",icon:PiStudentFill},
     { label: "Request Approval",path:"/request-approval",icon:MdApproval  },
+    { label: "purchase Request",path:"/purchase-request",icon:GiExpense  },
   ],
 },
 
@@ -87,6 +88,7 @@ export const adminNavItems: AdminNavEntry[] = [
       { label: "Subject Master", path: "/subjects-master", icon: MdOutlineSubject },
       { label: "Class Master", path: "/class-master", icon: MdClass },   
        {label:"Purchase Master", path:"/purchase-master",icon:RiShoppingBagFill},
+       {label:"Vendor Master", path:"/vendor-master",icon:RiShoppingCartFill},
       
     ],
   },
@@ -128,12 +130,9 @@ export const adminNavItems: AdminNavEntry[] = [
     children: [
     
         {label:"Student Fees", path:"/student-fees",icon:BsCash},
+         {label:"Approved Request", path:"/approved-request",icon:MdApproval},
           {label:"School Expenses", path:"/school-expenses",icon:RiShoppingCartFill},
           {label:"Employee Salary", path:"/employeesalary",icon:RiMoneyDollarCircleLine},
-        
-
-       
-      
     ],
     
     
