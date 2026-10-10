@@ -16,12 +16,15 @@ import {
   Select,
   Spin,
   Tag,
+  Upload,
   message,
+  type UploadFile,
 } from "antd";
 import {
   EditOutlined,
   ProfileOutlined,
   ShoppingOutlined,
+  UploadOutlined,
   WalletOutlined,
 } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
@@ -87,6 +90,24 @@ const PRIORITY_COLOR: Record<string, string> = {
 const LIST_FILTER_PAYLOAD = {
   status: "APPROVED",
 };
+
+// ------------------------------------------------------------
+// DOCUMENT UPLOAD (Billing Details) — change these two if you need other limits
+// ------------------------------------------------------------
+const DOCUMENT_ACCEPT = ".pdf,.png,.jpg,.jpeg,.doc,.docx";
+const MAX_DOCUMENT_MB = 5;
+
+// File -> base64 string WITHOUT the "data:...;base64," prefix (only the base64 part is sent)
+const readFileAsBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      resolve(result.includes(",") ? result.split(",")[1] : result);
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 
 const money = (v?: number | null) =>
   v === null || v === undefined
@@ -212,6 +233,10 @@ export default function RequestApproval() {
   const [drawerWidth, setDrawerWidth] = useState<number | string>(
     window.innerWidth < 768 ? "100%" : 480,
   );
+
+  // Document (Billing Details): the chosen file + its base64 text (sent as "document")
+  const [documentFileList, setDocumentFileList] = useState<UploadFile[]>([]);
+  const [documentBase64, setDocumentBase64] = useState("");
 
   useEffect(() => {
     const handleResize = () =>
@@ -357,6 +382,31 @@ export default function RequestApproval() {
     form.setFieldsValue({ pendingAmount: Math.max(totalValue - paid, 0) });
   };
 
+  // ---------- DOCUMENT UPLOAD ----------
+  // The file is NOT uploaded anywhere: it is read in the browser and kept as base64 text,
+  // which goes in the save payload as "document".
+  const handleDocumentBeforeUpload = async (file: File) => {
+    if (file.size > MAX_DOCUMENT_MB * 1024 * 1024) {
+      message.error(`Document must be smaller than ${MAX_DOCUMENT_MB} MB`);
+      return Upload.LIST_IGNORE;
+    }
+    try {
+      const base64 = await readFileAsBase64(file);
+      setDocumentBase64(base64);
+      setDocumentFileList([
+        { uid: `${Date.now()}`, name: file.name, status: "done" } as UploadFile,
+      ]);
+    } catch {
+      message.error("Failed to read the document");
+    }
+    return false; // stop antd from uploading it to a server
+  };
+
+  const handleDocumentRemove = () => {
+    setDocumentBase64("");
+    setDocumentFileList([]);
+  };
+
   // ---------- DRAWER ----------
   // Edit (on an approved request) opens the School Expense form,
   // with the product and quantity of that request already filled.
@@ -364,6 +414,7 @@ export default function RequestApproval() {
     if (record.requestApprovalId === undefined) return;
     setDrawerOpen(true);
     setDrawerLoading(true);
+    handleDocumentRemove(); // fresh document for every Edit
     try {
       // latest data of the request from the server (falls back to the table row)
       let d: RequestApprovalRow = record;
@@ -424,6 +475,7 @@ export default function RequestApproval() {
     setDrawerOpen(false);
     setEditingRecord(null);
     setSelectedPurchase(null);
+    handleDocumentRemove();
     form.resetFields();
   };
 
@@ -474,12 +526,20 @@ export default function RequestApproval() {
           productCode: product.productCode,
           category: product.category,
           productName: product.productName,
+          // order number of the approved request (from the backend) -> links the expense to it
+          orderNumber: values.orderNumber ?? editingRecord?.orderNumber,
           // REQUIRED by the backend: id of the product in Purchase Master
           purchaseId: Number(product.purchaseId),
           // vendor chosen in the Vendor dropdown
           vendorMasterId: Number(values.vendorMasterId),
+          // document chosen in Billing Details, as base64 text (only sent when a file is chosen)
+          ...(documentBase64 ? { document: documentBase64 } : {}),
         };
-        console.log("SAVE SCHOOL EXPENSE PAYLOAD:", payload);
+        // the base64 text is long, so only its length is logged
+        console.log("SAVE SCHOOL EXPENSE PAYLOAD:", {
+          ...payload,
+          document: documentBase64 ? `[base64 ${documentBase64.length} chars]` : undefined,
+        });
 
         const res = await api.post(apiEndpoints.saveSchoolExpenses(), payload);
 
@@ -1040,6 +1100,24 @@ export default function RequestApproval() {
                   placeholder="Enter paid amount"
                   onChange={updatePending}
                 />
+              </Form.Item>
+
+              {/* Document — the file is converted to base64 and sent as "document" */}
+              <Form.Item
+                label={<span style={{ fontWeight: 600 }}>Document</span>}
+                extra={`PDF, image or Word file, up to ${MAX_DOCUMENT_MB} MB`}
+              >
+                <Upload
+                  accept={DOCUMENT_ACCEPT}
+                  maxCount={1}
+                  fileList={documentFileList}
+                  beforeUpload={handleDocumentBeforeUpload}
+                  onRemove={handleDocumentRemove}
+                >
+                  <Button icon={<UploadOutlined />} size="large" style={{ width: "100%" }}>
+                    Choose Document
+                  </Button>
+                </Upload>
               </Form.Item>
 
               {/* LIVE SUMMARY — Total / Paid / Pending (auto calculated) */}
