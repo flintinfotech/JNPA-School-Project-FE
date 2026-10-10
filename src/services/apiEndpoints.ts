@@ -352,4 +352,8 @@ updateRequestApproval: () =>
 
 deleteRequestApproval: (requestApprovalId: number | string) =>
     `/jnpa-school-project/requestApproval/deleteRequestApproval/${requestApprovalId}`,
+
+
+//Promote Students 
+savePromoteStudents: () => `/jnpa-school-project/student/savePromoteStudents`,
 };

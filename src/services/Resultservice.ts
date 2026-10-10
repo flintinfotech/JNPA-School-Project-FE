@@ -44,6 +44,7 @@ export interface ResultFilters {
   firstName?: string;
   lastName?: string;
   rollNo?: string;
+  academicYear?: string;
 }
 
 export interface CurrentYearStudentsResponse {

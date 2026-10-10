@@ -78,7 +78,7 @@ export default function Results() {
   > = isTeacher
     ? {
         standard: user?.standard || "",
-        division: "",
+        division: user?.division || "",
         medium: user?.medium || "",
       }
     : {};

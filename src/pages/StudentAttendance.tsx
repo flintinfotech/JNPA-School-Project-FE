@@ -92,33 +92,49 @@ export default function StudentAttendance() {
   const [students, setStudents] = useState<StudentDTO[]>([]);
   const [studentsLoading, setStudentsLoading] = useState(false);
 
-  useEffect(() => {
-    if (!selectedClass) {
-      setStudents([]);
-      return;
-    }
+ useEffect(() => {
+  if (!selectedClass) {
+    setStudents([]);
+    return;
+  }
 
-    setStudentsLoading(true);
+  setStudentsLoading(true);
 
-    getAllStudents(0, 500, {
-      standard: selectedClass.standard,
-      division: selectedClass.division,
-    } as any)
-      .then((res: any) => {
-        if (res?.success) {
-          const list: StudentDTO[] = res.data?.Data || res.data?.data || res.data || [];
-          setStudents(Array.isArray(list) ? list : []);
-        } else {
-          message.error(res?.message || "Failed to load students");
-          setStudents([]);
-        }
-      })
-      .catch((err: any) => {
-        message.error(err?.response?.data?.message || "Failed to load students");
+  // "-" means the teacher has no medium set, so it is not sent
+  const medium =
+    selectedClass.medium && selectedClass.medium !== "-" ? selectedClass.medium : undefined;
+
+  getAllStudents(0, 500, {
+    standard: selectedClass.standard,
+    division: selectedClass.division,
+    ...(medium ? { medium } : {}), // 👈 NEW: medium goes in the payload
+  } as any)
+    .then((res: any) => {
+      if (res?.success) {
+        const list: StudentDTO[] = res.data?.Data || res.data?.data || res.data || [];
+        const all = Array.isArray(list) ? list : [];
+
+        // 👈 NEW: also filter by medium here, in case the backend ignores it.
+        // Students with no medium info are kept (not dropped by mistake).
+        const filtered = medium
+          ? all.filter((s) => {
+              const m = s.academicInformation?.[0]?.medium;
+              return !m || m.trim().toLowerCase() === medium.trim().toLowerCase();
+            })
+          : all;
+
+        setStudents(filtered);
+      } else {
+        message.error(res?.message || "Failed to load students");
         setStudents([]);
-      })
-      .finally(() => setStudentsLoading(false));
-  }, [selectedClass]);
+      }
+    })
+    .catch((err: any) => {
+      message.error(err?.response?.data?.message || "Failed to load students");
+      setStudents([]);
+    })
+    .finally(() => setStudentsLoading(false));
+}, [selectedClass]);
 
   // ===========================
   // Calendar + attendance table state

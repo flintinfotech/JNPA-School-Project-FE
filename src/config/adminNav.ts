@@ -6,7 +6,7 @@ import { MdOutlineAdminPanelSettings } from "react-icons/md";
 import { CgWebsite } from "react-icons/cg";
 import { BsCash, BsFillClipboard2DataFill } from "react-icons/bs";
 import { MdAssignmentTurnedIn } from "react-icons/md";
-import { GrCircleInformation } from "react-icons/gr";
+import { GrCircleInformation,GrUpgrade } from "react-icons/gr";
 import { RiMedalLine } from "react-icons/ri";
 import { SlCalender } from "react-icons/sl";
 import { RiShoppingBagFill } from "react-icons/ri";
@@ -112,6 +112,7 @@ export const adminNavItems: AdminNavEntry[] = [
         {label:"Academic calendar", path:"/academic-calender", icon:SlCalender},
         {label:"Time Table", path:"/time-table",icon:PiCalendarBlank},
         { label:"Student attendance", path:"/student-attendance",icon:RiPresentationLine },
+        {label: "Promote Students",path:"/promote-students",icon:GrUpgrade},
     ],
   },
   {label: "Profile",path: "/profile",icon: ImProfile,hideInSidebar: true,},
