@@ -20,7 +20,11 @@ import api from "../lib/axios";
 import { apiEndpoints } from "../services/apiEndpoints";
 import { getAllStaticData } from "../services/staticDataService";
 import { getAllStudents } from "../services/studentService";
-import type { ResultStudentDTO } from "../services/Resultservice";
+// 👇 FIX: same API as the Results screen (login-year students)
+import {
+  getAllCurrentYearStudentsData,
+  type ResultStudentDTO,
+} from "../services/Resultservice";
 import { useAuth } from "../hooks/useAuth";
 
 /* ---------------------------------------------------------------
@@ -57,22 +61,6 @@ const toOption = (item: any): { label: string; value: string } => {
   return { label: v, value: v };
 };
 
-// Login year as "2026-2027" (saved by useAuth in localStorage as { startDate, endDate })
-const getLoginAcademicYear = (): string => {
-  try {
-    const raw = localStorage.getItem("academicYear");
-    if (!raw) return "";
-    const ay = JSON.parse(raw) as { startDate?: string; endDate?: string };
-    if (!ay?.startDate || !ay?.endDate) return "";
-    const s = new Date(ay.startDate).getFullYear();
-    const e = new Date(ay.endDate).getFullYear();
-    if (Number.isNaN(s) || Number.isNaN(e)) return "";
-    return `${s}-${e}`;
-  } catch {
-    return "";
-  }
-};
-
 // Login year -> NEXT year.  "2026-2027"  ->  "2027-2028"
 // (login year is saved by useAuth in localStorage as { startDate, endDate })
 const getNextAcademicYear = (): string => {
@@ -101,6 +89,11 @@ export default function PromoteStudents() {
 
   // ---------- students ----------
   const [students, setStudents] = useState<ResultStudentDTO[]>([]);
+  // 👇 FIX: full rows (all academic years) - used for the "Promoted" check
+  // and to send the complete academicInformation while promoting
+  const [fullStudents, setFullStudents] = useState<Record<number, ResultStudentDTO>>({});
+  // 👇 FIX: ids promoted in this session -> "Promoted" shows immediately after promote
+  const [promotedIds, setPromotedIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
 
@@ -127,38 +120,55 @@ export default function PromoteStudents() {
   }, []);
 
   // ---------- load students ----------
-  // Same API as the Student Attendance screen: POST student/getAllStudentsByFilter
-  // payload: { academicYear, standard, division, medium }
-  //   academicYear = login year, standard / division / medium = logged-in user's class
-  //   (a value that is empty / null is NOT sent, so admin with no class still gets everything)
+  // 1) getAllCurrentYearStudentsData  (same as Results screen) -> login-year students
+  //    so a student promoted to e.g. 3rd now shows up when you log in with that year.
+  // 2) getAllStudentsByFilter -> full rows (all years), only for the Promoted check + payload.
   const { user } = useAuth();
 
-  const loadStudents = useCallback(() => {
+  const loadStudents = useCallback(async () => {
     setLoading(true);
 
-  
-    const loginYear = getLoginAcademicYear();
-    const payload: Record<string, string> = {};
-    if (loginYear) payload.academicYear = loginYear;
-    if (user?.standard) payload.standard = user.standard;
-    if (user?.division) payload.division = user.division;
-    if (user?.medium) payload.medium = user.medium;
+    // class scope of the logged-in user (admin = empty -> sees everything)
+    const scope: Record<string, string> = {};
+    if (user?.standard) scope.standard = user.standard;
+    if (user?.division) scope.division = user.division;
+    if (user?.medium) scope.medium = user.medium;
 
-    getAllStudents(0, MAX_FETCH_SIZE, payload as any)
-      .then((res: any) => {
-        if (res?.success) {
-          const list = res.data?.Data || res.data?.data || res.data || [];
-          setStudents(Array.isArray(list) ? (list as unknown as ResultStudentDTO[]) : []);
-        } else {
-          message.error(res?.message || "Failed to load students");
-          setStudents([]);
-        }
-      })
-      .catch((err: any) => {
-        message.error(err?.response?.data?.message || "Failed to load students");
+    try {
+      const curRes = await getAllCurrentYearStudentsData(0, MAX_FETCH_SIZE, scope);
+
+      if (!curRes?.success) {
+        message.error(curRes?.message || "Failed to load students");
         setStudents([]);
-      })
-      .finally(() => setLoading(false));
+        return;
+      }
+
+      const list = curRes.data?.data || [];
+      // API returns newest first -> reverse (same as Results screen)
+      setStudents(Array.isArray(list) ? [...list].reverse() : []);
+
+      // full rows for all years (not critical - if it fails we still show the list)
+      // 👇 FIX: NO standard/division filter here. With a standard filter the backend
+      // returns only the OLD standard row, so the new (promoted) year row was missing
+      // and the "Promoted" column stayed empty.
+      try {
+        const allRes: any = await getAllStudents(0, MAX_FETCH_SIZE, {} as any);
+        const all = allRes?.data?.Data || allRes?.data?.data || allRes?.data || [];
+        const map: Record<number, ResultStudentDTO> = {};
+        (Array.isArray(all) ? all : []).forEach((s: any) => {
+          map[s.studentId] = s;
+        });
+        setFullStudents(map);
+      } catch (e) {
+        console.warn("Could not load full student rows", e);
+        setFullStudents({});
+      }
+    } catch (err: any) {
+      message.error(err?.response?.data?.message || "Failed to load students");
+      setStudents([]);
+    } finally {
+      setLoading(false);
+    }
   }, [user?.standard, user?.division, user?.medium]);
 
   useEffect(() => {
@@ -175,9 +185,22 @@ export default function PromoteStudents() {
 
   // ---------- selection helpers ----------
   // A student is "promoted" when he already has an academic information row
-  // for the next academic year (e.g. 2027-2028)
-  const isPromoted = (r: ResultStudentDTO) =>
-    !!r.academicInformation?.some((a) => a.academicYear === targetAcademicYear);
+  // for the next academic year (e.g. 2027-2028).
+  // 👇 FIX: look in the full row (all years) first, then in the list row.
+  const isPromoted = useCallback(
+    (r: ResultStudentDTO) => {
+      if (promotedIds.includes(r.studentId)) return true;
+      // check BOTH the full row and the list row
+      const rows = [
+        ...(fullStudents[r.studentId]?.academicInformation || []),
+        ...(r.academicInformation || []),
+      ];
+      return rows.some(
+        (a) => String(a.academicYear || "").trim() === targetAcademicYear,
+      );
+    },
+    [fullStudents, promotedIds, targetAcademicYear],
+  );
 
   // promoted students are shown ticked + locked, so they are NOT part of the selection
   const isSelected = (id: number) => selectedIds.includes(id);
@@ -190,8 +213,7 @@ export default function PromoteStudents() {
   // "Select All" = every NOT-yet-promoted student in the list (all pages)
   const allStudentIds = useMemo(
     () => students.filter((s) => !isPromoted(s)).map((s) => s.studentId),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [students, targetAcademicYear],
+    [students, isPromoted],
   );
 
   const selectAll = () =>
@@ -200,17 +222,19 @@ export default function PromoteStudents() {
 
   // ---------- PROMOTE ----------
   // POST /student/savePromoteStudents
-  // Body = array of the selected students (full objects, as they came from the list API)
+  // Body = array of the selected students (full objects)
   // where each student's "academicInformation" gets ONE NEW ROW for the next academic year:
   //   academicYear = next year (2027-2028), standard = the Standard chosen in the card,
   //   division / medium / admissionNo / admissionDate = copied from the current row,
   //   rollNo = null, no academicInformationId, auditDetails = null
   const buildPromotePayload = (student: ResultStudentDTO) => {
+    // 👇 FIX: use the full row (all years) so old rows are not lost
+    const full: ResultStudentDTO = fullStudents[student.studentId] ?? student;
     const current: any = student.academicInformation?.[0] || {};
     return {
-      ...student,
+      ...full,
       academicInformation: [
-        ...(student.academicInformation || []),
+        ...(full.academicInformation || []),
         {
           academicYear: targetAcademicYear,
           admissionDate: current.admissionDate ?? null,
@@ -239,9 +263,7 @@ export default function PromoteStudents() {
     const selected = students.filter((s) => selectedIds.includes(s.studentId));
 
     // students that already have a row for the next academic year are skipped (no duplicate rows)
-    const alreadyPromoted = selected.filter((s) =>
-      s.academicInformation?.some((a) => a.academicYear === targetAcademicYear),
-    );
+    const alreadyPromoted = selected.filter((s) => isPromoted(s));
     const toPromote = selected.filter((s) => !alreadyPromoted.includes(s));
 
     if (toPromote.length === 0) {
@@ -264,6 +286,10 @@ export default function PromoteStudents() {
       if (alreadyPromoted.length > 0) {
         message.info(`${alreadyPromoted.length} student(s) skipped (already promoted)`);
       }
+      // 👇 FIX: show "Promoted" right away, then reload from the server
+      setPromotedIds((prev) =>
+        Array.from(new Set([...prev, ...toPromote.map((x) => x.studentId)])),
+      );
       setSelectedIds([]);
       loadStudents();
     } catch (error: any) {
