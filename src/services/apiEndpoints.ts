@@ -356,4 +356,24 @@ deleteRequestApproval: (requestApprovalId: number | string) =>
 
 //Promote Students 
 savePromoteStudents: () => `/jnpa-school-project/student/savePromoteStudents`,
+
+// Paste these inside the apiEndpoints object in apiEndpoints.ts
+// (before the closing "};", after deleteRequestApproval)
+
+  // ===============================
+  // Vendor Master
+  // ===============================
+  saveVendorMaster: () => `/jnpa-school-project/vendorMaster/saveVendorMaster`,
+
+  updateVendorMaster: () => `/jnpa-school-project/vendorMaster/updateVendorMaster`,
+
+  getVendorMasterById: (vendorMasterId: number | string) =>
+    `/jnpa-school-project/vendorMaster/getVendorMaster/${vendorMasterId}`,
+
+  deleteVendorMaster: (vendorMasterId: number | string) =>
+    `/jnpa-school-project/vendorMaster/deleteVendorMaster/${vendorMasterId}`,
+
+  getAllVendorMasterByFilter: (page: number, size: number) =>
+    `/jnpa-school-project/vendorMaster/getAllVendorMasterByFilter?page=${page}&size=${size}&desc&paginate=true`,
 };
+

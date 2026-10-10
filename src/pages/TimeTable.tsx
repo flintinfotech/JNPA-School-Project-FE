@@ -75,31 +75,168 @@ interface TimeTableFilters {
 }
 
 // Exact backend endpoint requested for class-filtered timetables.
-// This is kept here so the request does not depend on whether the
-// apiEndpoints file has the method named getAllTimeTableByFilter yet.
 const getAllTimeTableByFilterEndpoint = (page: number, size: number) =>
   `/jnpa-school-project/timeTable/getAllTimeTableByFilter?page=${page}&size=${size}&paginate=true`;
 
-// 👇 how many period cards show per page inside Add/Edit.
-// 🛠️ FIX — bumped from 10 to 12 per request; this is now the max
-// number of period cards shown at once WITHIN a single selected day
-// tab (see the day-tab pagination replacement below), not a page size
-// across the whole mixed list.
+// how many period cards show per page inside Add/Edit (within one day tab).
 const PERIOD_PAGE_SIZE = 12;
 
 // ---------------------------------------------------------------
-// 🛠️ FIX — static-data normalization helpers.
+// 🆕 API RESPONSE / VALIDATION HELPERS
 //
-// getAllStaticData's entries were assumed to be plain strings
-// (e.g. "Break 1"). If the real API instead returns objects, e.g.
-// { label: "Break 1", value: 5 } or { name: "Break 1", id: 5 },
-// then rendering that object directly as a React child, or calling
-// string methods like .match()/.toLowerCase() on it, throws and
-// crashes the whole page to a blank screen — which is exactly what
-// happened when picking "Break".
+// The backend response format changed. Instead of showing our own
+// hard-coded messages, the screen now shows WHATEVER the API says and
+// sets it on the matching form field where possible.
 //
-// toLabel/toValue below make every static-data consumer safe
-// regardless of whether the entry is a string or an object.
+// These helpers read the validation text defensively from every
+// shape a Spring-style backend normally uses:
+//   { success:false, message:"...", data:null }
+//   { message:"...", body:"..." }
+//   { errors:[ "...", { field:"standard", message:"..." } ] }
+//   { data:{ standard:"Standard is required",
+//            "timeTablePeriods[0].day":"Day is required" } }
+//   { data:"Teacher already assigned in this slot" }
+//
+// 👇 If your new response uses a key that is not covered here, add it
+//    to LIST_KEYS (array/object of errors) or MESSAGE_KEYS (plain text).
+// ---------------------------------------------------------------
+const LIST_KEYS = ["errors", "fieldErrors", "validationErrors", "violations"];
+const MESSAGE_KEYS = ["message", "body", "error", "msg", "detail"];
+
+// fields in this form that an API validation key can be attached to
+const FORM_TOP_FIELDS = [
+  "standard",
+  "division",
+  "medium",
+  "academicYear",
+  "timeTablePeriods",
+];
+
+interface ApiIssue {
+  field?: string;
+  text: string;
+}
+
+// "timeTablePeriods[0].day" / "timeTablePeriods.0.day" -> ["timeTablePeriods", 0, "day"]
+const normalizeApiPath = (key: string): (string | number)[] =>
+  key
+    .replace(/\[(\d+)\]/g, ".$1")
+    .split(".")
+    .filter(Boolean)
+    .map((s) => (/^\d+$/.test(s) ? Number(s) : s));
+
+// The backend's own message — this is what the user must see.
+// e.g. { success:false, message:"Time conflict found on MONDAY ...",
+//        errorCode:"409 CONFLICT", details:"CustomException(...)" }
+// `details` / `errorCode` / `timestamp` are technical and are NOT shown.
+const pickApiMessage = (body: any): string => {
+  if (!body) return "";
+  if (typeof body === "string") return body.trim();
+  for (const k of MESSAGE_KEYS) {
+    const v = body[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  if (typeof body.data === "string" && body.data.trim()) return body.data.trim();
+  return "";
+};
+
+// Optional field-level validation (errors[] / { field: "msg" } map) so it
+// can also be set under the matching form field.
+const extractFieldIssues = (body: any): ApiIssue[] => {
+  const issues: ApiIssue[] = [];
+  if (!body || typeof body !== "object") return issues;
+
+  const addFrom = (value: any, field?: string) => {
+    if (value === null || value === undefined) return;
+    if (typeof value === "string") {
+      if (value.trim()) issues.push({ field, text: value });
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        if (typeof item === "string") {
+          addFrom(item, field);
+        } else if (item && typeof item === "object") {
+          const f = item.field ?? item.fieldName ?? item.name ?? item.property;
+          const t = item.message ?? item.defaultMessage ?? item.error;
+          if (t) issues.push({ field: f ?? field, text: String(t) });
+        }
+      });
+      return;
+    }
+    if (typeof value === "object") {
+      Object.entries(value).forEach(([k, v]) => addFrom(v, k));
+    }
+  };
+
+  LIST_KEYS.forEach((k) => addFrom(body[k]));
+  if (body.data && typeof body.data === "object") addFrom(body.data);
+  return issues;
+};
+
+// Some backends send HTTP 200 with { success:false, message:"..." }.
+// Treat that as a failure so the real message is shown, not "success".
+const assertApiSuccess = (res: any) => {
+  if (res?.data?.success === false) {
+    throw { response: { data: res.data } };
+  }
+};
+
+// Plain text of the API's message (for success toasts etc.)
+const getApiMessage = (res: any, fallback: string): string =>
+  pickApiMessage(res?.data) || fallback;
+
+// Works whether axios gives error.response.data (normal) or your axios
+// interceptor already rejects with the body / a custom object.
+const getErrorBody = (error: any): any =>
+  error?.response?.data ??
+  error?.data ??
+  (error && typeof error === "object" && error.success === false ? error : undefined);
+
+// Shows the backend message exactly as sent (create / update / delete /
+// load — every case), and sets any field-specific validation on the form.
+const showApiError = (error: any, fallback: string, form?: FormInstance) => {
+  const body = getErrorBody(error);
+  const apiMessage = pickApiMessage(body);
+  const fieldIssues = extractFieldIssues(body);
+
+  if (form) {
+    const fieldErrors = fieldIssues
+      .filter((i) => i.field)
+      .map((i) => ({ name: normalizeApiPath(i.field as string), text: i.text }))
+      .filter((i) => FORM_TOP_FIELDS.includes(String(i.name[0])))
+      .map((i) => ({ name: i.name, errors: [i.text] }));
+    if (fieldErrors.length > 0) {
+      form.setFields(fieldErrors);
+    }
+  }
+
+  const lines = Array.from(
+    new Set(
+      [apiMessage, ...fieldIssues.map((i) => i.text)].filter(
+        (t): t is string => !!t,
+      ),
+    ),
+  );
+  if (lines.length === 0) {
+    // no backend message at all (e.g. network down) — last-resort text
+    lines.push(error?.message || fallback);
+  }
+
+  message.error({
+    content: (
+      <div style={{ textAlign: "left" }}>
+        {lines.map((line) => (
+          <div key={line}>{line}</div>
+        ))}
+      </div>
+    ),
+    duration: 6,
+  });
+};
+
+// ---------------------------------------------------------------
+// static-data normalization helpers (string OR object entries)
 // ---------------------------------------------------------------
 const toLabel = (item: any): string => {
   if (item === null || item === undefined) return "";
@@ -148,22 +285,13 @@ const getLoggedInAcademicYear = (): string => {
 };
 
 // ---------------------------------------------------------------
-// 🛠️ FIX — role-based access + "show only my timetable" for teachers,
-// now using the SAME useAuth() hook + role-check pattern as Results.tsx,
-// instead of guessing at localStorage. This is imported at the top of
-// the file and called inside the TimeTable component below (hooks can
-// only be called inside a component/hook, not at module scope).
+// role-based access (same useAuth() pattern as Results.tsx)
 //
-// 👇 TODO — confirm these two things against your actual `user` object
-// shape from useAuth() (same TODO Results.tsx already flags for TEACHER_ROLE):
-//   1) the exact role string the backend sends for admin/principal
-//      (ADMIN_ROLES below assumes "ADMIN" and "PRINCIPAL")
-//   2) the field on `user` that holds this teacher's own
-//      employeeDetailsId (assumed below as `user.employeeDetailsId` —
-//      Results.tsx's classScope only shows user.standard/division/medium,
-//      not an id field, so this one specifically needs your confirmation)
+// 👇 TODO — confirm against your actual `user` object from useAuth():
+//   1) the exact role strings for admin/principal
+//   2) the field holding the teacher's own employeeDetailsId
 // ---------------------------------------------------------------
-const TEACHER_ROLE = "TEACHER"; // 👈 matches the constant already in Results.tsx
+const TEACHER_ROLE = "TEACHER";
 const ADMIN_ROLES = ["ADMIN", "PRINCIPAL"];
 
 const isAdminOrPrincipal = (role?: string) => ADMIN_ROLES.includes(role || "");
@@ -183,11 +311,7 @@ function useIsMobile(breakpoint = 768) {
 }
 
 // ---------------------------------------------------------------
-// 🛠️ FIX — small error boundary.
-// If anything unexpected still throws while rendering the read-only
-// grid (bad/legacy data, unexpected shapes, etc.), this catches it
-// and shows a small inline message instead of taking down the whole
-// page to a blank screen.
+// small error boundary so bad data can't blank the whole page
 // ---------------------------------------------------------------
 class TimeTableErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -221,7 +345,6 @@ class TimeTableErrorBoundary extends React.Component<
 
 interface TimeTableRow {
   timeTableId: number;
-  // classMasterId?: number | null;
   standard?: string;
   division?: string;
   medium?: string;
@@ -243,22 +366,12 @@ interface TeacherOption {
   employeeCode?: string;
 }
 
-// 👇 Loose type — getAllStaticData's response may contain plain strings OR
-// objects per key. Kept as `any[]` and normalized via toLabel/toValue at
-// the point of use so either shape works safely.
 type StaticDataMap = Record<string, any[]>;
 
-// 🛠️ FIX — accepts an optional day so a period card added while a
-// specific day-tab is active (see the Add/Edit form's new day tabs
-// below) is created already assigned to that day, instead of landing
-// with day: undefined and not showing up under any tab until the user
-// manually picks a day from the dropdown.
 const emptyPeriod = (day?: string) => ({
   timeTablePeriodId: undefined,
   day,
   periodNumber: undefined,
-  // 🛠️ FIX — one combined range field instead of separate startTime /
-  // endTime fields. Holds a dayjs [start, end] tuple from the RangePicker.
   timeRange: null as [any, any] | null,
   subjectId: undefined,
   employeeDetailsId: undefined,
@@ -280,7 +393,7 @@ const extractListAndTotal = (raw: any): { list: any[]; total: number } => {
     "data",
   ];
   for (const key of listKeys) {
-    if (Array.isArray(data[key])) {
+    if (Array.isArray(data?.[key])) {
       return {
         list: data[key],
         total:
@@ -307,10 +420,6 @@ interface TimeTableFormProps {
   staticData: StaticDataMap | null;
   teacherOptions: TeacherOption[];
   subjectOptions: SubjectOption[];
-  // 👇 called the first time the Teacher dropdown is opened on any
-  // period card, so the parent can lazily fetch the teacher list only
-  // when it's actually needed — not just because Standard/Division/
-  // Medium were filled in.
   onTeacherDropdownOpen?: () => void;
 }
 
@@ -329,14 +438,13 @@ function TimeTableForm({
       const values = await form.validateFields();
       const payload = {
         ...(values.timeTableId ? { timeTableId: values.timeTableId } : {}),
-        // classMasterId: null, // Class selection removed from UI; backend already stores this as null in existing records
         standard: values.standard,
         division: values.division,
         medium: values.medium,
         academicYear: values.academicYear,
         timeTablePeriods: (values.timeTablePeriods || []).map((p: any) => {
-          // 🛠️ FIX — split the combined [start, end] range back into the
-          // two fields the backend expects.
+          // split the combined [start, end] range back into the two
+          // fields the backend expects.
           const [rangeStart, rangeEnd] = Array.isArray(p.timeRange)
             ? p.timeRange
             : [null, null];
@@ -357,29 +465,18 @@ function TimeTableForm({
     }
   };
 
-  // 🛠️ FIX — the old "Page 1 / Page 2 / Page 3" numeric pagination
-  // (grouping period cards 10-at-a-time regardless of which day they
-  // belonged to) is replaced with day tabs — Mon / Tue / Wed / Thu /
-  // Fri / Sat — so you only ever look at one day's periods at a time,
-  // the same way the read-only View grid's mobile agenda already
-  // works. `activeDayTab` is which day is currently selected;
-  // `periodPage` is now a secondary, WITHIN-a-day page (only shown if
-  // a single day somehow has more than PERIOD_PAGE_SIZE periods).
+  // Day tabs (Mon..Sat) + a secondary within-a-day page (only if a
+  // single day has more than PERIOD_PAGE_SIZE periods).
   const [activeDayTab, setActiveDayTab] = useState<string>(DAYS[0]);
   const [periodPage, setPeriodPage] = useState(1);
 
-  // Reset to page 1 of the newly selected day whenever the tab changes.
   useEffect(() => {
     setPeriodPage(1);
   }, [activeDayTab]);
 
-  // 👇 watch every period's current value so a card's tab membership
-  // updates live the instant its Day <Select> is changed, and so tab
-  // badge counts stay accurate — not just at add/remove time.
+  // watch every period's value so tab membership + badge counts are live
   const watchedPeriods = (Form.useWatch("timeTablePeriods", form) as any[]) || [];
 
-  // 🛠️ FIX — normalize every static-data list (string OR object entries)
-  // into safe { value, label } pairs before rendering any <Option>.
   const standardOptions = (staticData?.["standard"] ?? STANDARD_FALLBACK).map(
     (s: any) => ({
       value: toValue(s),
@@ -395,9 +492,6 @@ function TimeTableForm({
     label: toLabel(m),
   }));
 
-  // 🛠️ if staticData loaded but Division/Medium came out empty, the
-  // dropdown literally can't be filled in. This warns loudly in devtools
-  // so it's obvious *why*, instead of it looking like a mystery.
   useEffect(() => {
     if (staticData && (divisionOptions.length === 0 || mediumOptions.length === 0)) {
       // eslint-disable-next-line no-console
@@ -470,34 +564,9 @@ function TimeTableForm({
 
       <Form.List name="timeTablePeriods">
         {(fields, { add, remove }) => {
-          // ---------------------------------------------------------
-          // 🛠️ FIX — pagination bug that dropped periods 10, 11, 12...
-          // from the Add/Update payload.
-          //
-          // The old code did `fields.slice(startIdx, startIdx + PAGE_SIZE)`
-          // and only rendered THAT slice. Cards on other pages were
-          // completely removed from the DOM, which unmounts their
-          // Form.Item fields — and once unmounted, antd can fail to
-          // report their values back into `form.validateFields()`, so
-          // whatever you filled in on page 2/3 silently disappeared
-          // from the payload on Save/Update.
-          //
-          // Fix (kept): render EVERY field/card all the time (so every
-          // Form.Item stays mounted and its value always stays part of
-          // the form), and only visually hide the cards that shouldn't
-          // show right now with `display:none`. Hidden inputs are still
-          // fully part of the form and still get validated and
-          // submitted — nothing is ever silently dropped.
-          //
-          // 🛠️ FIX (v2) — replaced generic "Page 1 / Page 2 / Page 3"
-          // numeric pagination with day tabs (Mon/Tue/Wed/Thu/Fri/Sat),
-          // matching the read-only View's mobile agenda. A card is only
-          // shown when its own "Day" value matches the active tab. The
-          // per-day count badge and the (rare) within-a-day numeric
-          // pagination both stay in sync live, because they're derived
-          // from `watchedPeriods` on every render, not just on
-          // add/remove.
-          // ---------------------------------------------------------
+          // Every card stays mounted (hidden with display:none when it
+          // isn't on the active day/page) so every Form.Item remains
+          // registered and nothing gets dropped from the payload.
           const dayOf = (name: number): string =>
             (watchedPeriods?.[name]?.day as string) || DAYS[0];
 
@@ -513,18 +582,12 @@ function TimeTableForm({
 
           const handleAddPeriod = () => {
             add(emptyPeriod(activeDayTab));
-            // jump to whichever page (within the active day) the newly
-            // added card will land on
             const newCountForActiveDay = matchingCount + 1;
             setPeriodPage(Math.ceil(newCountForActiveDay / PERIOD_PAGE_SIZE));
           };
 
           return (
             <>
-              {/* 🛠️ Day tabs — replaces the old numeric Pagination as
-                  the primary way to move between groups of period
-                  cards. Each tab shows how many periods are currently
-                  saved for that day. */}
               <div className="tt-daytabs">
                 {DAYS.map((day) => {
                   const count = countForDay(day);
@@ -542,9 +605,6 @@ function TimeTableForm({
                 })}
               </div>
 
-              {/* Secondary numeric pagination — only appears if a
-                  single day somehow has more than PERIOD_PAGE_SIZE
-                  (12) periods, which should be rare. */}
               {matchingCount > PERIOD_PAGE_SIZE && (
                 <div className="flex justify-end mb-3">
                   <Pagination
@@ -569,10 +629,6 @@ function TimeTableForm({
                 const fieldDay = dayOf(name);
                 const isActiveDay = fieldDay === activeDayTab;
 
-                // Which page (within the active day only) this card
-                // belongs to, based on its real position among cards
-                // for that same day — not its position in the whole
-                // mixed list.
                 let isOnCurrentPage = false;
                 if (isActiveDay) {
                   const posInDay = matchingForActiveDay.findIndex((f) => f.name === name);
@@ -584,10 +640,6 @@ function TimeTableForm({
                 return (
                   <div
                     key={key}
-                    // Hidden (not removed!) when it's on a different
-                    // day tab or a different within-day page. This
-                    // keeps the field mounted & registered in the form
-                    // at all times.
                     style={isVisible ? undefined : { display: "none" }}
                     aria-hidden={!isVisible}
                   >
@@ -637,9 +689,6 @@ function TimeTableForm({
                         </Form.Item>
                       </div>
 
-                      {/* 🛠️ one combined Start/End time range picker,
-                          replacing the two separate Start Time / End Time
-                          pickers. Same 12-hour display + 5-min steps as before. */}
                       <Form.Item
                         {...restField}
                         label="Time"
@@ -685,10 +734,6 @@ function TimeTableForm({
                             allowClear
                             showSearch
                             optionFilterProp="children"
-                            // 🆕 Teacher list is now fetched on-demand —
-                            // the API call fires only when this dropdown
-                            // is actually opened, not when Standard/
-                            // Division/Medium are picked above.
                             onDropdownVisibleChange={(open) => {
                               if (open) onTeacherDropdownOpen?.();
                             }}
@@ -809,20 +854,7 @@ function TimeTableForm({
 
 // ===============================
 // Read-only Timetable Grid (used in the View popup)
-// ---------------------------------------------------------------
-// "day-lane" weekly board. Each weekday is its own vertical lane;
-// each period is a clearly separated card. Break/Lunch periods get
-// their own simpler card (no subject/teacher line) instead of an
-// awkward "-"/"-" pair. Built entirely with CSS Grid (no <table>).
-//
-// 🛠️ RESPONSIVE FIX — nothing about the layout logic, data, or markup
-// structure changed. The only addition is a horizontally-scrollable
-// wrapper (`.sked-board-scroll`) around the existing `.sked-board` grid,
-// plus a few media queries. This makes the exact same grid usable on
-// phones/tablets (swipe sideways to see all 6 days) instead of getting
-// squished unreadably, while desktop is untouched (grid still fits the
-// full width with no scrolling needed).
-// ---------------------------------------------------------------
+// ===============================
 const TAG_PALETTE: { bg: string; border: string; text: string }[] = [
   { bg: "#FCEEDA", border: "#E8A33D", text: "#8A5A12" }, // amber
   { bg: "#DFF3EF", border: "#2E8B79", text: "#1D5C50" }, // teal
@@ -857,33 +889,18 @@ const initialsOf = (first?: string, last?: string) => {
   return combo || "—";
 };
 
-// 🛠️ accepts `any`, not just `string`, and coerces via toLabel
-// first. Previously this called `.match()` directly on `label`; if
-// `label` was ever an object (mismatched static-data shape) this threw
-// and crashed the whole page. Now it's always operating on a string.
 const railLabel = (label: any) => {
   const str = toLabel(label) || String(label ?? "");
   const m = str.match(/^Period\s+(\d+)$/i);
   return m ? `P${m[1]}` : str;
 };
 
-// 🛠️ detects Break/Lunch-type periods so they can get their own
-// simple card instead of an empty subject/teacher layout.
 const isBreakLabel = (label: any) => {
   const str = toLabel(label) || String(label ?? "");
   return /break|lunch|recess/i.test(str);
 };
 
-// ---------------------------------------------------------------
-// 🛠️ FIX — resolve a period's start time from whichever field name the
-// backend actually returns. This app has been observed to send the
-// value under different keys in different places (startTime / fromTime
-// / start / timeFrom / periodStartTime, sometimes nested under a DTO
-// wrapper). If the sort only ever reads `p.startTime` and the real
-// response uses a different key, every period silently has "no usable
-// time", and the sort falls back to the static period-list order —
-// which is exactly the "still shows insertion/dropdown order" symptom.
-// ---------------------------------------------------------------
+// resolve a period's start time from whichever field name the backend returns
 const extractStartTimeRaw = (p: any): any => {
   if (!p) return undefined;
   return (
@@ -899,14 +916,7 @@ const extractStartTimeRaw = (p: any): any => {
   );
 };
 
-// ---------------------------------------------------------------
-// 🛠️ FIX — convert a start-time value into minutes-since-midnight so
-// period rows can be sorted by their REAL configured time. Handles the
-// formats this kind of API tends to send: "14:00", "14:00:00",
-// "14:00:00.123456" (fractional seconds), "02:00 PM"/"2:00:00 PM", or a
-// full ISO datetime like "1970-01-01T14:00:00" — without depending on
-// dayjs's customParseFormat plugin being loaded anywhere.
-// ---------------------------------------------------------------
+// convert a start-time value into minutes-since-midnight for sorting
 const timeToMinutes = (raw?: any): number => {
   if (raw === null || raw === undefined || raw === "") return Number.MAX_SAFE_INTEGER;
   const str = String(raw).trim();
@@ -923,8 +933,6 @@ const timeToMinutes = (raw?: any): number => {
     }
   }
 
-  // Full date/datetime strings — dayjs parses ISO 8601 out of the box,
-  // no plugin required.
   const isoParsed = dayjs(str);
   if (isoParsed.isValid()) {
     return isoParsed.hour() * 60 + isoParsed.minute();
@@ -939,22 +947,12 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
     : [];
   const todayName = dayjs().format("dddd").toUpperCase();
 
-  // 🛠️ RESPONSIVE FIX (v2) — on phones, a 7-column grid is never going
-  // to look clean no matter how much it's shrunk, so below a breakpoint
-  // we switch to the pattern real calendar apps use: day tabs on top +
-  // a single vertical agenda list for the selected day. Tablet/desktop
-  // keep the exact same weekly grid as before (with the scroll wrapper
-  // already added). Nothing about the underlying data/sorting logic
-  // changes — this only changes which JSX is rendered.
+  // on phones: day tabs + vertical agenda; tablet/desktop: weekly grid
   const isMobile = useIsMobile(641);
   const [selectedDay, setSelectedDay] = useState<string>(
     DAYS.includes(todayName) ? todayName : DAYS[0],
   );
 
-  // 🛠️ dev diagnostic — if any period's start time can't be resolved
-  // into minutes, warn with the raw object so it's immediately visible
-  // in devtools which field/format your API actually uses, instead of
-  // silently falling back to static order with no clue why.
   useEffect(() => {
     if (!periods.length) return;
     const unresolved = periods.filter(
@@ -972,40 +970,16 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [periods]);
 
-  // 🛠️ always compare on normalized strings, never raw values that
-  // might be objects.
   const normalizedOrder = (periodOrder || []).map((p) => toLabel(p) || String(p ?? ""));
 
-  // Used ONLY as a tiebreaker now (see periodStartMinutes below) — the
-  // static list position no longer decides row order by itself.
   const orderIndex = (label: any) => {
     const str = toLabel(label) || String(label ?? "");
     const idx = normalizedOrder.indexOf(str);
     return idx === -1 ? Number.MAX_SAFE_INTEGER : idx;
   };
 
-  // ---------------------------------------------------------------
-  // 🛠️ FIX — row ordering.
-  //
-  // Previously rows were ordered purely by where the period's label
-  // sat in the fixed static list (Period 1, Period 2, ..., Break 1,
-  // Lunch Break, ...). That meant a Break you actually scheduled for,
-  // say, 5 PM — sitting between a 2 PM "1st Period" and a 6 PM "2nd
-  // Period" — always rendered at the very bottom (or wherever "Break"
-  // happens to sit in the static list), instead of in its real
-  // chronological place between them.
-  //
-  // 🛠️ FIX (rail time vs. sort order could disagree) — the sort key used
-  // to be the MINIMUM start time across every day that happens to share
-  // this period label, while the rail time shown next to the row came
-  // from a *different* lookup (the first matching record). If two days
-  // saved slightly different times under the same label (e.g. "Period
-  // 5" at 12:15 on Monday but an earlier time on another day), the row
-  // could sort using one day's time while displaying another's — e.g. a
-  // 12:00 Lunch Break rendering AFTER a 12:15 period it should precede.
-  // Both now resolve through the exact same lookup, so the sort order
-  // and the displayed time can never contradict each other.
-  // ---------------------------------------------------------------
+  // Sort key and displayed rail time both resolve through the same
+  // lookup so they can never contradict each other.
   const findFirstMatchingPeriod = (label: string) =>
     periods.find(
       (p) => (toLabel(p.periodNumber) || String(p.periodNumber ?? "")) === label,
@@ -1021,9 +995,6 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
   ).sort((a: string, b: string) => {
     const timeDiff = periodStartMinutes(a) - periodStartMinutes(b);
     if (timeDiff !== 0) return timeDiff;
-    // Only reached when both periods have no usable time at all —
-    // fall back to the static list order so rows still show up in a
-    // stable, predictable sequence.
     return orderIndex(a) - orderIndex(b);
   });
 
@@ -1073,13 +1044,6 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
           <p>No periods added yet.</p>
         </div>
       ) : isMobile ? (
-        // ---------------------------------------------------------
-        // 🛠️ RESPONSIVE FIX (v2) — mobile agenda view.
-        // Day tabs across the top (defaults to today), and a clean
-        // vertical list of that day's periods below — the same data,
-        // same sorting, same card styling, just laid out the way a
-        // phone screen actually reads well.
-        // ---------------------------------------------------------
         <div className="sked-agenda">
           <div className="sked-daytabs">
             {DAYS.map((day) => {
@@ -1162,20 +1126,13 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
           </div>
         </div>
       ) : (
-        // 🛠️ RESPONSIVE FIX — this outer div is new. It just makes the
-        // unchanged grid below horizontally scrollable on narrow screens
-        // (tablets) instead of squeezing 6 day-columns into a
-        // width they don't fit in. Nothing inside the grid changed.
         <div className="sked-board-scroll">
           <div
             className="sked-board"
             style={{ gridTemplateColumns: `84px repeat(${DAYS.length}, 1fr)` }}
           >
-            {/* corner cell */}
             <div className="sked-corner" />
 
-            {/* day lane headers — full day name on desktop, short 3-letter
-                abbreviation on mobile (back to how it was originally). */}
             {DAYS.map((day) => {
               const isToday = day === todayName;
               return (
@@ -1189,7 +1146,6 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
               );
             })}
 
-            {/* period rows — now in real chronological order */}
             {periodNumbers.map((num) => {
               const isBreakRow = isBreakLabel(num);
               return (
@@ -1214,11 +1170,6 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
                       );
                     }
 
-                    // 🛠️ Break/Lunch periods get a dedicated simple
-                    // card. Previously these fell through to the normal
-                    // subject/teacher card, which just showed "-" / "-"
-                    // and (before the toLabel fix) could crash on object
-                    // shaped data.
                     if (isBreakRow) {
                       return (
                         <div
@@ -1345,11 +1296,6 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
           color: #1E2530;
         }
 
-        /* 🛠️ RESPONSIVE FIX — scroll wrapper around the board. On
-           desktop this does nothing visible (board already fits). On
-           smaller screens it lets the (unchanged) grid scroll
-           horizontally with a smooth touch/swipe feel instead of
-           squeezing every column unreadably. */
         .sked-board-scroll {
           overflow-x: auto;
           overflow-y: hidden;
@@ -1358,8 +1304,6 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
           scrollbar-width: thin;
         }
 
-        /* Board — CSS Grid, no table, no scrollbar (unless scrolled
-           inside .sked-board-scroll on small screens, see below) */
         .sked-board {
           display: grid;
           gap: 6px;
@@ -1476,7 +1420,6 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
           white-space: nowrap;
         }
 
-        /* Break / Lunch card — deliberately simpler, no avatar/teacher row */
         .sked-break-card {
           width: 100%;
           height: 100%;
@@ -1528,17 +1471,6 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
           font-size: 24px;
         }
 
-        /* ---------------------------------------------------------
-           🛠️ RESPONSIVE FIX — tablet breakpoint.
-           The weekly grid only needs to handle tablet width and up
-           now (phones use the agenda view above). It keeps its
-           original 7-column layout (rail + 6 days) but is given a
-           minimum width so columns don't get uncomfortably thin.
-           .sked-board-scroll supplies the horizontal scroll when this
-           min-width is wider than the viewport. The first column
-           (period rail) stays pinned while scrolling sideways so you
-           always know which period/time you're looking at.
-        ----------------------------------------------------------*/
         @media (max-width: 1024px) {
           .sked-board {
             min-width: 760px;
@@ -1556,8 +1488,6 @@ function TimeTableGridView({ data, periodOrder }: { data: any; periodOrder?: str
           }
         }
 
-        /* Banner stacks to one column once the screen is narrow
-           enough that side-by-side chips would crowd the title. */
         @media (max-width: 640px) {
           .sked-banner {
             flex-direction: column;
@@ -1721,10 +1651,6 @@ export default function TimeTable() {
   const [teacherOptions, setTeacherOptions] = useState<TeacherOption[]>([]);
   const [subjectOptions, setSubjectOptions] = useState<SubjectOption[]>([]);
 
-  // 🆕 guards so the "getAllEmployeeDetailsByFilter" (teacher) API is
-  // only ever called once — the first time it's actually needed (see
-  // fetchTeachersByRole below) — instead of firing again every time the
-  // Teacher dropdown is reopened or Edit is opened multiple times.
   const teacherOptionsLoadedRef = useRef(false);
   const teacherOptionsLoadingRef = useRef(false);
 
@@ -1738,23 +1664,13 @@ export default function TimeTable() {
   const [viewLoading, setViewLoading] = useState(false);
   const [viewData, setViewData] = useState<any>(null);
 
-  // 🛠️ same useAuth() hook Results.tsx already uses, instead of
-  // guessing at localStorage.
   const { user } = useAuth();
   const canDelete = isAdminOrPrincipal(user?.role);
   const viewerIsTeacher = isTeacherRole(user?.role);
 
-  // ---------------------------------------------------------------
-  // 🆕 NEW — Search filter bar (Standard / Division / Medium dropdowns)
-  // for the admin/principal LIST VIEW only. Options are sourced from
-  // the SAME getAllStaticData() call/cache used by the Add/Edit
-  // drawer (`staticData`), so both places always show identical
-  // dropdown values — nothing separate is fetched for the filter bar.
-  // ---------------------------------------------------------------
+  // Search filter bar (Standard / Division / Medium) — admin/principal list only.
   const [filters, setFilters] = useState<TimeTableFilters>({});
 
-  // Same normalization pattern used inside TimeTableForm — reused here
-  // so the filter dropdowns match the Add/Edit dropdowns exactly.
   const standardOptions = (staticData?.["standard"] ?? STANDARD_FALLBACK).map(
     (s: any) => ({
       value: toValue(s),
@@ -1777,13 +1693,7 @@ export default function TimeTable() {
   const [myScheduleLoading, setMyScheduleLoading] = useState(false);
   const [mySchedule, setMySchedule] = useState<any>(null);
 
-  // 🛠️ UPDATED — now accepts an optional filters object. When any of
-  // standard/division/medium is set, it calls the SAME filtered
-  // endpoint the Teacher view already uses (getAllTimeTableByFilter),
-  // whose response shape ("Time TableDTOS") extractListAndTotal
-  // already knows how to read. With no filters set, it falls back to
-  // the original unfiltered getAllTimeTables call — existing pagination
-  // behavior is unchanged.
+  // 🆕 API MSG — errors now come from the API response itself.
   const fetchTimeTables = useCallback(
     async (pageNum: number, size: number, activeFilters: TimeTableFilters = {}) => {
       setTableLoading(true);
@@ -1800,11 +1710,14 @@ export default function TimeTable() {
               medium: activeFilters.medium,
             })
           : await api.post(apiEndpoints.getAllTimeTables(pageNum, size), {});
+        assertApiSuccess(res);
         const { list, total: t } = extractListAndTotal(res);
         setRows(list);
         setTotal(t);
       } catch (error: any) {
-        message.error(error?.response?.data?.message || "Failed to load timetables");
+        setRows([]);
+        setTotal(0);
+        showApiError(error, "Failed to load timetables");
       } finally {
         setTableLoading(false);
       }
@@ -1812,33 +1725,25 @@ export default function TimeTable() {
     [],
   );
 
-  // getAllStaticData is called on-demand only, the first time the
-  // Add/Edit/View is opened. Once loaded it's cached in state, so opening
-  // Add/Edit/View again won't call the API again.
   const ensureStaticData = useCallback(async () => {
-    if (staticData) return; // already loaded — don't refetch
+    if (staticData) return;
     try {
       const res = await api.get(apiEndpoints.getAllStaticData());
       const data = res.data?.data ?? res.data ?? {};
       setStaticData(data);
-    } catch {
-      // non-fatal — Standard/Division/Medium/Period dropdowns fall back/empty
+    } catch (error: any) {
+      showApiError(error, "Failed to load dropdown data");
     }
   }, [staticData]);
 
   useEffect(() => {
-    // 👇 teachers don't need the admin list at all; skip loading it.
     if (!viewerIsTeacher) {
       fetchTimeTables(page, pageSize, filters);
-      // 🆕 also load static data eagerly here (instead of only lazily
-      // on Add/Edit/View open) so the filter bar's dropdowns are ready
-      // as soon as the list page loads.
       ensureStaticData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, pageSize, fetchTimeTables, viewerIsTeacher]);
 
-  // 🆕 Search / Reset handlers for the filter bar.
   const handleSearch = () => {
     setPage(0);
     fetchTimeTables(0, pageSize, filters);
@@ -1850,38 +1755,21 @@ export default function TimeTable() {
     fetchTimeTables(0, pageSize, {});
   };
 
-  // Subject dropdown data — fetched once on mount (unchanged).
-  //
-  // 🆕 Teacher dropdown data is NO LONGER fetched here. Previously this
-  // same effect also loaded every employee up front and filtered
-  // "TEACHER" role client-side; that's what was firing
-  // getAllEmployeeDetailsByFilter as soon as the Add Time Table drawer's
-  // Standard/Division/Medium became fully selected. Teachers are now
-  // fetched lazily — see fetchTeachersByRole below, called only when the
-  // Teacher dropdown is actually opened (or when editing an existing
-  // record, so the assigned teacher's name can render).
+  // Subject dropdown data — fetched once on mount.
   useEffect(() => {
-    if (viewerIsTeacher) return; // teachers never open Add/Edit
+    if (viewerIsTeacher) return;
     (async () => {
       try {
         const res = await api.post(apiEndpoints.getAllSubjects(0, 100), {});
         const { list } = extractListAndTotal(res);
         setSubjectOptions(list);
-      } catch {
-        // non-fatal
+      } catch (error: any) {
+        showApiError(error, "Failed to load subjects");
       }
     })();
   }, [viewerIsTeacher]);
 
-  // 🆕 Fetches the teacher list ONLY when actually needed — the first
-  // time the Teacher dropdown is opened on any period card, or when
-  // opening Edit (so an already-assigned teacher's name can render
-  // instead of showing a raw id). Sends { role: "Teacher" } in the
-  // request body so the backend itself returns only teachers — no more
-  // client-side role filtering needed.
-  //
-  // Guarded so it only ever calls the API once per page load: repeated
-  // dropdown opens / repeated Edit opens re-use the already-fetched list.
+  // Teacher list fetched lazily, once per page load.
   const fetchTeachersByRole = useCallback(async () => {
     if (teacherOptionsLoadedRef.current || teacherOptionsLoadingRef.current) return;
     teacherOptionsLoadingRef.current = true;
@@ -1893,8 +1781,7 @@ export default function TimeTable() {
       setTeacherOptions(list);
       teacherOptionsLoadedRef.current = true;
     } catch (error: any) {
-      // eslint-disable-next-line no-console
-      console.warn("TimeTable: teacher fetch (role: Teacher) failed", error);
+      showApiError(error, "Failed to load teachers");
     } finally {
       teacherOptionsLoadingRef.current = false;
     }
@@ -1902,27 +1789,10 @@ export default function TimeTable() {
 
   // ---------------------------------------------------------------
   // Teacher timetable
-  //
-  // Same pattern as Achievements.tsx:
   //   TEACHER -> useAuth() -> user.standard/division/medium
   //   -> POST getAllTimeTableByFilter with those 3 fields.
-  //
-  // The backend request is:
-  // POST /jnpa-school-project/timeTable/getAllTimeTableByFilter
-  //      ?page=0&size=500&paginate=true
-  //
-  // Payload:
-  // {
-  //   standard: "1st Standard",
-  //   division: "A",
-  //   medium: "English"
-  // }
-  //
-  // After the API returns the timetable(s) for that class, we keep only
-  // periods assigned to the logged-in teacher.
+  // Whatever periods the API returns for that class are displayed.
   // ---------------------------------------------------------------
-
-  // EXACTLY like Achievements.tsx classScope.
   const teacherClassScope = {
     standard: user?.standard || "",
     division: user?.division || "",
@@ -1940,8 +1810,6 @@ export default function TimeTable() {
       medium: teacherClassScope.medium,
     };
 
-    console.log("TimeTable teacher payload:", payload);
-
     if (!payload.standard || !payload.division || !payload.medium) {
       console.warn("TimeTable: teacher class information is incomplete", payload);
       setMySchedule(null);
@@ -1951,16 +1819,11 @@ export default function TimeTable() {
 
     try {
       const res = await api.post(getAllTimeTableByFilterEndpoint(0, 500), payload);
+      assertApiSuccess(res);
 
-      console.log("TimeTable getAllTimeTableByFilter response:", res?.data);
-
-      // IMPORTANT: backend response is:
-      // res.data.data["Time TableDTOS"]
-      const timetableList = Array.isArray(res?.data?.data?.["Time TableDTOS"])
-        ? res.data.data["Time TableDTOS"]
-        : [];
-
-      console.log("TimeTable class records:", timetableList);
+      // response: res.data.data["Time TableDTOS"] (also tolerates the
+      // other list keys via extractListAndTotal)
+      const { list: timetableList } = extractListAndTotal(res);
 
       const allPeriods = timetableList.flatMap((tt: any) => {
         const periods = Array.isArray(tt?.timeTablePeriods) ? tt.timeTablePeriods : [];
@@ -1974,22 +1837,6 @@ export default function TimeTable() {
         }));
       });
 
-      console.log("TimeTable all periods returned by API:", allPeriods);
-
-      // IMPORTANT:
-      // Do NOT filter periods by employeeDetailsId/userId here.
-      // The API response is the source of truth for the timetable display.
-      // Whatever periods the backend returns for the selected
-      // Standard + Division + Medium must be displayed.
-      //
-      // Example backend response:
-      // data["Time TableDTOS"][0].timeTablePeriods
-      //
-      // This also fixes the case where the logged-in user's employeeDetailsId
-      // is null (for example Rahul), while the API correctly returns a
-      // timetable period belonging to another employee record.
-      console.log("TimeTable: displaying ALL periods returned by API:", allPeriods);
-
       const firstTimetable = timetableList[0];
 
       setMySchedule({
@@ -1999,21 +1846,9 @@ export default function TimeTable() {
         academicYear: firstTimetable?.academicYear ?? getLoggedInAcademicYear(),
         timeTablePeriods: allPeriods,
       });
-
-      console.log("TimeTable FINAL DISPLAY DATA:", {
-        standard: firstTimetable?.standard ?? payload.standard,
-        division: firstTimetable?.division ?? payload.division,
-        medium: firstTimetable?.medium ?? payload.medium,
-        academicYear: firstTimetable?.academicYear ?? getLoggedInAcademicYear(),
-        timeTablePeriods: allPeriods,
-      });
     } catch (error: any) {
       console.error("TimeTable getAllTimeTableByFilter failed:", error);
-      message.error(
-        error?.response?.data?.message ||
-          error?.response?.data?.body ||
-          "Failed to load your timetable",
-      );
+      showApiError(error, "Failed to load your timetable");
       setMySchedule(null);
     } finally {
       setMyScheduleLoading(false);
@@ -2041,10 +1876,8 @@ export default function TimeTable() {
       academicYear: data?.academicYear ?? getLoggedInAcademicYear(),
       timeTablePeriods: (data?.timeTablePeriods || []).map((p: any) => ({
         timeTablePeriodId: p.timeTablePeriodId,
-        // 🛠️ normalize in case a legacy record stored an object
         day: p.day,
         periodNumber: toLabel(p.periodNumber) || p.periodNumber,
-        // 🛠️ combine startTime/endTime into the single range field
         timeRange:
           p.startTime && p.endTime
             ? [dayjs(p.startTime, "HH:mm:ss"), dayjs(p.endTime, "HH:mm:ss")]
@@ -2063,23 +1896,22 @@ export default function TimeTable() {
       timeTablePeriods: [emptyPeriod()],
     });
     setDrawerOpen(true);
-    ensureStaticData(); // loads Standard/Division/Medium/Period options on first open
+    ensureStaticData();
   };
 
   const openEditDrawer = async (record: TimeTableRow) => {
     setIsEditing(true);
     setDrawerOpen(true);
     setDrawerLoading(true);
-    ensureStaticData(); // loads Standard/Division/Medium/Period options on first open
-    // 🆕 also make sure the teacher list is loaded so already-assigned
-    // teachers render their real name instead of a raw id.
+    ensureStaticData();
     fetchTeachersByRole();
     try {
       const res = await api.get(apiEndpoints.getTimeTableById(record.timeTableId));
+      assertApiSuccess(res);
       const data = res.data?.data ?? res.data;
       populateForm(data);
     } catch (error: any) {
-      message.error(error?.response?.data?.message || "Failed to load timetable");
+      showApiError(error, "Failed to load timetable");
     } finally {
       setDrawerLoading(false);
     }
@@ -2094,13 +1926,14 @@ export default function TimeTable() {
     setViewOpen(true);
     setViewLoading(true);
     setViewData(null);
-    ensureStaticData(); // needed so the grid can order periods correctly
+    ensureStaticData();
     try {
       const res = await api.get(apiEndpoints.getTimeTableById(record.timeTableId));
+      assertApiSuccess(res);
       const data = res.data?.data ?? res.data;
       setViewData(data);
     } catch (error: any) {
-      message.error(error?.response?.data?.message || "Failed to load timetable");
+      showApiError(error, "Failed to load timetable");
     } finally {
       setViewLoading(false);
     }
@@ -2111,20 +1944,26 @@ export default function TimeTable() {
     setViewData(null);
   };
 
+  // 🆕 API MSG — on failure the drawer stays open, the API's validation
+  // text is shown in a toast AND set under the matching form field(s).
+  // On success the API's own success message is shown.
   const handleSubmit = async (payload: any) => {
     setSubmitting(true);
     try {
+      let res: any;
       if (isEditing && payload.timeTableId) {
-        await api.put(apiEndpoints.updateTimeTable(), payload);
-        message.success("Time table updated successfully");
+        res = await api.put(apiEndpoints.updateTimeTable(), payload);
+        assertApiSuccess(res);
+        message.success(getApiMessage(res, "Time table updated successfully"));
       } else {
-        await api.post(apiEndpoints.saveTimeTable(), payload);
-        message.success("Time table added successfully");
+        res = await api.post(apiEndpoints.saveTimeTable(), payload);
+        assertApiSuccess(res);
+        message.success(getApiMessage(res, "Time table added successfully"));
       }
       closeDrawer();
       fetchTimeTables(page, pageSize, filters);
     } catch (error: any) {
-      message.error(error?.response?.data?.message || "Failed to save timetable");
+      showApiError(error, "Failed to save timetable", form);
     } finally {
       setSubmitting(false);
     }
@@ -2132,21 +1971,16 @@ export default function TimeTable() {
 
   const handleDelete = async (timeTableId: number) => {
     try {
-      await api.delete(apiEndpoints.deleteTimeTable(timeTableId));
-      message.success("Time table deleted successfully");
+      const res = await api.delete(apiEndpoints.deleteTimeTable(timeTableId));
+      assertApiSuccess(res);
+      message.success(getApiMessage(res, "Time table deleted successfully"));
       fetchTimeTables(page, pageSize, filters);
     } catch (error: any) {
-      message.error(error?.response?.data?.message || "Failed to delete timetable");
+      showApiError(error, "Failed to delete timetable");
     }
   };
 
-  // 👇 a teacher who logs in never sees the admin class list; they
-  // land straight on their own merged weekly schedule (Vikas sees Vikas's
-  // periods, Rahul sees Rahul's, automatically, based on the logged-in
-  // user's employeeDetailsId). No Add/Edit/Delete controls here at all.
-  // 🆕 The Standard/Division/Medium search filter bar below is ONLY
-  // rendered further down, in the admin/principal branch — teachers
-  // never reach that code because this early return happens first.
+  // Teachers land straight on their own schedule — no Add/Edit/Delete.
   if (viewerIsTeacher) {
     return (
       <div>
@@ -2215,7 +2049,6 @@ export default function TimeTable() {
             size="small"
             onClick={() => openEditDrawer(record)}
           />
-          {/* 🛠️ Delete is only shown for ADMIN / PRINCIPAL. */}
           {canDelete && (
             <Popconfirm
               title="Delete this timetable?"
@@ -2233,8 +2066,6 @@ export default function TimeTable() {
 
   return (
     <div>
-      {/* Makes the disabled Academic Year field render dark, readable text
-          instead of antd's default washed-out gray. */}
       <style>{`
         .academic-year-dark.ant-input[disabled],
         .academic-year-dark.ant-input-disabled {
@@ -2244,10 +2075,6 @@ export default function TimeTable() {
         }
       `}</style>
 
-      {/* 🆕 Header row — title removed. Standard/Division/Medium filter
-          dropdowns sit on the left; Search, Reset, and Add Time Table
-          are grouped together on the right. Admin/Principal list view
-          ONLY (teachers never render this branch). */}
       <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-2 flex-wrap">
           <Select
@@ -2339,7 +2166,6 @@ export default function TimeTable() {
                     size="small"
                     onClick={() => openEditDrawer(record)}
                   />
-                  {/* 🛠️ Delete is only shown for ADMIN / PRINCIPAL. */}
                   {canDelete && (
                     <Popconfirm
                       title="Delete this timetable?"
@@ -2394,9 +2220,7 @@ export default function TimeTable() {
         </Spin>
       </Drawer>
 
-      {/* View — popup, not a drawer, showing a proper timetable grid.
-          Wrapped in an error boundary so a bad/unexpected record shows a
-          small message instead of blanking the whole page. */}
+      {/* View popup */}
       <Modal
         open={viewOpen}
         onCancel={closeView}

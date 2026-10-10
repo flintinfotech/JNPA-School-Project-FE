@@ -12,14 +12,13 @@ import {
   Input,
   InputNumber,
   Pagination,
-  Popconfirm,
   Row,
   Select,
   Spin,
   Tag,
   message,
 } from "antd";
-import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
+import { EditOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 
 import CommonTable from "../components/commonTable";
@@ -33,6 +32,7 @@ interface RequestApprovalRow {
   requestApprovalId?: number;
   requestType?: string;
   remark?: string;
+  cancellationReason?: string;
   requestedDate?: string;
   estimatedAmount?: number;
   priority?: string;
@@ -59,6 +59,7 @@ interface RequestApprovalFormValues {
   category: string; // auto-filled from the selected product, disabled
   requestType: string;
   remark: string;
+  cancellationReason?: string; // shown only when status = REJECTED
   requestedDate: dayjs.Dayjs;
   estimatedAmount: number;
   priority: string;
@@ -117,9 +118,6 @@ const DISABLED_DARK_THEME = {
     colorTextDisabled: "#1f1f1f",
   },
 };
-
-// Requests with these statuses are locked: Edit opens them read-only
-const LOCKED_STATUSES = ["APPROVED", "REJECTED"];
 
 const money = (v?: number | null) =>
   v === null || v === undefined
@@ -205,6 +203,10 @@ const extractRequestTypes = (raw: any): string[] => {
 export default function RequestApproval() {
   const [form] = Form.useForm<RequestApprovalFormValues>();
 
+  // watch the Status field -> show "Cancellation Reason" only when REJECTED
+  const statusValue = Form.useWatch("status", form);
+  const isRejected = statusValue === "REJECTED";
+
   // ---------- responsive (mobile) ----------
   const screens = Grid.useBreakpoint();
   const isMobile = screens.md === false; // below 768px
@@ -238,11 +240,6 @@ export default function RequestApproval() {
   const [drawerWidth, setDrawerWidth] = useState<number | string>(
     window.innerWidth < 768 ? "100%" : 480,
   );
-
-  // Edit of an Approved / Rejected request -> every field is disabled (read-only), no Save
-  const isLocked =
-    !!editingId &&
-    LOCKED_STATUSES.includes((editingRecord?.status || "").toUpperCase());
 
   useEffect(() => {
     const handleResize = () =>
@@ -352,6 +349,13 @@ export default function RequestApproval() {
     form.setFieldsValue({ category: p?.category });
   };
 
+  // Status changed -> clear the cancellation reason if it is not REJECTED anymore
+  const handleStatusChange = (value: string) => {
+    if (value !== "REJECTED") {
+      form.setFieldsValue({ cancellationReason: undefined });
+    }
+  };
+
   // ---------- DRAWER ----------
   const openAddDrawer = () => {
     setEditingId(null);
@@ -391,6 +395,7 @@ export default function RequestApproval() {
         category: d.purchaseDTO?.category,
         requestType: d.requestType,
         remark: d.remark,
+        cancellationReason: d.cancellationReason,
         requestedDate: d.requestedDate ? dayjs(d.requestedDate) : undefined,
         estimatedAmount: d.estimatedAmount,
         priority: d.priority,
@@ -403,34 +408,6 @@ export default function RequestApproval() {
       setDrawerOpen(false);
     } finally {
       setDrawerLoading(false);
-    }
-  };
-
-  // ---------- DELETE ----------
-  // DELETE /requestApproval/deleteRequestApproval/{id}
-  const handleDelete = async (record: RequestApprovalRow) => {
-    if (record.requestApprovalId === undefined) return;
-    try {
-      const res = await api.delete(
-        apiEndpoints.deleteRequestApproval(record.requestApprovalId),
-      );
-
-      // backend can send "success": false with HTTP 200 -> check before showing success
-      if (res.data?.success === false) {
-        message.error(res.data?.message || "Failed to delete request");
-        return;
-      }
-
-      message.success(res.data?.message || "Request deleted successfully");
-
-      // if the last row of this page was deleted, go back one page
-      const targetPage = rows.length === 1 && page > 0 ? page - 1 : page;
-      if (targetPage !== page) setPage(targetPage); // useEffect reloads the table
-      else fetchRequests(page, pageSize);
-    } catch (error: any) {
-      message.error(
-        error?.response?.data?.message || "Failed to delete request",
-      );
     }
   };
 
@@ -462,6 +439,9 @@ export default function RequestApproval() {
       const payload = {
         requestType: values.requestType,
         remark: values.remark,
+        // only sent when the status is REJECTED
+        cancellationReason:
+          values.status === "REJECTED" ? values.cancellationReason?.trim() : "",
         requestedDate: values.requestedDate.format("YYYY-MM-DD"),
         estimatedAmount: values.estimatedAmount,
         priority: values.priority,
@@ -558,10 +538,15 @@ export default function RequestApproval() {
       render: (v: number) => money(v),
     },
     {
+      title: "Academic Year",
+      dataIndex: "academicYear",
+      key: "academicYear",
+      render: (v: string) => v || "-",
+    },
+    {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      
       render: (v: string) =>
         v ? (
           <Tag color={STATUS_COLOR[v.toUpperCase()] || "default"}>
@@ -578,34 +563,19 @@ export default function RequestApproval() {
       render: (v: string) => v || "-",
     },
     {
-      // value comes from the backend (cancellationReason)
-      title: "Cancellation Reason",
-      dataIndex: "cancellationReason",
-      key: "cancellationReason",
-      render: (v: string) => v || "-",
-    },
-    {
+      // only one icon (Edit), placed in the middle of the column
       title: "Action",
       key: "action",
       width: 90,
+      align: "center" as const,
       render: (_: any, record: RequestApprovalRow) => (
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", justifyContent: "center" }}>
           <Button
             type="primary"
             size="small"
             icon={<EditOutlined />}
             onClick={() => openEditDrawer(record)}
           />
-          <Popconfirm
-            title="Delete this request?"
-            description="This action cannot be undone."
-            okText="Yes"
-            cancelText="No"
-            okButtonProps={{ danger: true }}
-            onConfirm={() => handleDelete(record)}
-          >
-            <Button danger size="small" icon={<DeleteOutlined />} />
-          </Popconfirm>
         </div>
       ),
     },
@@ -687,7 +657,8 @@ export default function RequestApproval() {
             {cardRow("Academic Year", r.academicYear)}
             {cardRow("Remark", r.remark)}
 
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            {/* only the Edit button (same as the table: one action) */}
+            <div style={{ display: "flex", marginTop: 12 }}>
               <Button
                 type="primary"
                 icon={<EditOutlined />}
@@ -696,18 +667,6 @@ export default function RequestApproval() {
               >
                 Edit
               </Button>
-              <Popconfirm
-                title="Delete this request?"
-                description="This action cannot be undone."
-                okText="Yes"
-                cancelText="No"
-                okButtonProps={{ danger: true }}
-                onConfirm={() => handleDelete(r)}
-              >
-                <Button danger icon={<DeleteOutlined />} style={{ flex: 1 }}>
-                  Delete
-                </Button>
-              </Popconfirm>
             </div>
           </Card>
         ))}
@@ -729,13 +688,7 @@ export default function RequestApproval() {
   );
 
   return (
-    <Card
-      extra={
-        <Button type="primary" icon={<PlusOutlined />} onClick={openAddDrawer}>
-          Add Request
-        </Button>
-      }
-    >
+    <Card>
       {!tableLoading && rows.length === 0 ? (
         <Empty description="No requests found" style={{ padding: "40px 0" }} />
       ) : isMobile ? (
@@ -764,7 +717,7 @@ export default function RequestApproval() {
         </div>
       )}
 
-      {/* ---------- Add / Edit Request drawer ---------- */}
+      {/* ---------- Edit Request drawer ---------- */}
       <Drawer
         title={editingId ? "Edit Request" : "Add Request"}
         open={drawerOpen}
@@ -773,144 +726,154 @@ export default function RequestApproval() {
         destroyOnClose
         footer={
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-            {/* Approved / Rejected request -> read-only, so only Close (no Save) */}
-            <Button onClick={closeDrawer}>{isLocked ? "Close" : "Cancel"}</Button>
-            {!isLocked && (
-              <Button
-                type="primary"
-                loading={submitting}
-                disabled={drawerLoading}
-                onClick={() => form.submit()}
-              >
-                Save
-              </Button>
-            )}
+            <Button onClick={closeDrawer}>Cancel</Button>
+            <Button
+              type="primary"
+              loading={submitting}
+              disabled={drawerLoading}
+              onClick={() => form.submit()}
+            >
+              Save
+            </Button>
           </div>
         }
       >
         <Spin spinning={drawerLoading}>
-          {/* dark text for every disabled field */}
           <ConfigProvider theme={DISABLED_DARK_THEME}>
-            {/* disabled={isLocked} -> every field of the form is disabled for Approved / Rejected */}
-            <Form
-              form={form}
-              layout="vertical"
-              onFinish={handleSubmit}
-              disabled={isLocked}
-            >
-              <Row gutter={16}>
-                {/* Product Name (from Purchase Master) */}
-                <Col xs={24} sm={12}>
+          <Form form={form} layout="vertical" onFinish={handleSubmit}>
+            <Row gutter={16}>
+              {/* Product Name (from Purchase Master) - disabled */}
+              <Col xs={24} sm={12}>
+                <Form.Item label="Product Name" name="purchaseId">
+                  <Select
+                    disabled
+                    showSearch
+                    optionFilterProp="label"
+                    placeholder="Product Name"
+                    loading={purchaseLoading}
+                    options={productOptions}
+                    onChange={handleProductChange}
+                  />
+                </Form.Item>
+              </Col>
+
+              {/* Category (auto-filled from the product, disabled) */}
+              <Col xs={24} sm={12}>
+                <Form.Item label="Category" name="category">
+                  <Input disabled placeholder="Category" />
+                </Form.Item>
+              </Col>
+
+              {/* Request Type - disabled */}
+              <Col span={24}>
+                <Form.Item label="Request Type" name="requestType">
+                  <Select
+                    disabled
+                    placeholder="Request Type"
+                    options={requestTypeOptions}
+                    loading={requestTypeLoading}
+                    onDropdownVisibleChange={handleRequestTypeDropdown}
+                    notFoundContent={
+                      requestTypeLoading ? <Spin size="small" /> : undefined
+                    }
+                  />
+                </Form.Item>
+              </Col>
+
+              <Col span={24}>
+                <Form.Item label="Requested Date" name="requestedDate">
+                  <DatePicker
+                    disabled
+                    format="DD-MM-YYYY"
+                    style={{ width: "100%" }}
+                  />
+                </Form.Item>
+              </Col>
+
+              <Col span={24}>
+                <Form.Item label="Priority" name="priority">
+                  <Select
+                    disabled
+                    options={PRIORITY_OPTIONS}
+                    placeholder="Priority"
+                  />
+                </Form.Item>
+              </Col>
+
+              <Col xs={24} sm={12}>
+                <Form.Item label="Quantity" name="quantity">
+                  <InputNumber
+                    disabled
+                    min={1}
+                    precision={0}
+                    style={{ width: "100%" }}
+                  />
+                </Form.Item>
+              </Col>
+
+              <Col xs={24} sm={12}>
+                <Form.Item label="Estimated Amount" name="estimatedAmount">
+                  <InputNumber
+                    disabled
+                    min={0}
+                    precision={2}
+                    style={{ width: "100%" }}
+                  />
+                </Form.Item>
+              </Col>
+
+              {/* Login academic year, disabled */}
+              <Col xs={24} sm={12}>
+                <Form.Item label="Academic Year" name="academicYear">
+                  <Input disabled />
+                </Form.Item>
+              </Col>
+
+              {/* Status - the ONLY enabled field */}
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  label="Status"
+                  name="status"
+                  rules={[{ required: true, message: "Select status" }]}
+                >
+                  <Select
+                    options={STATUS_OPTIONS}
+                    placeholder="Status"
+                    onChange={handleStatusChange}
+                  />
+                </Form.Item>
+              </Col>
+
+              {/* Remark - disabled */}
+              <Col span={24}>
+                <Form.Item label="Remark" name="remark">
+                  <Input.TextArea rows={3} placeholder="Remark" disabled />
+                </Form.Item>
+              </Col>
+
+              {/* Cancellation Reason - opens only when Status = Rejected */}
+              {isRejected && (
+                <Col span={24}>
                   <Form.Item
-                    label="Product Name"
-                    name="purchaseId"
-                    rules={[{ required: true, message: "Select product name" }]}
+                    label="Cancellation Reason"
+                    name="cancellationReason"
+                    rules={[
+                      {
+                        required: true,
+                        whitespace: true,
+                        message: "Enter cancellation reason",
+                      },
+                    ]}
                   >
-                    <Select
-                      showSearch
-                      optionFilterProp="label"
-                      placeholder="Product Name"
-                      loading={purchaseLoading}
-                      options={productOptions}
-                      onChange={handleProductChange}
+                    <Input.TextArea
+                      rows={3}
+                      placeholder="Cancellation Reason"
                     />
                   </Form.Item>
                 </Col>
-
-                {/* Category (auto-filled from the product, disabled) */}
-                <Col xs={24} sm={12}>
-                  <Form.Item label="Category" name="category">
-                    <Input disabled placeholder="Category" />
-                  </Form.Item>
-                </Col>
-
-                {/* Request Type (loaded from static data API when the dropdown is clicked) */}
-                <Col span={24}>
-                  <Form.Item
-                    label="Request Type"
-                    name="requestType"
-                    rules={[{ required: true, message: "Select request type" }]}
-                  >
-                    <Select
-                      placeholder="Request Type"
-                      options={requestTypeOptions}
-                      loading={requestTypeLoading}
-                      onDropdownVisibleChange={handleRequestTypeDropdown}
-                      notFoundContent={
-                        requestTypeLoading ? <Spin size="small" /> : undefined
-                      }
-                    />
-                  </Form.Item>
-                </Col>
-
-                <Col span={24}>
-                  <Form.Item
-                    label="Requested Date"
-                    name="requestedDate"
-                    rules={[{ required: true, message: "Select requested date" }]}
-                  >
-                    <DatePicker format="DD-MM-YYYY" style={{ width: "100%" }} />
-                  </Form.Item>
-                </Col>
-
-                <Col span={24}>
-                  <Form.Item
-                    label="Priority"
-                    name="priority"
-                    rules={[{ required: true, message: "Select priority" }]}
-                  >
-                    <Select options={PRIORITY_OPTIONS} placeholder="Priority" />
-                  </Form.Item>
-                </Col>
-
-                <Col xs={24} sm={12}>
-                  <Form.Item
-                    label="Quantity"
-                    name="quantity"
-                    rules={[{ required: true, message: "Enter quantity" }]}
-                  >
-                    <InputNumber min={1} precision={0} style={{ width: "100%" }} />
-                  </Form.Item>
-                </Col>
-
-                <Col xs={24} sm={12}>
-                  <Form.Item
-                    label="Estimated Amount"
-                    name="estimatedAmount"
-                    rules={[{ required: true, message: "Enter estimated amount" }]}
-                  >
-                    <InputNumber min={0} precision={2} style={{ width: "100%" }} />
-                  </Form.Item>
-                </Col>
-
-                {/* Login academic year, disabled */}
-                <Col xs={24} sm={12}>
-                  <Form.Item label="Academic Year" name="academicYear">
-                    <Input disabled />
-                  </Form.Item>
-                </Col>
-
-                <Col xs={24} sm={12}>
-                  <Form.Item label="Status" name="status">
-                    <Select
-                      options={STATUS_OPTIONS}
-                      placeholder="Status"
-                      disabled
-                    />
-                  </Form.Item>
-                </Col>
-
-                <Col span={24}>
-                  <Form.Item
-                    label="Remark"
-                    name="remark"
-                    rules={[{ required: true, message: "Enter remark" }]}
-                  >
-                    <Input.TextArea rows={3} placeholder="Remark" />
-                  </Form.Item>
-                </Col>
-              </Row>
-            </Form>
+              )}
+            </Row>
+          </Form>
           </ConfigProvider>
         </Spin>
       </Drawer>
