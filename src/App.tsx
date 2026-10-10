@@ -122,10 +122,11 @@ export default function App() {
 const isVendormasterPage = location.pathname === "/vendor-master";
 const isPurchaseRequestPage = location.pathname === "/purchase-request";
 const isApprovedRequestPage = location.pathname === "/approved-request";
+const isPromoteStudentsPage = location.pathname === "/promote-students";
   const isHomePage = location.pathname === "/";
  
-  const hideNavbarFooter = isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage || isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage || isStudentProfile|| isResultsPage || isAchievementsPage || isAcademicCalendarPage || isStudentFeesPage || isTimeTablePage || isPurchaseMasterPage || isSchoolExpensesPage ||isStudentHomeworkPage || isFormerStudentPage || isStudentAttendence|| isEmployeesalaryPage || isEmployeeSalaryReportPage|| isStudentFeeReportPage ||  isSchoolExpensesReportPage ||isRequestApprovalPage||isVendormasterPage||isPurchaseRequestPage||isApprovedRequestPage;
-  const hideFooter = isHomePage || isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage ||  isTeacherSubjectsPage ||  isAdmissionInquiryPage  ||  isDashboardPage ||  isProfilePage ||  isStudentProfile||  isResultsPage ||  isAchievementsPage  ||  isAcademicCalendarPage  ||  isStudentFeesPage ||  isTimeTablePage ||  isPurchaseMasterPage || isSchoolExpensesPage||isStudentHomeworkPage  || isFormerStudentPage ||isStudentAttendence || isEmployeesalaryPage || isEmployeeSalaryReportPage || isStudentFeeReportPage || isSchoolExpensesReportPage ||isRequestApprovalPage||isVendormasterPage||isPurchaseRequestPage||isApprovedRequestPage;
+  const hideNavbarFooter = isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage || isTeacherSubjectsPage || isAdmissionInquiryPage || isDashboardPage || isProfilePage || isStudentProfile|| isResultsPage || isAchievementsPage || isAcademicCalendarPage || isStudentFeesPage || isTimeTablePage || isPurchaseMasterPage || isSchoolExpensesPage ||isStudentHomeworkPage || isFormerStudentPage || isStudentAttendence|| isEmployeesalaryPage || isEmployeeSalaryReportPage|| isStudentFeeReportPage ||  isSchoolExpensesReportPage ||isRequestApprovalPage||isVendormasterPage||isPurchaseRequestPage||isApprovedRequestPage ||isPromoteStudentsPage;
+  const hideFooter = isHomePage || isLoginPage || isParentLoginPage || isUsersPage || isStudentPage || isAcademicAdminPage || isEventsAndNewsAdminPage || isExamAndResultsAdminPage || isAdmissionAdminPage || isSubjectsMasterPage || isClassMasterPage || isSubjectAssignmentPage || isUpdateUserPage ||  isTeacherSubjectsPage ||  isAdmissionInquiryPage  ||  isDashboardPage ||  isProfilePage ||  isStudentProfile||  isResultsPage ||  isAchievementsPage  ||  isAcademicCalendarPage  ||  isStudentFeesPage ||  isTimeTablePage ||  isPurchaseMasterPage || isSchoolExpensesPage||isStudentHomeworkPage  || isFormerStudentPage ||isStudentAttendence || isEmployeesalaryPage || isEmployeeSalaryReportPage || isStudentFeeReportPage || isSchoolExpensesReportPage ||isRequestApprovalPage||isVendormasterPage||isPurchaseRequestPage||isApprovedRequestPage ||isPromoteStudentsPage;
  
   return (
     <div className="min-h-screen flex flex-col">
@@ -194,6 +195,9 @@ const isApprovedRequestPage = location.pathname === "/approved-request";
           <Route path="/vendor-master" element={<Vendormaster />} />
           <Route path="/purchase-request" element={<Purchaserequest />} />
           <Route path="/approved-request" element={<Approvedrequest />} />
+
+
+            <Route path="/promote-students" element={<PromoteStudents/>} />
           
           </Route>
  
