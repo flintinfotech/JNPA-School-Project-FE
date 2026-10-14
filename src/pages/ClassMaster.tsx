@@ -20,12 +20,14 @@ interface ClassMasterModel {
   standard: string;
   division: string;
   medium: string;
+  section: string;
 }
 
 const emptyForm: Omit<ClassMasterModel, "id"> = {
   standard: "",
   division: "",
   medium: "",
+  section: "",
 };
 
 const ClassMaster: React.FC = () => {
@@ -48,6 +50,7 @@ const ClassMaster: React.FC = () => {
   const [standards, setStandards] = useState<string[]>([]);
   const [divisions, setDivisions] = useState<string[]>([]);
   const [mediums, setMediums] = useState<string[]>([]);
+  const [sections, setSections] = useState<string[]>([]);
 
   // Mobile View
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -68,6 +71,7 @@ const ClassMaster: React.FC = () => {
             standard: item.standard,
             division: item.division,
             medium: item.medium,
+            section: item.section,
           }));
 
           setClasses(classData);
@@ -83,6 +87,8 @@ const ClassMaster: React.FC = () => {
 
   // ===========================
   // Fetch Dropdown Data
+  // GET /jnpa-school-project/staticData/getAllStaticData
+  // Section options = data["class name"] (Pre-Primary / Primary / Secondary)
   // ===========================
 
   const fetchStaticData = () => {
@@ -95,6 +101,7 @@ const ClassMaster: React.FC = () => {
           setStandards(data.standard || []);
           setDivisions(data.division || []);
           setMediums(data.medium || []);
+          setSections(data["class name"] || []);
         }
       })
       .catch((error) => {
@@ -138,6 +145,7 @@ const ClassMaster: React.FC = () => {
   );
 
   const paginated = classes;
+
   // ===========================
   // Open Add Drawer
   // ===========================
@@ -161,9 +169,10 @@ const ClassMaster: React.FC = () => {
           setEditId(data.classMasterId);
 
           setForm({
-            standard: data.standard,
-            division: data.division,
-            medium: data.medium,
+            standard: data.standard || "",
+            division: data.division || "",
+            medium: data.medium || "",
+            section: data.section || "",
           });
 
           setShowModal(true);
@@ -175,7 +184,7 @@ const ClassMaster: React.FC = () => {
       });
   };
 
-  // =========================== 
+  // ===========================
   // Delete
   // ===========================
 
@@ -202,9 +211,6 @@ const ClassMaster: React.FC = () => {
       });
   };
 
-  // 👇 Same styled, friendlier wording as Subject Master's delete-blocked
-  // message — red text + a rewritten sentence for the "in use elsewhere"
-  // case, falling back to the backend's own message for anything else.
   const showDeleteError = (backendMessage?: string) => {
     const finalMessage = backendMessage || "Failed to delete class";
 
@@ -244,7 +250,7 @@ const ClassMaster: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!form.standard || !form.division || !form.medium) {
+    if (!form.standard || !form.division || !form.medium || !form.section) {
       message.warning("Please fill all fields.");
       return;
     }
@@ -259,6 +265,7 @@ const ClassMaster: React.FC = () => {
         standard: form.standard,
         division: form.division,
         medium: form.medium,
+        section: form.section,
       };
 
       updateClassMaster(payload)
@@ -287,7 +294,14 @@ const ClassMaster: React.FC = () => {
     // SAVE
     // -------------------------
 
-    saveClassMaster(form)
+    const savePayload = {
+      standard: form.standard,
+      division: form.division,
+      medium: form.medium,
+      section: form.section,
+    };
+
+    saveClassMaster(savePayload)
       .then((response) => {
         if (response.data.success) {
           message.success(response.data.message);
@@ -297,7 +311,6 @@ const ClassMaster: React.FC = () => {
           setForm(emptyForm);
           setShowModal(false);
 
-          // Optional:
           // Go to first page after adding a record.
           setPage(1);
         } else {
@@ -309,6 +322,7 @@ const ClassMaster: React.FC = () => {
         message.error("Something went wrong.");
       });
   };
+
   // ===========================
   // Mobile View
   // ===========================
@@ -403,6 +417,7 @@ const ClassMaster: React.FC = () => {
       </div>
     );
   }
+
   return (
     <div className="min-h-screen bg-gray-50">
 
@@ -502,7 +517,6 @@ const ClassMaster: React.FC = () => {
 
                         <Popconfirm
                           title="Are you sure ,you want to Delete this Class"
-                        
                           okText="Yes"
                           cancelText="No"
                           onConfirm={() => handleDelete(row.id)}
@@ -587,6 +601,7 @@ const ClassMaster: React.FC = () => {
         </div>
 
       </div>
+
       {showModal && (
         <>
           {/* Background */}
@@ -677,6 +692,29 @@ const ClassMaster: React.FC = () => {
                   <option value="">Select Medium</option>
 
                   {mediums.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Section (from "class name") */}
+              <div>
+                <label className="block mb-2">
+                  <span className="text-red-500">*</span> Section
+                </label>
+
+                <select
+                  name="section"
+                  value={form.section}
+                  onChange={handleChange}
+                  className="w-full h-10 border border-gray-300 rounded-md px-3"
+                  required
+                >
+                  <option value="">Select Section</option>
+
+                  {sections.map((item) => (
                     <option key={item} value={item}>
                       {item}
                     </option>

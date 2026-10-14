@@ -19,7 +19,7 @@ import type { ColumnsType } from "antd/es/table";
 import api from "../lib/axios";
 import { apiEndpoints } from "../services/apiEndpoints";
 import { getAllStaticData } from "../services/staticDataService";
-// 👇 FIX: same API as the Results screen (login-year students)
+// same API as the Results screen (login-year students)
 import {
   getAllCurrentYearStudentsData,
   getClassScope,
@@ -45,6 +45,10 @@ const getStandard = (r: ResultStudentDTO) =>
   r.academicInformation?.[0]?.standard || "-";
 const getDivision = (r: ResultStudentDTO) =>
   r.academicInformation?.[0]?.division || "-";
+// 👇 NEW: section comes from academicInformation[0].section
+// (cast to any in case "section" is not yet in the ResultStudentDTO type)
+const getSection = (r: ResultStudentDTO) =>
+  (r.academicInformation?.[0] as any)?.section || "-";
 const getRollNo = (r: ResultStudentDTO) =>
   r.academicInformation?.[0]?.rollNo || "-";
 const getMedium = (r: ResultStudentDTO) =>
@@ -89,7 +93,7 @@ export default function PromoteStudents() {
 
   // ---------- students ----------
   const [students, setStudents] = useState<ResultStudentDTO[]>([]);
-  // 👇 FIX: ids promoted in this session -> "Promoted" shows immediately after promote
+  // ids promoted in this session -> "Promoted" shows immediately after promote
   const [promotedIds, setPromotedIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
@@ -163,7 +167,6 @@ export default function PromoteStudents() {
   // ---------- selection helpers ----------
   // A student is "promoted" when he already has an academic information row
   // for the next academic year (e.g. 2027-2028).
-  // 👇 FIX: look in the full row (all years) first, then in the list row.
   const isPromoted = useCallback(
     (r: ResultStudentDTO) => {
       if (promotedIds.includes(r.studentId)) return true;
@@ -197,7 +200,7 @@ export default function PromoteStudents() {
   // Body = array of the selected students (full objects)
   // where each student's "academicInformation" gets ONE NEW ROW for the next academic year:
   //   academicYear = next year (2027-2028), standard = the Standard chosen in the card,
-  //   division / medium / admissionNo / admissionDate = copied from the current row,
+  //   division / medium / section / admissionNo / admissionDate = copied from the current row,
   //   rollNo = null, no academicInformationId, auditDetails = null
   const buildPromotePayload = (student: ResultStudentDTO) => {
     const full: ResultStudentDTO = student;
@@ -213,6 +216,7 @@ export default function PromoteStudents() {
           auditDetails: null,
           division: current.division ?? null,
           medium: current.medium ?? null,
+          section: current.section ?? null, // 👇 NEW: keep the section in the new row
           rollNo: null,
           standard: targetStandard,
           studentId: student.studentId,
@@ -257,7 +261,7 @@ export default function PromoteStudents() {
       if (alreadyPromoted.length > 0) {
         message.info(`${alreadyPromoted.length} student(s) skipped (already promoted)`);
       }
-      // 👇 FIX: show "Promoted" right away, then reload from the server
+      // show "Promoted" right away, then reload from the server
       setPromotedIds((prev) =>
         Array.from(new Set([...prev, ...toPromote.map((x) => x.studentId)])),
       );
@@ -347,7 +351,7 @@ export default function PromoteStudents() {
     </div>
   );
 
-  // ---------- table columns: same as Achievements, Action = checkbox ----------
+  // ---------- table columns: Student Code removed, Section added before Standard ----------
   const columns: ColumnsType<ResultStudentDTO> = [
     {
       title: "Sr No",
@@ -355,10 +359,11 @@ export default function PromoteStudents() {
       width: 70,
       render: (_, __, index) => (pagination.current - 1) * pagination.pageSize + index + 1,
     },
-    { title: "Student Code", dataIndex: "studentCode", align: "center", render: (v) => v || "-" },
     { title: "First Name", dataIndex: "firstName", align: "center", render: (v) => v || "-" },
     { title: "Last Name", dataIndex: "lastName", align: "center", render: (v) => v || "-" },
     { title: "Roll No", align: "center", render: (_, r) => getRollNo(r) },
+    // 👇 NEW: Section column (before Standard)
+    { title: "Section", align: "center", render: (_, r) => getSection(r) },
     { title: "Standard", align: "center", render: (_, r) => getStandard(r) },
     { title: "Division", align: "center", render: (_, r) => getDivision(r) },
     { title: "Gender", dataIndex: "gender", align: "center", render: (v) => v || "-" },
@@ -423,8 +428,9 @@ export default function PromoteStudents() {
               />
             }
           >
-            {cardRow("Student Code", r.studentCode)}
             {cardRow("Roll No", String(getRollNo(r)))}
+            {/* 👇 NEW: Section before Standard */}
+            {cardRow("Section", getSection(r))}
             {cardRow("Standard - Division", `${getStandard(r)} - ${getDivision(r)}`)}
             {cardRow("Gender", r.gender)}
             {cardRow("Medium", getMedium(r))}

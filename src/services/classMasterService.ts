@@ -5,6 +5,7 @@ export interface SaveClassMasterRequest {
   standard: string;
   division: string;
   medium: string;
+  section: string;
 }
 
 export interface ClassMasterSearchFilters {
