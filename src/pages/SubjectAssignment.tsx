@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Card, Table, Typography, Button, Drawer, Input, Select, Grid, Checkbox, message, Space, Row, Col } from "antd";
+import { Card, Table, Typography, Button, Drawer, Input, Select, Grid, Checkbox, message, Row, Col } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { EditOutlined, SearchOutlined, ReloadOutlined } from "@ant-design/icons";
 
@@ -17,6 +17,7 @@ interface ClassMasterDTO {
   standard: string;
   division: string;
   medium: string;
+  section?: string | null; // NEW
 }
 
 interface SubjectDTO {
@@ -47,11 +48,16 @@ const SubjectAssignment: React.FC = () => {
 
   const [staticData, setStaticData] = useState<StaticDataResponse | null>(null);
 
+  // NEW: Section options come from "class name" in the static data
+  // (Pre-Primary / Primary / Secondary)
+  const sectionOptions: string[] = (staticData as any)?.["class name"] || [];
+
   // Search bar state
   const [searchFilters, setSearchFilters] = useState<ClassSearchFilters>({
     standard: "",
     division: "",
     medium: "",
+    section: "", // NEW
   });
 
   // ================= PAGINATION =================
@@ -81,6 +87,7 @@ const SubjectAssignment: React.FC = () => {
   }, []);
 
   // ================= LOAD CLASS =================
+  // POST classMaster/getAllClassMasterByFilter  -> payload: standard, division, medium, section
 
   const loadClassMaster = async (
     page = pagination.current,
@@ -94,6 +101,7 @@ const SubjectAssignment: React.FC = () => {
         standard: filters.standard || undefined,
         division: filters.division || undefined,
         medium: filters.medium || undefined,
+        section: filters.section || undefined, // NEW
       });
 
       setClassList(response.data.data.classMasterDTOS || []);
@@ -121,16 +129,23 @@ const SubjectAssignment: React.FC = () => {
   };
 
   const handleResetFilters = () => {
-    const cleared: ClassSearchFilters = { standard: "", division: "", medium: "" };
+    const cleared: ClassSearchFilters = {
+      standard: "",
+      division: "",
+      medium: "",
+      section: "", // NEW
+    };
     setSearchFilters(cleared);
     loadClassMaster(1, pagination.pageSize, cleared);
   };
 
   // ================= LOAD ALL SUBJECTS =================
+  // POST subjectMaster/getAllSubjectMasterByFilter -> payload: medium, section
+  // (medium + section of the class being edited)
 
-  const loadAllSubjects = async () => {
+  const loadAllSubjects = async (medium?: string | null, section?: string | null) => {
     try {
-      const response = await getAllSubjects(0, 100);
+      const response = await getAllSubjects(0, 100, { medium, section });
       setAllSubjects(response.data.subjectMasterDTOS || []);
     } catch (error) {
       console.log(error);
@@ -154,7 +169,8 @@ const SubjectAssignment: React.FC = () => {
         assigned.map((item: SubjectDTO) => item.subjectMasterId)
       );
 
-      await loadAllSubjects();
+      // NEW: send the class's medium + section in the subject list payload
+      await loadAllSubjects(record.medium, record.section);
 
       setDrawerOpen(true);
     } catch (error) {
@@ -235,6 +251,13 @@ const SubjectAssignment: React.FC = () => {
       render: (_, __, index) =>
         (pagination.current - 1) * pagination.pageSize + index + 1,
     },
+    // NEW: Section column (before Standard)
+    {
+      title: "Section",
+      dataIndex: "section",
+      align: "center",
+      render: (v: string | null) => v || "-",
+    },
     {
       title: "Standard",
       dataIndex: "standard",
@@ -288,9 +311,25 @@ const SubjectAssignment: React.FC = () => {
   return (
     <Card>
       {/* Search Bar */}
-      {/* Search Bar */}
       <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
-        <Col xs={24} sm={12} md={6}>
+        {/* NEW: Section filter */}
+        <Col xs={24} sm={12} md={5}>
+          <Select
+            placeholder="Section"
+            value={searchFilters.section || undefined}
+            onChange={(value) => handleFilterChange("section", value || "")}
+            style={{ width: "100%" }}
+            allowClear
+          >
+            {sectionOptions.map((s) => (
+              <Option key={s} value={s}>
+                {s}
+              </Option>
+            ))}
+          </Select>
+        </Col>
+
+        <Col xs={24} sm={12} md={5}>
           <Select
             placeholder="Standard"
             value={searchFilters.standard || undefined}
@@ -306,7 +345,7 @@ const SubjectAssignment: React.FC = () => {
           </Select>
         </Col>
 
-        <Col xs={24} sm={12} md={6}>
+        <Col xs={24} sm={12} md={4}>
           <Select
             placeholder="Division"
             value={searchFilters.division || undefined}
@@ -322,7 +361,7 @@ const SubjectAssignment: React.FC = () => {
           </Select>
         </Col>
 
-        <Col xs={24} sm={12} md={6}>
+        <Col xs={24} sm={12} md={5}>
           <Select
             placeholder="Medium"
             value={searchFilters.medium || undefined}
@@ -338,7 +377,7 @@ const SubjectAssignment: React.FC = () => {
           </Select>
         </Col>
 
-        <Col xs={24} sm={24} md={6}>
+        <Col xs={24} sm={24} md={5}>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
             <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
               Search
@@ -376,6 +415,18 @@ const SubjectAssignment: React.FC = () => {
                   Class{" "}
                   {(pagination.current - 1) * pagination.pageSize + index + 1}
                 </Title>
+              </div>
+
+              {/* NEW: Section (before Standard) */}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: 10,
+                }}
+              >
+                <span style={{ color: "#8c8c8c" }}>Section</span>
+                <strong>{item.section || "-"}</strong>
               </div>
 
               <div
@@ -485,6 +536,14 @@ const SubjectAssignment: React.FC = () => {
               gap: 20,
             }}
           >
+            {/* NEW: Section (before Standard) */}
+            <div style={{ flex: 1 }}>
+              <p>
+                <b>Section</b>
+              </p>
+              <Input value={selectedClass?.section || "-"} readOnly />
+            </div>
+
             <div style={{ flex: 1 }}>
               <p>
                 <b>Standard</b>

@@ -41,18 +41,18 @@ export const saveSubject = async (
   return response.data;
 };
 
-export const getAllSubjects = async (
-  page: number,
-  size: number,
-  filters:{section?: string;medium?:string}={}
-): Promise<ApiResponse<GetAllSubjectData>> => {
-  const response = await axiosInstance.post<ApiResponse<GetAllSubjectData>>(
-    apiEndpoints.getAllSubjects(page, size),
-    filters
-  );
+// export const getAllSubjects = async (
+//   page: number,
+//   size: number,
+//   filters:{section?: string;medium?:string}={}
+// ): Promise<ApiResponse<GetAllSubjectData>> => {
+//   const response = await axiosInstance.post<ApiResponse<GetAllSubjectData>>(
+//     apiEndpoints.getAllSubjects(page, size),
+//     filters
+//   );
 
-  return response.data;
-};
+//   return response.data;
+// };
 export interface UpdateSubjectRequestDTO {
   subjectMasterId: number;
   subjectCode: string;
@@ -87,6 +87,27 @@ export const deleteSubject = async (
 
   const response = await axiosInstance.delete<ApiResponse<null>>(
     apiEndpoints.deleteSubject(subjectMasterId)
+  );
+
+  return response.data;
+};
+// NEW
+export interface SubjectSearchFilters {
+  medium?: string | null;
+  section?: string | null;
+}
+
+export const getAllSubjects = async (
+  page: number,
+  size: number,
+  filters: SubjectSearchFilters = {} // NEW
+): Promise<ApiResponse<GetAllSubjectData>> => {
+  const response = await axiosInstance.post<ApiResponse<GetAllSubjectData>>(
+    apiEndpoints.getAllSubjects(page, size),
+    {
+      medium: filters.medium || undefined,   // NEW
+      section: filters.section || undefined, // NEW
+    }
   );
 
   return response.data;

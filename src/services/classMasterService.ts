@@ -12,6 +12,7 @@ export interface ClassMasterSearchFilters {
   standard?: string;
   division?: string;
   medium?: string;
+  section?: string; // NEW
 }
 
 export const saveClassMaster = (data: SaveClassMasterRequest) => {
@@ -39,6 +40,7 @@ export const getAllClassMaster = (
     standard: filters?.standard || undefined,
     division: filters?.division || undefined,
     medium: filters?.medium || undefined,
+    section: filters?.section || undefined, // NEW
   };
 
   return axiosInstance.post(
