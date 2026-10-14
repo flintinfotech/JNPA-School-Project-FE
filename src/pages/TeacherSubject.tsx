@@ -27,7 +27,7 @@ import {
   CloseOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
-
+import { useAuth } from "../hooks/useAuth";
 import {
   getAllTeachers,
   searchClass,
@@ -84,6 +84,9 @@ const parseClassMasterKey = (key: string) => {
 };
 
 const TeacherSubject: React.FC = () => {
+  const { user } = useAuth();
+const mySection = user?.section || "";
+const myMedium = user?.medium || "";
   const screens = useBreakpoint();
   const isMobile = !screens.md;
 
@@ -196,8 +199,8 @@ const TeacherSubject: React.FC = () => {
       const response = await getAllTeachers(page - 1, pageSize, {
         firstName: filters.firstName || undefined,
         lastName: filters.lastName || undefined,
-        section: filters.section || undefined,
-        medium: filters.medium || undefined,
+        section: mySection || filters.section || undefined,
+        medium: myMedium || filters.medium || undefined,
       });
 
       console.log("Teacher Response", response);
