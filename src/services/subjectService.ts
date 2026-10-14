@@ -6,12 +6,16 @@ export interface SubjectDTO {
   subjectMasterId: number;
   subjectCode: string;
   subjectName: string;
+  section: string;
+  medium: string;
 }
 
 
 export interface SaveSubjectRequestDTO {
   subjectCode: string;
   subjectName: string;
+  section: string;
+  medium: string
 }
 
 export interface ApiResponse<T> {
@@ -39,11 +43,12 @@ export const saveSubject = async (
 
 export const getAllSubjects = async (
   page: number,
-  size: number
+  size: number,
+  filters:{section?: string;medium?:string}={}
 ): Promise<ApiResponse<GetAllSubjectData>> => {
   const response = await axiosInstance.post<ApiResponse<GetAllSubjectData>>(
     apiEndpoints.getAllSubjects(page, size),
-    {}
+    filters
   );
 
   return response.data;
@@ -52,6 +57,8 @@ export interface UpdateSubjectRequestDTO {
   subjectMasterId: number;
   subjectCode: string;
   subjectName: string;
+  section: string;
+  medium: string;
 }
 export const updateSubject = async (
   payload: UpdateSubjectRequestDTO

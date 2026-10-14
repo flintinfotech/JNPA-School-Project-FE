@@ -14,6 +14,7 @@ import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
 import CommonTable from "../components/commonTable"; // 👈 change to your actual path
 import api from "../lib/axios"; // 👈 change to your actual axios instance path
 import { apiEndpoints } from "../services/apiEndpoints"; // 👈 change to your actual path
+import { useAuth } from "../hooks/useAuth";
 
 const { Option } = Select;
 
@@ -99,7 +100,14 @@ const extractListAndTotal = (raw: any): { list: PurchaseRow[]; total: number } =
   return { list: [], total: 0 };
 };
 
-const emptyValues = { purchaseId: undefined, category: undefined, productCode: "", productName: "" };
+const emptyValues = {
+  purchaseId: undefined,
+  category: undefined,
+  productCode: "",
+  productName: "",
+  section: undefined,
+  medium: undefined,
+};
 
 // 🛠️ Same responsive hook used on the Student Fees screen — flips to the
 // mobile card layout below `breakpoint`px and back to the table above it.
@@ -118,6 +126,12 @@ function useIsMobile(breakpoint = 768) {
 export default function PurchaseMaster() {
   const isMobile = useIsMobile();
 
+  // logged-in user's section + medium go in the getAllPurchaseByFilter payload
+  // (admin has none -> payload is empty -> sees every purchase)
+  const { user } = useAuth();
+  const mySection = user?.section || "";
+  const myMedium = user?.medium || "";
+
   const [rows, setRows] = useState<PurchaseRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -135,7 +149,10 @@ export default function PurchaseMaster() {
   const fetchPurchases = useCallback(async (pageNum: number, size: number) => {
     setTableLoading(true);
     try {
-      const res = await api.post(apiEndpoints.getAllPurchaseByFilter(pageNum, size), {});
+      const payload: Record<string, string> = {};
+      if (mySection) payload.section = mySection;
+      if (myMedium) payload.medium = myMedium;
+      const res = await api.post(apiEndpoints.getAllPurchaseByFilter(pageNum, size), payload);
       const { list, total: t } = extractListAndTotal(res);
       setRows(list);
       setTotal(t);
@@ -144,7 +161,7 @@ export default function PurchaseMaster() {
     } finally {
       setTableLoading(false);
     }
-  }, []);
+  }, [mySection, myMedium]);
 
   useEffect(() => {
     fetchPurchases(page, pageSize);
@@ -165,6 +182,16 @@ export default function PurchaseMaster() {
   }, []);
 
   const categoryOptions = getCategoryList(staticData).map((c: any) => ({
+    value: toValue(c),
+    label: toLabel(c),
+  }));
+
+  // Section / Medium dropdown options (same static data, keys "class name" and "medium")
+  const sectionOptions = (staticData?.["class name"] ?? []).map((c: any) => ({
+    value: toValue(c),
+    label: toLabel(c),
+  }));
+  const mediumOptions = (staticData?.["medium"] ?? []).map((c: any) => ({
     value: toValue(c),
     label: toLabel(c),
   }));
@@ -205,6 +232,8 @@ export default function PurchaseMaster() {
         category: data?.category,
         productCode: data?.productCode,
         productName: data?.productName,
+        section: data?.section,
+        medium: data?.medium,
       });
     } catch (error: any) {
       message.error(error?.response?.data?.message || "Failed to load purchase");
@@ -244,6 +273,8 @@ export default function PurchaseMaster() {
             category: values.category,
             productCode: values.productCode,
             productName: values.productName,
+            section: values.section,
+            medium: values.medium,
           };
           res = await api.put(apiEndpoints.updatePurchase(), payload);
         } else {
@@ -251,6 +282,8 @@ export default function PurchaseMaster() {
             category: values.category,
             productCode: values.productCode,
             productName: values.productName,
+            section: values.section,
+            medium: values.medium,
           };
           res = await api.post(apiEndpoints.savePurchase(), payload);
         }
@@ -335,6 +368,12 @@ export default function PurchaseMaster() {
       render: (v: string) => v || "-",
     },
     {
+      title: "Medium",
+      dataIndex: "medium",
+      key: "medium",
+      render: (v: string) => v || "-",
+    },
+    {
       title: "Action",
       key: "action",
       align: "center" as const,
@@ -397,6 +436,7 @@ export default function PurchaseMaster() {
 
                 <div className="text-xs text-gray-500 space-y-1 mb-3">
                   <p>Category: {record.category ?? "-"}</p>
+                  <p>Medium: {record.medium ?? "-"}</p>
                 </div>
 
                 <div className="flex gap-2 justify-end pt-2 border-t border-gray-50">
@@ -501,6 +541,14 @@ export default function PurchaseMaster() {
               rules={[{ required: true, message: "Product name is required" }]}
             >
               <Input placeholder="e.g. Beakers" />
+            </Form.Item>
+
+            <Form.Item label="Section" name="section">
+              <Select placeholder="Select section" allowClear options={sectionOptions} />
+            </Form.Item>
+
+            <Form.Item label="Medium" name="medium">
+              <Select placeholder="Select medium" allowClear options={mediumOptions} />
             </Form.Item>
 
             <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-gray-100">
