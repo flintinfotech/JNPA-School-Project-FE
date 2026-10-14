@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import type { SubjectDTO } from "../services/subjectService";
+import { useAuth } from "../hooks/useAuth";
 
 import {
   Table,
@@ -11,6 +12,7 @@ import {
   Form,
   Input,
   message,
+  Select,
   Grid,
   Tag,
 } from "antd";
@@ -24,16 +26,26 @@ import {
   getAllSubjects,
   getSubjectById,
 } from "../services/subjectService";
+import { getAllStaticData } from "../services/staticDataService";
 
 const SubjectMaster: React.FC = () => {
+  const {user}=useAuth();
+  const subjectFilters={
+    ...(user?.section ? {section:user.section}:{}),
+    ...(user?.medium ? {medium:user.medium}:{}),
+  };
   const [subjects, setSubjects] = useState<SubjectDTO[]>([]);
   const [loading, setLoading] = useState(false);
+  const [sectionOptions, setSectionOptions] = useState<string[]>([]);
+  const [mediumOptions, setMediumOptions] = useState<string[]>([]);
 
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
     total: 0,
   });
+
+  
 
   const [open, setOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<SubjectDTO | null>(null);
@@ -62,7 +74,7 @@ const SubjectMaster: React.FC = () => {
     try {
       setLoading(true);
 
-      const response = await getAllSubjects(page - 1, pageSize);
+      const response = await getAllSubjects(page - 1, pageSize,subjectFilters);
 
       setSubjects(response.data.subjectMasterDTOS);
 
@@ -83,6 +95,17 @@ const SubjectMaster: React.FC = () => {
     loadSubjects();
   }, []);
 
+  useEffect(() => {
+  getAllStaticData()
+    .then((res) => {
+      if (res?.success) {
+        setSectionOptions(res.data["class name"] || []);
+        setMediumOptions(res.data.medium || []);
+      }
+    })
+    .catch((e) => console.error("Failed to load static data", e));
+}, []);
+
   // =============================
   // Save Subject
   // =============================
@@ -93,6 +116,8 @@ const SubjectMaster: React.FC = () => {
           subjectMasterId: editingSubject.subjectMasterId,
           subjectCode: values.subjectCode,
           subjectName: values.subjectName,
+          section: values.section,
+          medium: values.medium,
         });
 
         message.success(response.message);
@@ -100,6 +125,8 @@ const SubjectMaster: React.FC = () => {
         const response = await saveSubject({
           subjectCode: values.subjectCode,
           subjectName: values.subjectName,
+          section : values.section,
+          medium : values.medium,
         });
 
         message.success(response.message);
@@ -130,6 +157,8 @@ const SubjectMaster: React.FC = () => {
       form.setFieldsValue({
         subjectCode: subject.subjectCode,
         subjectName: subject.subjectName,
+        section : subject.section,
+        medium : subject.medium,
       });
 
       setOpen(true);
@@ -208,6 +237,12 @@ const SubjectMaster: React.FC = () => {
       title: "Subject Code",
       dataIndex: "subjectCode",
       key: "subjectCode",
+    },
+    {
+      title:"Medium",
+      dataIndex:"medium",
+      key:"medium",
+       render: (value: string) => value || "-",
     },
     {
       title: "Action",
@@ -301,6 +336,11 @@ const SubjectMaster: React.FC = () => {
                   <br />
                   {subject.subjectCode}
                 </p>
+                <p>
+                  <strong>Medium</strong>
+                  <br />
+                  {subject.medium ||"-"}
+                </p>
 
                 <div
                   style={{
@@ -392,6 +432,21 @@ const SubjectMaster: React.FC = () => {
           >
             <Input placeholder="Enter Subject Code" />
           </Form.Item>
+          <Form.Item label="Section" name="section">
+  <Select
+    placeholder="Select Section"
+    allowClear
+    options={sectionOptions.map((item) => ({ label: item, value: item }))}
+  />
+</Form.Item>
+
+<Form.Item label="Medium" name="medium">
+  <Select
+    placeholder="Select Medium"
+    allowClear
+    options={mediumOptions.map((item) => ({ label: item, value: item }))}
+  />
+</Form.Item>
 
           <Space>
             <Button onClick={closeDrawer}>Cancel</Button>
