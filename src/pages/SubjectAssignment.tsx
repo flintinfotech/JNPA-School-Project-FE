@@ -6,6 +6,7 @@ import { EditOutlined, SearchOutlined, ReloadOutlined } from "@ant-design/icons"
 import { getAllClassMaster, type ClassMasterSearchFilters } from "../services/classMasterService";
 import { getSubjectsByClassId, assignOrUnassignSubjects } from "../services/subjectAssignmentService";
 import { getAllSubjects } from "../services/subjectService";
+import { useAuth } from "../hooks/useAuth";
 import { getAllStaticData, type StaticDataResponse } from "../services/staticDataService";
 
 const { Title } = Typography;
@@ -17,6 +18,7 @@ interface ClassMasterDTO {
   standard: string;
   division: string;
   medium: string;
+  section?: string;
 }
 
 interface SubjectDTO {
@@ -28,6 +30,11 @@ interface SubjectDTO {
 type ClassSearchFilters = ClassMasterSearchFilters;
 
 const SubjectAssignment: React.FC = () => {
+  // logged-in user's section + medium go in the getAllClassMaster and getAllSubjects payloads
+  // (admin has none -> nothing is sent -> sees everything)
+  const { user } = useAuth();
+  const mySection = user?.section || "";
+  const myMedium = user?.medium || "";
   const screens = useBreakpoint();
   const isMobile = !screens.md;
 
@@ -93,7 +100,9 @@ const SubjectAssignment: React.FC = () => {
       const response = await getAllClassMaster(page - 1, pageSize, {
         standard: filters.standard || undefined,
         division: filters.division || undefined,
-        medium: filters.medium || undefined,
+        // user's own medium wins; if he has none (admin) the Medium search dropdown is used
+        medium: myMedium || filters.medium || undefined,
+        section: mySection || undefined,
       });
 
       setClassList(response.data.data.classMasterDTOS || []);
@@ -130,7 +139,10 @@ const SubjectAssignment: React.FC = () => {
 
   const loadAllSubjects = async () => {
     try {
-      const response = await getAllSubjects(0, 100);
+      const response = await getAllSubjects(0, 100, {
+        ...(mySection ? { section: mySection } : {}),
+        ...(myMedium ? { medium: myMedium } : {}),
+      });
       setAllSubjects(response.data.subjectMasterDTOS || []);
     } catch (error) {
       console.log(error);
@@ -497,6 +509,13 @@ const SubjectAssignment: React.FC = () => {
                 <b>Division</b>
               </p>
               <Input value={selectedClass?.division} readOnly />
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <p>
+                <b>Section</b>
+              </p>
+              <Input value={selectedClass?.section} readOnly />
             </div>
 
             <div style={{ flex: 1 }}>
