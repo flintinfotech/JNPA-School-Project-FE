@@ -14,13 +14,16 @@ import {
 import { PlusOutlined, LeftOutlined, RightOutlined } from "@ant-design/icons";
 import dayjs, { Dayjs } from "dayjs";
 
+import axiosInstance from "../lib/axios";
+import { apiEndpoints } from "../services/apiEndpoints";
 import {
   saveAcademicCalendarEvent,
-  getAllAcademicCalendarEvents,
   updateAcademicCalendarEvent,
   deleteAcademicCalendarEvent,
   type AcademicCalendarEventDTO,
   type AcademicCalendarEventType,
+  type AcademicCalendarEventListResponse,
+  type ApiResponse,
 } from "../services/Academiccalendarservice";
 import { useAuth } from "../hooks/useAuth";
 
@@ -101,6 +104,12 @@ export default function AcademicCalendar() {
   const canManage = MANAGE_ROLES.includes((user?.role || "").toUpperCase());
   const isMobile = useIsMobile();
 
+  // NEW: logged-in user's section + medium go in the
+  // getAllAcademicCalendarEventsByFilter payload
+  // (admin has none -> nothing is sent -> sees everything)
+  const mySection = user?.section || "";
+  const myMedium = user?.medium || "";
+
   const [events, setEvents] = useState<AcademicCalendarEventDTO[]>([]);
   const [totalEvents, setTotalEvents] = useState(0);
   const [currentPage, setCurrentPage] = useState(1); // 1-indexed for the UI
@@ -150,22 +159,40 @@ export default function AcademicCalendar() {
     }
   };
 
-  const fetchEvents = useCallback(async (page: number) => {
-    setLoading(true);
-    try {
-      const res = await getAllAcademicCalendarEvents(page - 1, PAGE_SIZE);
-      if (res.success) {
-        setEvents(res.data?.["Academic calendar events"] || []);
-        setTotalEvents(res.data?.["total events"] || 0);
-      } else {
-        message.error(res.message || "Failed to fetch events");
+  // POST academicCalendarEvents/getAllAcademicCalendarEventsByFilter?page=0&size=10&paginate=true
+  // payload: { section, medium }  (from the logged-in user)
+  const fetchEvents = useCallback(
+    async (page: number) => {
+      setLoading(true);
+      try {
+        const payload = {
+          ...(mySection ? { section: mySection } : {}),
+          ...(myMedium ? { medium: myMedium } : {}),
+        };
+
+        const response = await axiosInstance.post<
+          ApiResponse<AcademicCalendarEventListResponse>
+        >(
+          apiEndpoints.getAllAcademicCalendarEventsByFilter(page - 1, PAGE_SIZE),
+          payload,
+        );
+        const res = response.data;
+
+        if (res.success) {
+          setEvents(res.data?.["Academic calendar events"] || []);
+          setTotalEvents(res.data?.["total events"] || 0);
+        } else {
+          message.error(res.message || "Failed to fetch events");
+        }
+      } catch (err: any) {
+        message.error(err?.response?.data?.message || "Failed to fetch events");
+      } finally {
+        setLoading(false);
       }
-    } catch (err: any) {
-      message.error(err?.response?.data?.message || "Failed to fetch events");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    // rebuilt when the user's section/medium changes -> list reloads
+    [mySection, myMedium],
+  );
 
   useEffect(() => {
     fetchEvents(currentPage);
@@ -523,7 +550,6 @@ export default function AcademicCalendar() {
                             </button>
                             <Popconfirm
                               title="This event will be permanently removed."
-                            
                               onConfirm={() => handleDelete(event)}
                               okText="Delete"
                               okButtonProps={{

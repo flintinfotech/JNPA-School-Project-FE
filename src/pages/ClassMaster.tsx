@@ -6,14 +6,16 @@ import {
 } from "@ant-design/icons";
 import { message, Popconfirm } from "antd";
 
+import axiosInstance from "../lib/axios";
+import { apiEndpoints } from "../services/apiEndpoints";
 import {
   saveClassMaster,
-  getAllClassMaster,
   getClassMasterById,
   updateClassMaster,
   deleteClassMaster,
   getAllStaticData,
 } from "../services/classMasterService";
+import { useAuth } from "../hooks/useAuth";
 
 interface ClassMasterModel {
   id: number;
@@ -31,6 +33,12 @@ const emptyForm: Omit<ClassMasterModel, "id"> = {
 };
 
 const ClassMaster: React.FC = () => {
+
+  // logged-in user's section + medium go in the getAllClassMasterByFilter payload
+  // (admin has none -> nothing is sent -> sees everything)
+  const { user } = useAuth();
+  const mySection = user?.section || "";
+  const myMedium = user?.medium || "";
 
   // ===========================
   // States
@@ -57,10 +65,19 @@ const ClassMaster: React.FC = () => {
 
   // ===========================
   // Fetch Class Master
+  // POST classMaster/getAllClassMasterByFilter?page=0&size=10&paginate=true
+  // payload: { section, medium }
+  // (called directly with axiosInstance so section is always in the payload)
   // ===========================
 
   const fetchClassMaster = () => {
-    getAllClassMaster(page - 1, pageSize)
+    const payload = {
+      ...(mySection ? { section: mySection } : {}),
+      ...(myMedium ? { medium: myMedium } : {}),
+    };
+
+    axiosInstance
+      .post(apiEndpoints.getAllClassMaster(page - 1, pageSize), payload)
       .then((response) => {
         if (response.data.success) {
 
@@ -113,9 +130,10 @@ const ClassMaster: React.FC = () => {
   // useEffect
   // ===========================
 
+  // reload when the page or the logged-in user's section/medium changes
   useEffect(() => {
     fetchClassMaster();
-  }, [page]);
+  }, [page, mySection, myMedium]);
 
   useEffect(() => {
     fetchStaticData();

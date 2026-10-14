@@ -1668,6 +1668,13 @@ export default function TimeTable() {
   const canDelete = isAdminOrPrincipal(user?.role);
   const viewerIsTeacher = isTeacherRole(user?.role);
 
+  // NEW: logged-in user's section + medium go in the payload of
+  //   getAllTimeTableByFilter, getAllSubjectMasterByFilter and
+  //   getAllEmployeeDetailsByFilter
+  // (admin has none -> nothing is sent -> sees everything)
+  const mySection = user?.section || "";
+  const myMedium = user?.medium || "";
+
   // Search filter bar (Standard / Division / Medium) — admin/principal list only.
   const [filters, setFilters] = useState<TimeTableFilters>({});
 
@@ -1694,21 +1701,24 @@ export default function TimeTable() {
   const [mySchedule, setMySchedule] = useState<any>(null);
 
   // 🆕 API MSG — errors now come from the API response itself.
+  // POST timeTable/getAllTimeTableByFilter?page=0&size=10&paginate=true
+  // payload: standard / division / medium (search bar) + section / medium (logged-in user)
   const fetchTimeTables = useCallback(
     async (pageNum: number, size: number, activeFilters: TimeTableFilters = {}) => {
       setTableLoading(true);
       try {
-        const hasFilters = !!(
-          activeFilters.standard ||
-          activeFilters.division ||
-          activeFilters.medium
-        );
-        const res = hasFilters
-          ? await api.post(getAllTimeTableByFilterEndpoint(pageNum, size), {
-              standard: activeFilters.standard,
-              division: activeFilters.division,
-              medium: activeFilters.medium,
-            })
+        // NEW: section + medium of the logged-in user are added to the payload
+        const effectiveMedium = myMedium || activeFilters.medium;
+        const payload = {
+          ...(activeFilters.standard ? { standard: activeFilters.standard } : {}),
+          ...(activeFilters.division ? { division: activeFilters.division } : {}),
+          ...(effectiveMedium ? { medium: effectiveMedium } : {}),
+          ...(mySection ? { section: mySection } : {}),
+        };
+        const hasPayload = Object.keys(payload).length > 0;
+
+        const res = hasPayload
+          ? await api.post(getAllTimeTableByFilterEndpoint(pageNum, size), payload)
           : await api.post(apiEndpoints.getAllTimeTables(pageNum, size), {});
         assertApiSuccess(res);
         const { list, total: t } = extractListAndTotal(res);
@@ -1722,7 +1732,8 @@ export default function TimeTable() {
         setTableLoading(false);
       }
     },
-    [],
+    // rebuilt when the user's section/medium changes -> list reloads
+    [mySection, myMedium],
   );
 
   const ensureStaticData = useCallback(async () => {
@@ -1756,26 +1767,35 @@ export default function TimeTable() {
   };
 
   // Subject dropdown data — fetched once on mount.
+  // POST subjectMaster/getAllSubjectMasterByFilter?page=0&size=100&paginate=true
+  // payload: { section, medium } (logged-in user)
   useEffect(() => {
     if (viewerIsTeacher) return;
     (async () => {
       try {
-        const res = await api.post(apiEndpoints.getAllSubjects(0, 100), {});
+        const res = await api.post(apiEndpoints.getAllSubjects(0, 100), {
+          ...(mySection ? { section: mySection } : {}),
+          ...(myMedium ? { medium: myMedium } : {}),
+        });
         const { list } = extractListAndTotal(res);
         setSubjectOptions(list);
       } catch (error: any) {
         showApiError(error, "Failed to load subjects");
       }
     })();
-  }, [viewerIsTeacher]);
+  }, [viewerIsTeacher, mySection, myMedium]);
 
   // Teacher list fetched lazily, once per page load.
+  // POST employeeDetails/getAllEmployeeDetailsByFilter?page=0&size=200&paginate=true
+  // payload: { role: "Teacher", section, medium } (logged-in user)
   const fetchTeachersByRole = useCallback(async () => {
     if (teacherOptionsLoadedRef.current || teacherOptionsLoadingRef.current) return;
     teacherOptionsLoadingRef.current = true;
     try {
       const res = await api.post(apiEndpoints.getAllemployeeDetails(0, 200), {
         role: "Teacher",
+        ...(mySection ? { section: mySection } : {}),
+        ...(myMedium ? { medium: myMedium } : {}),
       });
       const { list } = extractListAndTotal(res);
       setTeacherOptions(list);
@@ -1785,12 +1805,12 @@ export default function TimeTable() {
     } finally {
       teacherOptionsLoadingRef.current = false;
     }
-  }, []);
+  }, [mySection, myMedium]);
 
   // ---------------------------------------------------------------
   // Teacher timetable
-  //   TEACHER -> useAuth() -> user.standard/division/medium
-  //   -> POST getAllTimeTableByFilter with those 3 fields.
+  //   TEACHER -> useAuth() -> user.standard/division/medium (+ section)
+  //   -> POST getAllTimeTableByFilter with those fields.
   // Whatever periods the API returns for that class are displayed.
   // ---------------------------------------------------------------
   const teacherClassScope = {
@@ -1808,6 +1828,8 @@ export default function TimeTable() {
       standard: teacherClassScope.standard,
       division: teacherClassScope.division,
       medium: teacherClassScope.medium,
+      // NEW: section of the logged-in teacher
+      ...(mySection ? { section: mySection } : {}),
     };
 
     if (!payload.standard || !payload.division || !payload.medium) {
@@ -1858,6 +1880,7 @@ export default function TimeTable() {
     teacherClassScope.standard,
     teacherClassScope.division,
     teacherClassScope.medium,
+    mySection,
   ]);
 
   useEffect(() => {

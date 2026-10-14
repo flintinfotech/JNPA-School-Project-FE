@@ -6,16 +6,16 @@ export interface SubjectDTO {
   subjectMasterId: number;
   subjectCode: string;
   subjectName: string;
-  section: string;
-  medium: string;
+  section?: string;
+  medium?: string;
 }
 
 
 export interface SaveSubjectRequestDTO {
   subjectCode: string;
   subjectName: string;
-  section: string;
-  medium: string
+  section?: string;
+  medium?: string;
 }
 
 export interface ApiResponse<T> {
@@ -57,8 +57,8 @@ export interface UpdateSubjectRequestDTO {
   subjectMasterId: number;
   subjectCode: string;
   subjectName: string;
-  section: string;
-  medium: string;
+  section?: string;
+  medium?: string;
 }
 export const updateSubject = async (
   payload: UpdateSubjectRequestDTO

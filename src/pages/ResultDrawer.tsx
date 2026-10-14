@@ -38,12 +38,17 @@ import {
   getLastFiveAcademicYears,
   getAllStaticData,
   extractExamTypeOptions,
-  getAllSubjects,
+  // getAllSubjects,  <- REMOVED: called directly below so section/medium go in the payload
   extractSubjectNames,
   type StudentResultDTO,
   type ExamSubjectDTO,
   type SaveStudentResultPayload,
 } from "../services/Resultservice"; // 👈 adjust path to match your project
+
+// NEW
+import axiosInstance from "../lib/axios";
+import { apiEndpoints } from "../services/apiEndpoints";
+import { useAuth } from "../hooks/useAuth";
 
 const { Option } = Select;
 
@@ -262,6 +267,14 @@ export default function ResultDrawer({
   onClose,
   onSaved,
 }: ResultDrawerProps) {
+  // NEW: logged-in user's section + medium go in the
+  // getAllSubjectMasterByFilter payload (admin has none -> nothing is sent)
+  const { user } = useAuth();
+  const subjectPayload = {
+    ...(user?.section ? { section: user.section } : {}),
+    ...(user?.medium ? { medium: user.medium } : {}),
+  };
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [existingRecords, setExistingRecords] = useState<StudentResultDTO[]>(
@@ -302,7 +315,11 @@ export default function ResultDrawer({
       getStudentById(studentId),
       getLastFiveAcademicYears(),
       getAllStaticData(),
-      getAllSubjects(0, SUBJECT_FETCH_SIZE),
+      // NEW: POST subjectMaster/getAllSubjectMasterByFilter?page=0&size=500&paginate=true
+      // payload: { section, medium }
+      axiosInstance
+        .post(apiEndpoints.getAllSubjects(0, SUBJECT_FETCH_SIZE), subjectPayload)
+        .then((r) => r.data),
     ])
       .then(([studentRes, years, staticData, subjectsRes]) => {
         if (studentRes.success) {
@@ -733,7 +750,7 @@ export default function ResultDrawer({
               <Input value={record.endDate} disabled />
             )}
           </Col>
-            <Col span={12}>
+          <Col span={12}>
             <div className="text-xs text-gray-500 mb-1">Total Marks</div>
             {isEditingThis ? (
               <InputNumber
@@ -756,7 +773,7 @@ export default function ResultDrawer({
               disabled
             />
           </Col>
-            <Col span={8}>
+          <Col span={8}>
             {/* Auto-calculated: Obtained / Total x 100. Never manual. */}
             <div className="text-xs text-gray-500 mb-1">Percentage</div>
             <InputNumber
@@ -767,9 +784,8 @@ export default function ResultDrawer({
               disabled
             />
           </Col>
-       
 
-            <Col span={8}>
+          <Col span={8}>
             {/* Auto-calculated from Percentage. Never manual. */}
             <div className="text-xs text-gray-500 mb-1">Grade</div>
             <Input
@@ -777,7 +793,7 @@ export default function ResultDrawer({
               disabled
             />
           </Col>
-           <Col span={8}>
+          <Col span={8}>
             {/* Auto-calculated from Percentage. Never manual. */}
             <div className="text-xs text-gray-500 mb-1">Result Status</div>
             <Select
@@ -792,9 +808,6 @@ export default function ResultDrawer({
               ))}
             </Select>
           </Col>
-         
-          
-        
         </Row>
 
         <Divider style={{ margin: "16px 0 12px" }} orientation="left" plain>
@@ -813,80 +826,76 @@ export default function ResultDrawer({
                   background: "#fff",
                 }}
               >
-              <Row
-                gutter={0}
-                align="middle"
-                style={{ margin: 0 }}
-              >
-                <Col
-                  span={8}
-                  style={{ padding: "8px 10px", borderRight: "1px solid #d9d9d9" }}
-                >
-                  <Select
-                    style={{ width: "100%" }}
-                    placeholder="Select subject"
-                    value={s.subjectName || undefined}
-                    onChange={(v) => updateDraftSubject(i, "subjectName", v)}
+                <Row gutter={0} align="middle" style={{ margin: 0 }}>
+                  <Col
+                    span={8}
+                    style={{ padding: "8px 10px", borderRight: "1px solid #d9d9d9" }}
                   >
-                    {subjectOptions.map((opt) => (
-                      <Option key={opt} value={opt}>
-                        {opt}
-                      </Option>
-                    ))}
-                  </Select>
-                </Col>
-                <Col
-                  span={5}
-                  style={{ padding: "8px 10px", borderRight: "1px solid #d9d9d9" }}
-                >
-                  {/* Auto-calculated: Total Marks split equally across subjects */}
-                  <InputNumber
-                    style={{ width: "100%" }}
-                    min={0}
-                    value={s.maximumMarks}
-                    disabled
-                  />
-                </Col>
-                <Col
-                  span={5}
-                  style={{ padding: "8px 10px", borderRight: "1px solid #d9d9d9" }}
-                >
-                  <InputNumber
-                    style={{ width: "100%" }}
-                    min={0}
-                    value={s.obtainedMarks}
-                    onChange={(v) => updateDraftSubject(i, "obtainedMarks", v ?? 0)}
-                  />
-                </Col>
-                <Col
-                  span={5}
-                  style={{ padding: "8px 10px", borderRight: "1px solid #d9d9d9" }}
-                >
-                  <Select
-                    style={{ width: "100%" }}
-                    value={s.status}
-                    onChange={(v) => updateDraftSubject(i, "status", v)}
+                    <Select
+                      style={{ width: "100%" }}
+                      placeholder="Select subject"
+                      value={s.subjectName || undefined}
+                      onChange={(v) => updateDraftSubject(i, "subjectName", v)}
+                    >
+                      {subjectOptions.map((opt) => (
+                        <Option key={opt} value={opt}>
+                          {opt}
+                        </Option>
+                      ))}
+                    </Select>
+                  </Col>
+                  <Col
+                    span={5}
+                    style={{ padding: "8px 10px", borderRight: "1px solid #d9d9d9" }}
                   >
-                    {RESULT_STATUS_OPTIONS.map((opt) => (
-                      <Option key={opt} value={opt}>
-                        {opt}
-                      </Option>
-                    ))}
-                  </Select>
-                </Col>
-                <Col
-                  span={1}
-                  style={{ padding: "8px 4px", textAlign: "center" }}
-                >
-                  <Button
-                    type="text"
-                    danger
-                    size="small"
-                    icon={<DeleteOutlined />}
-                    onClick={() => removeDraftSubject(i)}
-                  />
-                </Col>
-              </Row>
+                    {/* Auto-calculated: Total Marks split equally across subjects */}
+                    <InputNumber
+                      style={{ width: "100%" }}
+                      min={0}
+                      value={s.maximumMarks}
+                      disabled
+                    />
+                  </Col>
+                  <Col
+                    span={5}
+                    style={{ padding: "8px 10px", borderRight: "1px solid #d9d9d9" }}
+                  >
+                    <InputNumber
+                      style={{ width: "100%" }}
+                      min={0}
+                      value={s.obtainedMarks}
+                      onChange={(v) => updateDraftSubject(i, "obtainedMarks", v ?? 0)}
+                    />
+                  </Col>
+                  <Col
+                    span={5}
+                    style={{ padding: "8px 10px", borderRight: "1px solid #d9d9d9" }}
+                  >
+                    <Select
+                      style={{ width: "100%" }}
+                      value={s.status}
+                      onChange={(v) => updateDraftSubject(i, "status", v)}
+                    >
+                      {RESULT_STATUS_OPTIONS.map((opt) => (
+                        <Option key={opt} value={opt}>
+                          {opt}
+                        </Option>
+                      ))}
+                    </Select>
+                  </Col>
+                  <Col
+                    span={1}
+                    style={{ padding: "8px 4px", textAlign: "center" }}
+                  >
+                    <Button
+                      type="text"
+                      danger
+                      size="small"
+                      icon={<DeleteOutlined />}
+                      onClick={() => removeDraftSubject(i)}
+                    />
+                  </Col>
+                </Row>
               </div>
             ))}
             <Button
@@ -1192,9 +1201,10 @@ export default function ResultDrawer({
                                     key={subjectField.key}
                                     style={{
                                       border: "1px solid #d9d9d9",
-                                      borderTop: subjectFields.indexOf(subjectField) === 0
-                                        ? "1px solid #d9d9d9"
-                                        : "none",
+                                      borderTop:
+                                        subjectFields.indexOf(subjectField) === 0
+                                          ? "1px solid #d9d9d9"
+                                          : "none",
                                       background: "#fff",
                                     }}
                                   >
@@ -1240,7 +1250,6 @@ export default function ResultDrawer({
                                             style={{ width: "100%" }}
                                             min={0}
                                             placeholder="Max"
-                                           
                                           />
                                         </Form.Item>
                                       </Col>
