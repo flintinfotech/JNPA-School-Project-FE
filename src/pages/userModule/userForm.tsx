@@ -23,6 +23,9 @@ interface ScreenOption {
 export default function UserForm({ form, onFinish, isEditing, loading, staticData, viewOnly = false }: UserFormProps) {
   const selectedRole = Form.useWatch("role", form);
   const [screens, setScreens] = useState<ScreenOption[]>([]);
+  const roleUpper = String(selectedRole || "").toUpperCase();
+  const isTeacher = roleUpper === "TEACHER";
+  const isPrincipal = roleUpper === "PRINCIPAL";
 
   useEffect(() => {
     const fetchScreens = async () => {
@@ -119,11 +122,10 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
         value: screen.screenId,
       })),
     },
-    // 🛠️ FIX — Section / Medium / Standard / Division (TEACHER-only
-    // fields): "required" removed (was forcing these to be filled in even
-    // on edit) and "allowClear: true" added so each one now shows a clear
-    // ("x") icon, same as the Category dropdown in SchoolExpenses.
-    ...(selectedRole === "TEACHER"
+    // Section + Medium: TEACHER and PRINCIPAL.
+    // Standard + Division: TEACHER only.
+    // (not "required"; allowClear shows the "x" icon, same as the Category dropdown in SchoolExpenses)
+    ...(isTeacher || isPrincipal
       ? [
         {
           name: "section",
@@ -152,6 +154,10 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
             },
           ],
         },
+      ]
+      : []),
+    ...(isTeacher
+      ? [
         {
           name: "standard",
           label: "Standard",

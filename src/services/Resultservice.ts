@@ -47,6 +47,23 @@ export interface ResultFilters {
   academicYear?: string;
 }
 
+// ONE class-scope payload for getAllCurrentYearStudentsData, shared by
+// Results, Achievements, Promote Students and Student Attendance:
+//   { standard: "3rd Standard", division: "A", medium: "English" }
+// The teacher's division can be stored as `division` or as `section`.
+export const getClassScope = (
+  user?: {
+    standard?: string | null;
+    division?: string | null;
+    section?: string | null;
+    medium?: string | null;
+  } | null
+): Pick<ResultFilters, "standard" | "division" | "medium"> => ({
+  standard: user?.standard || "",
+  division: user?.division || user?.section || "",
+  medium: user?.medium || "",
+});
+
 export interface CurrentYearStudentsResponse {
   success: boolean;
   message: string;

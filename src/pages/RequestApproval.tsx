@@ -461,11 +461,11 @@ export default function RequestApproval() {
     try {
       const payload = {
         requestType: values.requestType,
-        remark: values.remark,
+        remark: values.remark ?? "",
         requestedDate: values.requestedDate.format("YYYY-MM-DD"),
         estimatedAmount: values.estimatedAmount,
         priority: values.priority,
-        Quantity: String(values.quantity), // backend key is "Quantity" (capital Q), string
+        Quantity: values.quantity != null ? String(values.quantity) : "", // backend key is "Quantity" (capital Q), string
         // Add: always the login academic year. Edit: keep the year already saved on the request
         academicYear: editingId
           ? editingRecord?.academicYear || getLoginAcademicYear()
@@ -867,7 +867,6 @@ export default function RequestApproval() {
                   <Form.Item
                     label="Quantity"
                     name="quantity"
-                    rules={[{ required: true, message: "Enter quantity" }]}
                   >
                     <InputNumber min={1} precision={0} style={{ width: "100%" }} />
                   </Form.Item>
@@ -904,7 +903,6 @@ export default function RequestApproval() {
                   <Form.Item
                     label="Remark"
                     name="remark"
-                    rules={[{ required: true, message: "Enter remark" }]}
                   >
                     <Input.TextArea rows={3} placeholder="Remark" />
                   </Form.Item>

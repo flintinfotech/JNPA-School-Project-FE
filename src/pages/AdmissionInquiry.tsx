@@ -9,7 +9,9 @@ import {
   getAllStaticData,
   type AdmissionInquiryDTO,
   type AdmissionInquiryResponseData,
+  type AdmissionInquiryFilter,
 } from "../services/InquiryService";
+import { useAuth } from "../hooks/useAuth";
 // ===========================
 // Static dropdown options
 // ===========================
@@ -25,12 +27,20 @@ const MEDIUM_OPTIONS = ["English", "Hindi", "Marathi"];
 
 const STATUS_OPTIONS = ["NEW", "CONTACTED", "ADMITTED", "REJECTED", "CLOSED"];
 
+// "2026-10-12" -> "12-10-2026" (string split, so no timezone shift)
+const formatInquiryDate = (d?: string | null): string => {
+  if (!d) return "-";
+  const p = d.slice(0, 10).split("-");
+  return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : d;
+};
+
 const emptyForm: AdmissionInquiryDTO = {
   firstName: "",
   lastName: "",
   contactNumber: "",
   standard: "",
   medium: "",
+  section: "",
   status: "NEW",
 };
 
@@ -53,6 +63,14 @@ const StatusBadge = ({ status }: { status: string }) => (
 );
 
 const AdmissionInquiry: React.FC = () => {
+  // logged-in user -> inquiries are fetched for HIS section + medium
+  // (admin has no section/medium -> empty payload -> sees everything)
+  const { user } = useAuth();
+  const inquiryFilters: AdmissionInquiryFilter = {
+    ...(user?.section ? { section: user.section } : {}),
+    ...(user?.medium ? { medium: user.medium } : {}),
+  };
+
   // ===========================
   // States
   // ===========================
@@ -99,7 +117,7 @@ const AdmissionInquiry: React.FC = () => {
   const fetchInquiries = () => {
     setLoading(true);
 
-    getAllAdmissionInquiryByFilter(page - 1, pageSize, {})
+    getAllAdmissionInquiryByFilter(page - 1, pageSize, inquiryFilters)
       .then((response) => {
         if (response.data.success) {
           const data = response.data.data;
@@ -136,7 +154,7 @@ const AdmissionInquiry: React.FC = () => {
   useEffect(() => {
     fetchInquiries();
     fetchStaticData();
-  }, [page]);
+  }, [page, user?.section, user?.medium]);
 
   // ===========================
   // Pagination
@@ -230,6 +248,8 @@ const AdmissionInquiry: React.FC = () => {
       contactNumber: selectedInquiry.contactNumber,
       standard: selectedInquiry.standard,
       medium: selectedInquiry.medium,
+      section: selectedInquiry.section ?? "",
+      inquiryDate: selectedInquiry.inquiryDate ?? undefined, // keep the original date
       status: selectedStatus,
     };
 
@@ -282,7 +302,10 @@ const AdmissionInquiry: React.FC = () => {
                     Contact: {row.contactNumber}
                   </p>
                   <p className="text-sm text-gray-500">
-                    Standard: {row.standard} &middot; Medium: {row.medium}
+                    Section: {row.section || "-"} &middot; Standard: {row.standard} &middot; Medium: {row.medium}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Inquiry Date: {formatInquiryDate(row.inquiryDate)}
                   </p>
                   {/* <p className="text-sm text-gray-500">
                     Stream: {row.stream ?? "-"}
@@ -360,10 +383,16 @@ const AdmissionInquiry: React.FC = () => {
                   Contact Number
                 </th>
                 <th className="px-4 py-3 text-sm font-semibold text-gray-700 text-center">
+                  Section
+                </th>
+                <th className="px-4 py-3 text-sm font-semibold text-gray-700 text-center">
                   Standard
                 </th>
                 <th className="px-4 py-3 text-sm font-semibold text-gray-700 text-center">
                   Medium
+                </th>
+                <th className="px-4 py-3 text-sm font-semibold text-gray-700 text-center">
+                  Inquiry Date
                 </th>
                 {/* <th className="px-4 py-3 text-sm font-semibold text-gray-700 text-center">
                   Stream
@@ -381,13 +410,13 @@ const AdmissionInquiry: React.FC = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-8 text-gray-400">
+                  <td colSpan={10} className="text-center py-8 text-gray-400">
                     Loading...
                   </td>
                 </tr>
               ) : inquiries.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-8 text-gray-400">
+                  <td colSpan={10} className="text-center py-8 text-gray-400">
                     No admission inquiries found.
                   </td>
                 </tr>
@@ -410,10 +439,16 @@ const AdmissionInquiry: React.FC = () => {
                       {row.contactNumber}
                     </td>
                     <td className="text-center px-3 py-2 text-sm text-gray-700">
+                      {row.section || "-"}
+                    </td>
+                    <td className="text-center px-3 py-2 text-sm text-gray-700">
                       {row.standard}
                     </td>
                     <td className="text-center px-3 py-2 text-sm text-gray-700">
                       {row.medium}
+                    </td>
+                    <td className="text-center px-3 py-2 text-sm text-gray-700">
+                      {formatInquiryDate(row.inquiryDate)}
                     </td>
                     {/* <td className="text-center px-3 py-2 text-sm text-gray-700">
                       {row.stream ?? "-"}

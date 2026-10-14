@@ -3,6 +3,20 @@ import SchoolLogo from "../assets/SchoolLogo.avif";
 import Admission1 from "../assets/Admission1.jpg";
 import { useNavigate } from "react-router-dom";
 import { message } from "antd";
+
+// ---------------------------------------------------------------------------
+// Inquiry date = the day the form is filled (today, local date). Sent as YYYY-MM-DD.
+// ---------------------------------------------------------------------------
+const getTodayISO = (): string => {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+};
+const formatDisplayDate = (iso: string): string => {
+  const [y, m, d] = iso.split("-");
+  return `${d}-${m}-${y}`;
+};
 import { getAllAdmissionsByFilter } from "../services/AdmissionService";
 import { saveAdmissionInquiry } from "../services/InquiryService";
 
@@ -52,6 +66,7 @@ export default function AdmissionPrimaryMarathi() {
     contactNumber: "",
     standard: "",
     medium: "",
+    section: "Primary",
   });
   const [InquiryStatus, setInquiryStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
@@ -86,6 +101,8 @@ export default function AdmissionPrimaryMarathi() {
         contactNumber: InquiryForm.contactNumber,
         standard: InquiryForm.standard,
         medium: InquiryForm.medium,
+        section: InquiryForm.section,
+        inquiryDate: getTodayISO(), // auto: the day the form is filled
         status: "NEW",
       });
 
@@ -96,6 +113,7 @@ export default function AdmissionPrimaryMarathi() {
         contactNumber: "",
         standard: "",
         medium: "",
+        section: "Primary",
       });
 
       // Reset status
@@ -628,6 +646,38 @@ export default function AdmissionPrimaryMarathi() {
                     <option value="English">English</option>
                     <option value="Marathi">Marathi</option>
                   </select>
+                </div>
+
+                <div className="adm-inquiry-section" style={{ display: "flex", flexDirection: "column", marginBottom: "22px" }}>
+                  <label style={{ fontSize: "11px", fontWeight: 700, color: "#555", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: "6px" }}>
+                    Section
+                  </label>
+                  <select
+                    name="section"
+                    value={InquiryForm.section}
+                    onChange={handleInquiryChange}
+                    required
+                    style={{ border: "1.5px solid #e0e0e0", borderRadius: "6px", padding: "10px 12px", fontSize: "13px", outline: "none", background: "#fff" }}
+                  >
+                    <option value="">Select Section</option>
+                    <option value="Pre-Primary">Pre-Primary</option>
+                    <option value="Primary">Primary</option>
+                    <option value="Secondary">Secondary</option>
+                  </select>
+                </div>
+
+                <div className="adm-inquiry-date" style={{ display: "flex", flexDirection: "column", marginBottom: "22px" }}>
+                  <label style={{ fontSize: "11px", fontWeight: 700, color: "#555", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: "6px" }}>
+                    Inquiry Date
+                  </label>
+                  <input
+                    name="inquiryDate"
+                    type="text"
+                    value={formatDisplayDate(getTodayISO())}
+                    disabled
+                    readOnly
+                    style={{ border: "1.5px solid #e0e0e0", borderRadius: "6px", padding: "10px 12px", fontSize: "13px", outline: "none", background: "#f5f5f5", color: "#555", cursor: "not-allowed" }}
+                  />
                 </div>
 
                 <button

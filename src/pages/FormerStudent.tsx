@@ -35,6 +35,7 @@ import dayjs from "dayjs";
 import api from "../lib/axios";
 import { apiEndpoints } from "../services/apiEndpoints";
 import CommonTable from "../components/commonTable";
+import { useAuth } from "../hooks/useAuth";
 import LCReceiptModal, { type LCReceiptData } from "../components/Lcreceipt ";
 
 const { Option } = Select;
@@ -231,6 +232,12 @@ const statusColor = (status?: string | null) => {
 const PAGE_SIZE = 10;
 
 export default function FormerStudents() {
+  // logged-in user's section + medium go in the getAllFormerStudentByFilter payload
+  // (admin has none -> nothing is sent -> sees every former student)
+  const { user: loggedInUser } = useAuth();
+  const mySection = loggedInUser?.section || "";
+  const myMedium = loggedInUser?.medium || "";
+
   // ============================================================
   // TABLE STATE — server-side pagination, same as Students page
   // (getAllFormerStudentByFilter already returns Page Number/Page Size/
@@ -349,6 +356,8 @@ export default function FormerStudents() {
         if (activeFilters.lastName) payload.lastName = activeFilters.lastName;
         if (activeFilters.gender) payload.gender = activeFilters.gender;
         if (activeFilters.status) payload.status = activeFilters.status;
+        if (mySection) payload.section = mySection;
+        if (myMedium) payload.medium = myMedium;
 
         const res = await api.post(
           apiEndpoints.getAllFormerStudentByFilter(pageToLoad, PAGE_SIZE),
@@ -372,7 +381,7 @@ export default function FormerStudents() {
         setTableLoading(false);
       }
     },
-    [],
+    [mySection, myMedium],
   );
 
   useEffect(() => {

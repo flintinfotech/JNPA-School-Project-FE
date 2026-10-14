@@ -620,6 +620,7 @@ const closeSalaryDetail = () => {
   }
 
   const isTeacher = loggedInUser.role?.toLowerCase() === "teacher";
+  const isPrincipal = loggedInUser.role?.toLowerCase() === "principal";
   const fullName = [teacherInfo?.firstName, teacherInfo?.middleName, teacherInfo?.lastName]
     .filter(Boolean)
     .join(" ");
@@ -635,9 +636,19 @@ const closeSalaryDetail = () => {
       <InfoRow label="Name" value={fullName || loggedInUser.userName} />
       <InfoRow label="Username" value={loggedInUser.userName} />
       <InfoRow label="Role" value={loggedInUser.role} />
-      <InfoRow label="Medium" value={loggedInUser.medium} />
-      <InfoRow label="Standard" value={loggedInUser.standard} />
-      <InfoRow label="Division" value={loggedInUser.division} />
+      {isPrincipal ? (
+        // Principal: Section + Medium only (no Standard / Division)
+        <>
+          <InfoRow label="Section" value={loggedInUser.section} />
+          <InfoRow label="Medium" value={loggedInUser.medium} />
+        </>
+      ) : (
+        <>
+          <InfoRow label="Medium" value={loggedInUser.medium} />
+          <InfoRow label="Standard" value={loggedInUser.standard} />
+          <InfoRow label="Division" value={loggedInUser.division} />
+        </>
+      )}
     </TabPanel>
   );
 
@@ -1103,3 +1114,4 @@ const salaryTab = (
     
   );
 }
+

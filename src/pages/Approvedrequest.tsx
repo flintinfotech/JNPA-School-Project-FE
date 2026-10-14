@@ -1019,10 +1019,6 @@ export default function RequestApproval() {
                   <Form.Item
                     label={<span style={{ fontWeight: 600 }}>Quantity</span>}
                     name="quantity"
-                    rules={[
-                      { required: true, message: "Quantity is required" },
-                      { type: "number", min: 1, message: "Quantity must be at least 1" },
-                    ]}
                   >
                     <InputNumber size="large" style={{ width: "100%" }} min={1} placeholder="Enter quantity" onChange={updateTotal} />
                   </Form.Item>

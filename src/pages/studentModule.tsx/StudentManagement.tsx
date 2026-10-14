@@ -4,6 +4,7 @@ import { PlusOutlined, SearchOutlined, ReloadOutlined, CopyOutlined } from "@ant
 import dayjs from "dayjs";
 import { deleteStudent, getAllStudents, getStudentById, saveStudent, updateStudent, type StudentDTO } from "../../services/studentService";
 import StudentTable from "./StudentTable";
+import { useAuth } from "../../hooks/useAuth";
 import StudentForm from "./StudentFrom";
 import { getAllStaticData, type StaticDataResponse } from "../../services/staticDataService";
 
@@ -26,6 +27,12 @@ export default function StudentManagement() {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<StudentDTO | null>(null);
+
+  // logged-in user's section + medium go in the getAllStudentsByFilter payload
+  // (admin has none -> nothing is sent -> sees every student)
+  const { user: loggedInUser } = useAuth();
+  const mySection = loggedInUser?.section || undefined;
+  const myMedium = loggedInUser?.medium || undefined;
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
   const [staticData, setStaticData] = useState<StaticDataResponse | null>(null);
@@ -70,6 +77,8 @@ export default function StudentManagement() {
           gender: filters?.gender || undefined,
           category: filters?.category || undefined,
           status: filters?.status || undefined,
+          section: mySection,
+          medium: myMedium,
         });
         if (response.success) {
           setStudents(response.data.Data);
@@ -83,7 +92,7 @@ export default function StudentManagement() {
         setTableLoading(false);
       }
     },
-    []
+    [mySection, myMedium]
   );
 
   useEffect(() => {

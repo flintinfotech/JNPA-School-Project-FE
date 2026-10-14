@@ -759,6 +759,20 @@ export default function StudentForm({
                           ))}
                         </Select>
                       </Form.Item>
+                      {/* Section (Pre-Primary / Primary / Secondary ...) - same list as the user form */}
+                      <Form.Item
+                        {...restField}
+                        label="Section"
+                        name={[name, "section"]}
+                      >
+                        <Select placeholder="Select section" allowClear>
+                          {staticData?.["class name"]?.map((section) => (
+                            <Option key={section} value={section}>
+                              {section}
+                            </Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
                       <Form.Item
                         {...restField}
                         label="Academic Year"
@@ -789,6 +803,7 @@ export default function StudentForm({
                       admissionDate: null,
                       standard: undefined,
                       division: undefined,
+                      section: undefined,
                       rollNo: "",
                       academicYear: getCurrentAcademicYear(),
                     })

@@ -29,28 +29,28 @@ import dayjs, { type Dayjs } from "dayjs";
 import CommonTable from "../components/commonTable";
 import api from "../lib/axios";
 import { apiEndpoints } from "../services/apiEndpoints";
+// School Expense APIs: list (getAllSchoolExpensesByFilter), edit (getSchoolExpensesById), save (updateSchoolExpenses)
+import {
+  getAllSchoolExpensesByFilter,
+  getSchoolExpensesById,
+  updateSchoolExpenses,
+  type SchoolExpensesDTO,
+  type UpdateSchoolExpensePayload,
+} from "../services/SchoolExpensesService";
 
 const { Option } = Select;
 
 // ============================================================
 // TYPES
 // ============================================================
-interface RequestApprovalRow {
-  requestApprovalId?: number;
+// One school expense row (getAllSchoolExpensesByFilter / getSchoolExpensesById)
+// any extra field the backend sends (vendorMasterId, orderNumber, purchaseId ...) is kept too
+type ExpenseRow = SchoolExpensesDTO & {
   orderNumber?: string | number;
-  requestType?: string;
-  remark?: string;
-  cancellationReason?: string;
-  requestedDate?: string;
-  estimatedAmount?: number;
-  priority?: string;
-  Quantity?: string | number;
-  quantity?: string | number;
-  academicYear?: string;
-  status?: string;
-  // purchaseDTO comes from the backend (product of the request)
+  purchaseId?: number;
+  vendorMasterId?: number;
   [key: string]: any;
-}
+};
 
 // One row of Purchase Master (same API the School Expenses screen uses)
 interface PurchaseRow {
@@ -72,20 +72,10 @@ interface VendorRow {
 }
 
 const STATUS_COLOR: Record<string, string> = {
+  PAID: "green",
   PENDING: "orange",
-  APPROVED: "green",
-  REJECTED: "red",
-};
-
-const PRIORITY_COLOR: Record<string, string> = {
-  HIGH: "red",
-  MEDIUM: "gold",
-  LOW: "blue",
-};
-
-// Payload for getAllRequestApprovalByFilter -> the screen shows ONLY approved requests
-const LIST_FILTER_PAYLOAD = {
-  status: "APPROVED",
+  PARTIAL: "blue",
+  OVERDUE: "red",
 };
 
 const money = (v?: number | null) =>
@@ -143,17 +133,19 @@ const getLoginAcademicYear = (): string => {
 // ============================================================
 const extractListAndTotal = (
   raw: any,
-): { list: RequestApprovalRow[]; total: number } => {
-  const body = raw?.data ?? raw ?? {};
+): { list: ExpenseRow[]; total: number } => {
+  const body = raw ?? {};
   const data = body?.data ?? body;
-  const list: RequestApprovalRow[] = Array.isArray(data?.Data)
-    ? data.Data
-    : Array.isArray(data)
-      ? data
-      : [];
+  const list: ExpenseRow[] = Array.isArray(data?.SchoolExpensesDTOS)
+    ? data.SchoolExpensesDTOS
+    : Array.isArray(data?.Data)
+      ? data.Data
+      : Array.isArray(data)
+        ? data
+        : [];
   const total =
-    data?.["Total elements"] ??
     data?.["Total Element"] ??
+    data?.["Total elements"] ??
     data?.["Total Elements"] ??
     data?.Total ??
     list.length;
@@ -180,7 +172,7 @@ const extractVendorList = (raw: any): VendorRow[] => {
   return [];
 };
 
-export default function RequestApproval() {
+export default function SchoolExpenses() {
   const [form] = Form.useForm();
 
   // ---------- responsive (mobile) ----------
@@ -188,7 +180,7 @@ export default function RequestApproval() {
   const isMobile = screens.md === false; // below 768px
 
   // table
-  const [rows, setRows] = useState<RequestApprovalRow[]>([]);
+  const [rows, setRows] = useState<ExpenseRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
@@ -207,7 +199,7 @@ export default function RequestApproval() {
   const [submitting, setSubmitting] = useState(false);
   const [drawerLoading, setDrawerLoading] = useState(false);
   // the approved request that is being edited (its academic year is reused in the expense)
-  const [editingRecord, setEditingRecord] = useState<RequestApprovalRow | null>(null);
+  const [editingRecord, setEditingRecord] = useState<ExpenseRow | null>(null);
   const [selectedPurchase, setSelectedPurchase] = useState<PurchaseRow | null>(null);
   const [drawerWidth, setDrawerWidth] = useState<number | string>(
     window.innerWidth < 768 ? "100%" : 480,
@@ -221,17 +213,14 @@ export default function RequestApproval() {
   }, []);
 
   // ---------- LOAD TABLE DATA ----------
-  // Sends { status: "APPROVED" } so only approved requests come back
-  const fetchRequests = useCallback(
+  // POST schoolExpenses/getAllSchoolExpensesByFilter  (runs on page load / reload / page change)
+  const fetchExpenses = useCallback(
     async (pageNum: number, size: number) => {
       setTableLoading(true);
       try {
-        const res = await api.post(
-          apiEndpoints.getAllRequestApprovalByFilter(pageNum, size),
-          LIST_FILTER_PAYLOAD,
-        );
-        if (res.data?.success === false) {
-          message.error(res.data?.message || "Failed to load requests");
+        const res = await getAllSchoolExpensesByFilter(pageNum, size, {});
+        if (res?.success === false) {
+          message.error(res?.message || "Failed to load school expenses");
           setRows([]);
           setTotal(0);
           return;
@@ -241,7 +230,7 @@ export default function RequestApproval() {
         setTotal(count);
       } catch (error: any) {
         message.error(
-          error?.response?.data?.message || "Failed to load requests",
+          error?.response?.data?.message || "Failed to load school expenses",
         );
         setRows([]);
         setTotal(0);
@@ -253,8 +242,8 @@ export default function RequestApproval() {
   );
 
   useEffect(() => {
-    fetchRequests(page, pageSize);
-  }, [fetchRequests, page, pageSize]);
+    fetchExpenses(page, pageSize);
+  }, [fetchExpenses, page, pageSize]);
 
   // ---------- LOAD PURCHASE MASTER (for the Category / Product Name dropdowns) ----------
   const fetchPurchases = useCallback(async () => {
@@ -358,62 +347,66 @@ export default function RequestApproval() {
   };
 
   // ---------- DRAWER ----------
-  // Edit (on an approved request) opens the School Expense form,
-  // with the product and quantity of that request already filled.
-  const openEditDrawer = async (record: RequestApprovalRow) => {
-    if (record.requestApprovalId === undefined) return;
+  // Edit click -> GET schoolExpenses/getSchoolExpenses/{schoolExpenseId}
+  // and the form is filled with that expense.
+  const openEditDrawer = async (record: ExpenseRow) => {
+    if (record.schoolExpenseId === undefined) return;
     setDrawerOpen(true);
     setDrawerLoading(true);
     try {
-      // latest data of the request from the server (falls back to the table row)
-      let d: RequestApprovalRow = record;
-      try {
-        const res = await api.get(
-          apiEndpoints.getRequestApprovalById(record.requestApprovalId),
-        );
-        if (res.data?.success !== false) d = res.data?.data ?? res.data ?? record;
-      } catch (e) {
-        console.error("Get request by id failed, using the table row:", e);
+      const res: any = await getSchoolExpensesById(record.schoolExpenseId);
+      if (res?.success === false) {
+        message.error(res?.message || "Failed to load school expense");
+        setDrawerOpen(false);
+        return;
       }
+      const d: ExpenseRow = (res?.data ?? record) as ExpenseRow;
       setEditingRecord(d);
-
-      const dto = d.purchaseDTO || {};
 
       // find the same product in Purchase Master (by product code / id, else by category + name)
       let purchase: PurchaseRow | null =
-        purchases.find((p) => dto.productCode && p.productCode === dto.productCode) ||
-        purchases.find((p) => dto.purchaseId && Number(p.purchaseId) === Number(dto.purchaseId)) ||
-        purchases.find((p) => p.productName === dto.productName && p.category === dto.category) ||
+        purchases.find((p) => d.productCode && p.productCode === d.productCode) ||
+        purchases.find((p) => d.purchaseId && Number(p.purchaseId) === Number(d.purchaseId)) ||
+        purchases.find((p) => p.productName === d.productName && p.category === d.category) ||
         null;
 
-      // not in Purchase Master -> still show what the request itself has
-      if (!purchase && (dto.productName || dto.productCode)) {
+      // not in Purchase Master -> still show what the expense itself has
+      if (!purchase && (d.productName || d.productCode)) {
         purchase = {
-          purchaseId: Number(dto.purchaseId) || 0,
-          category: dto.category,
-          productCode: dto.productCode,
-          productName: dto.productName,
+          purchaseId: Number(d.purchaseId) || 0,
+          category: d.category,
+          productCode: d.productCode,
+          productName: d.productName,
         };
       }
       setSelectedPurchase(purchase);
 
+      const quantity = Number(d.quantity) || undefined;
+      const price = Number(d.price) || 0;
+      const totalValue = Number(d.total ?? (Number(d.quantity) || 0) * price) || 0;
+      const paid = Number(d.paidAmount) || 0;
+
       form.resetFields();
       form.setFieldsValue({
-        categoryFilter: purchase?.category ?? dto.category,
+        categoryFilter: purchase?.category ?? d.category,
         productKey: purchase ? productKey(purchase) : undefined,
-        vendorMasterId: undefined,
-        // Order Number comes from the backend (shown disabled in Billing Details)
-        orderNumber: d.orderNumber ?? record.orderNumber,
-        quantity: Number(d.Quantity ?? d.quantity) || 1,
-        price: 0,
-        total: 0,
-        paidAmount: 0,
-        pendingAmount: 0,
-        status: "PENDING",
-        purchaseDate: dayjs(), // defaults to today, can be changed
+        // vendor is filled only if the backend sends it, otherwise it can be selected again
+        vendorMasterId:
+          d.vendorMasterId ??
+          d.vendorMasterDTO?.vendorMasterId ??
+          d.vendorMaster?.vendorMasterId ??
+          undefined,
+        orderNumber: d.orderNumber,
+        quantity,
+        price,
+        total: totalValue,
+        paidAmount: paid,
+        pendingAmount: Number(d.pendingAmount ?? Math.max(totalValue - paid, 0)) || 0,
+        status: d.status,
+        purchaseDate: d.purchaseDate ? dayjs(d.purchaseDate) : dayjs(),
       });
     } catch (error: any) {
-      message.error(error?.response?.data?.message || "Failed to load request");
+      message.error(error?.response?.data?.message || "Failed to load school expense");
       setDrawerOpen(false);
     } finally {
       setDrawerLoading(false);
@@ -428,10 +421,15 @@ export default function RequestApproval() {
   };
 
   // ---------- SAVE ----------
-  // POST schoolExpenses/saveSchoolExpenses  (the School Expense save API)
+  // PUT schoolExpenses/updateSchoolExpenses  (body = the expense + schoolExpenseId)
   const handleFinish = async () => {
     try {
       const values = await form.validateFields();
+
+      if (!editingRecord?.schoolExpenseId) {
+        message.error("School expense id is missing. Please close and open Edit again.");
+        return;
+      }
 
       // product details come from the selected product (copied into the payload)
       const product =
@@ -444,8 +442,9 @@ export default function RequestApproval() {
         return;
       }
 
-      // the backend needs the purchaseId of the product ("The given id must not be null")
-      if (!product.purchaseId) {
+      // the backend needs the purchaseId of the product
+      const purchaseId = Number(product.purchaseId || editingRecord.purchaseId);
+      if (!purchaseId) {
         message.error("This product was not found in Purchase Master. Please select the product again.");
         return;
       }
@@ -459,43 +458,42 @@ export default function RequestApproval() {
         const pendingAmount = Math.max(totalValue - paidAmount, 0);
         const purchaseDate = dayjs(values.purchaseDate).format("YYYY-MM-DD"); // sent as YYYY-MM-DD
 
-        const payload = {
+        const payload: UpdateSchoolExpensePayload & Record<string, any> = {
+          schoolExpenseId: Number(editingRecord.schoolExpenseId),
           price,
           quantity,
           total: totalValue,
           paidAmount,
           pendingAmount,
+          // keep the year the expense was saved with
           academicYear:
-            editingRecord?.academicYear ||
+            editingRecord.academicYear ||
             getLoginAcademicYear() ||
             getAcademicYear(dayjs(values.purchaseDate)),
           purchaseDate,
           status: values.status,
           productCode: product.productCode,
-          category: product.category,
-          productName: product.productName,
-          // order number of the approved request (from the backend) -> links the expense to it
-          orderNumber: values.orderNumber ?? editingRecord?.orderNumber,
-          // REQUIRED by the backend: id of the product in Purchase Master
-          purchaseId: Number(product.purchaseId),
-          // vendor chosen in the Vendor dropdown
+          category: product.category ?? "",
+          productName: product.productName ?? "",
+          orderNumber: values.orderNumber ?? editingRecord.orderNumber,
+          purchaseId,
           vendorMasterId: Number(values.vendorMasterId),
         };
-        console.log("SAVE SCHOOL EXPENSE PAYLOAD:", payload);
+        console.log("UPDATE SCHOOL EXPENSE PAYLOAD:", payload);
 
-        const res = await api.post(apiEndpoints.saveSchoolExpenses(), payload);
+        const res = await updateSchoolExpenses(payload);
 
         // backend can send "success": false with HTTP 200 -> check before showing success
-        if (res?.data?.success === false) {
-          message.error(res?.data?.message || "Failed to save school expense");
+        if (res?.success === false) {
+          message.error(res?.message || "Failed to update school expense");
           return;
         }
-        message.success(res?.data?.message || "School expense saved successfully");
+        message.success(res?.message || "School expense updated successfully");
         closeDrawer();
-        fetchRequests(page, pageSize);
+        fetchExpenses(page, pageSize);
       } catch (error: any) {
-        console.error("Save error:", error);
-        message.error(error?.response?.data?.message || "Failed to save school expense");
+        console.error("Update error:", error);
+        message.error(error?.response?.data?.message || "Failed to update school expense");
       } finally {
         setSubmitting(false);
       }
@@ -505,66 +503,76 @@ export default function RequestApproval() {
   };
 
   // ---------- TABLE COLUMNS ----------
+  const statusTag = (v?: string) =>
+    v ? (
+      <Tag color={STATUS_COLOR[v.toUpperCase()] || "default"} style={{ marginRight: 0 }}>
+        {capitalize(v)}
+      </Tag>
+    ) : (
+      "-"
+    );
+
   const columns = [
     {
       title: "Sr No",
       key: "srNo",
       width: 60,
-      render: (_: any, __: RequestApprovalRow, index: number) =>
+      render: (_: any, __: ExpenseRow, index: number) =>
         page * pageSize + index + 1,
     },
     {
-      // value comes from the backend (orderNumber)
-      title: "Order Number",
-      dataIndex: "orderNumber",
-      key: "orderNumber",
-      render: (v: string | number) => v ?? "-",
-    },
-    {
       title: "Product Name",
+      dataIndex: "productName",
       key: "productName",
-      render: (_: any, r: RequestApprovalRow) => r.purchaseDTO?.productName || "-",
+      render: (v: string) => v || "-",
     },
     {
       title: "Category",
+      dataIndex: "category",
       key: "category",
-      render: (_: any, r: RequestApprovalRow) => r.purchaseDTO?.category || "-",
+      render: (v: string) => v || "-",
     },
     {
-      title: "Request Type",
-      dataIndex: "requestType",
-      key: "requestType",
-      render: (v: string) => prettify(v),
+      title: "Product Code",
+      dataIndex: "productCode",
+      key: "productCode",
+      render: (v: string) => v || "-",
     },
     {
-      title: "Requested Date",
-      dataIndex: "requestedDate",
-      key: "requestedDate",
-      render: (v: string) => (v ? dayjs(v).format("DD-MM-YYYY") : "-"),
-    },
-    {
-      title: "Priority",
-      dataIndex: "priority",
-      key: "priority",
-      render: (v: string) =>
-        v ? (
-          <Tag color={PRIORITY_COLOR[v.toUpperCase()] || "default"}>
-            {capitalize(v)}
-          </Tag>
-        ) : (
-          "-"
-        ),
+      title: "Price",
+      dataIndex: "price",
+      key: "price",
+      render: (v: number) => money(v),
     },
     {
       title: "Quantity",
+      dataIndex: "quantity",
       key: "quantity",
-      render: (_: any, r: RequestApprovalRow) => r.Quantity ?? r.quantity ?? "-",
+      render: (v: number) => v ?? "-",
     },
     {
-      title: "Estimated Amount",
-      dataIndex: "estimatedAmount",
-      key: "estimatedAmount",
+      title: "Total",
+      dataIndex: "total",
+      key: "total",
       render: (v: number) => money(v),
+    },
+    {
+      title: "Paid Amount",
+      dataIndex: "paidAmount",
+      key: "paidAmount",
+      render: (v: number) => money(v),
+    },
+    {
+      title: "Pending Amount",
+      dataIndex: "pendingAmount",
+      key: "pendingAmount",
+      render: (v: number) => money(v),
+    },
+    {
+      title: "Purchase Date",
+      dataIndex: "purchaseDate",
+      key: "purchaseDate",
+      render: (v: string) => (v ? dayjs(v).format("DD-MM-YYYY") : "-"),
     },
     {
       title: "Academic Year",
@@ -576,20 +584,7 @@ export default function RequestApproval() {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      render: (v: string) =>
-        v ? (
-          <Tag color={STATUS_COLOR[v.toUpperCase()] || "default"}>
-            {capitalize(v)}
-          </Tag>
-        ) : (
-          "-"
-        ),
-    },
-    {
-      title: "Remark",
-      dataIndex: "remark",
-      key: "remark",
-      render: (v: string) => v || "-",
+      render: (v: string) => statusTag(v),
     },
     {
       // only one icon (Edit), placed in the middle of the column
@@ -597,7 +592,7 @@ export default function RequestApproval() {
       key: "action",
       width: 90,
       align: "center" as const,
-      render: (_: any, record: RequestApprovalRow) => (
+      render: (_: any, record: ExpenseRow) => (
         <div style={{ display: "flex", justifyContent: "center" }}>
           <Button
             type="primary"
@@ -610,7 +605,7 @@ export default function RequestApproval() {
     },
   ];
 
-  // ---------- MOBILE: one row inside a request card ----------
+  // ---------- MOBILE: one row inside an expense card ----------
   const cardRow = (label: string, value?: ReactNode) => (
     <div
       style={{
@@ -632,13 +627,13 @@ export default function RequestApproval() {
     </div>
   );
 
-  // ---------- MOBILE: all requests as cards ----------
-  const renderRequestCards = () => (
+  // ---------- MOBILE: all expenses as cards ----------
+  const renderExpenseCards = () => (
     <Spin spinning={tableLoading}>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {rows.map((r, i) => (
           <Card
-            key={String(r.requestApprovalId ?? `${page * pageSize + i}`)}
+            key={String(r.schoolExpenseId ?? `${page * pageSize + i}`)}
             size="small"
             title={
               <span
@@ -648,43 +643,23 @@ export default function RequestApproval() {
                   wordBreak: "break-word",
                 }}
               >
-                {r.purchaseDTO?.productName || "-"}
+                {r.productName || "-"}
               </span>
             }
-            extra={
-              r.status ? (
-                <Tag
-                  color={STATUS_COLOR[r.status.toUpperCase()] || "default"}
-                  style={{ marginRight: 0 }}
-                >
-                  {capitalize(r.status)}
-                </Tag>
-              ) : null
-            }
+            extra={r.status ? statusTag(r.status) : null}
           >
-            {cardRow("Category", r.purchaseDTO?.category)}
-            {cardRow("Request Type", prettify(r.requestType))}
+            {cardRow("Category", r.category)}
+            {cardRow("Product Code", r.productCode)}
+            {cardRow("Price", money(r.price))}
+            {cardRow("Quantity", r.quantity != null ? String(r.quantity) : "-")}
+            {cardRow("Total", money(r.total))}
+            {cardRow("Paid Amount", money(r.paidAmount))}
+            {cardRow("Pending Amount", money(r.pendingAmount))}
             {cardRow(
-              "Requested Date",
-              r.requestedDate ? dayjs(r.requestedDate).format("DD-MM-YYYY") : "-",
+              "Purchase Date",
+              r.purchaseDate ? dayjs(r.purchaseDate).format("DD-MM-YYYY") : "-",
             )}
-            {cardRow(
-              "Priority",
-              r.priority ? (
-                <Tag
-                  color={PRIORITY_COLOR[r.priority.toUpperCase()] || "default"}
-                  style={{ marginRight: 0 }}
-                >
-                  {capitalize(r.priority)}
-                </Tag>
-              ) : (
-                "-"
-              ),
-            )}
-            {cardRow("Quantity", String(r.Quantity ?? r.quantity ?? "-"))}
-            {cardRow("Estimated Amount", money(r.estimatedAmount))}
             {cardRow("Academic Year", r.academicYear)}
-            {cardRow("Remark", r.remark)}
 
             {/* only the Edit button (same as the table: one action) */}
             <div style={{ display: "flex", marginTop: 12 }}>
@@ -719,19 +694,19 @@ export default function RequestApproval() {
   return (
     <Card>
       {!tableLoading && rows.length === 0 ? (
-        <Empty description="No requests found" style={{ padding: "40px 0" }} />
+        <Empty description="No school expenses found" style={{ padding: "40px 0" }} />
       ) : isMobile ? (
-        // MOBILE: requests in card view
-        renderRequestCards()
+        // MOBILE: expenses in card view
+        renderExpenseCards()
       ) : (
         // DESKTOP: table
         <div style={{ width: "100%", overflowX: "auto" }}>
-          <CommonTable<RequestApprovalRow>
+          <CommonTable<ExpenseRow>
             data={rows}
             columns={columns}
             loading={tableLoading}
-            rowKey={(r: RequestApprovalRow) =>
-              String(r.requestApprovalId ?? JSON.stringify(r))
+            rowKey={(r: ExpenseRow) =>
+              String(r.schoolExpenseId ?? JSON.stringify(r))
             }
             pagination={{
               current: page + 1,
@@ -746,7 +721,7 @@ export default function RequestApproval() {
         </div>
       )}
 
-      {/* ---------- School Expense drawer (opens on Edit) — premium look ---------- */}
+      {/* ---------- School Expense drawer (opens on Edit) ---------- */}
       <Drawer
         title={
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -762,10 +737,10 @@ export default function RequestApproval() {
             </span>
             <div style={{ lineHeight: 1.25 }}>
               <div style={{ fontSize: 17, fontWeight: 700, color: "#111827" }}>
-                Add School Expense
+                Edit School Expense
               </div>
               <div style={{ fontSize: 12, fontWeight: 400, color: "#6b7280" }}>
-                Fill in the details to record a new expense
+                Update the details of this expense
               </div>
             </div>
           </div>
@@ -799,7 +774,7 @@ export default function RequestApproval() {
                 boxShadow: "0 6px 16px rgba(37,99,235,0.35)",
               }}
             >
-              Save Expense
+              Update Expense
             </Button>
           </div>
         }
@@ -961,10 +936,6 @@ export default function RequestApproval() {
                   <Form.Item
                     label={<span style={{ fontWeight: 600 }}>Quantity</span>}
                     name="quantity"
-                    rules={[
-                      { required: true, message: "Quantity is required" },
-                      { type: "number", min: 1, message: "Quantity must be at least 1" },
-                    ]}
                   >
                     <InputNumber size="large" style={{ width: "100%" }} min={1} placeholder="Enter quantity" onChange={updateTotal} />
                   </Form.Item>

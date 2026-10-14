@@ -23,6 +23,7 @@ import type { ColumnsType } from "antd/es/table";
 
 import {
   getAllCurrentYearStudentsData,
+  getClassScope,
   type ResultStudentDTO,
   type ResultFilters,
 } from "../services/Resultservice";
@@ -82,11 +83,7 @@ export default function Achievements() {
     ResultFilters,
     "standard" | "division" | "medium"
   > = isTeacher
-    ? {
-        standard: user?.standard || "",
-        division: "",
-        medium: user?.medium || "",
-      }
+    ? getClassScope(user)
     : {};
 
   // -------------------------------------------------------

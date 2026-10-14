@@ -19,10 +19,10 @@ import type { ColumnsType } from "antd/es/table";
 import api from "../lib/axios";
 import { apiEndpoints } from "../services/apiEndpoints";
 import { getAllStaticData } from "../services/staticDataService";
-import { getAllStudents } from "../services/studentService";
 // 👇 FIX: same API as the Results screen (login-year students)
 import {
   getAllCurrentYearStudentsData,
+  getClassScope,
   type ResultStudentDTO,
 } from "../services/Resultservice";
 import { useAuth } from "../hooks/useAuth";
@@ -89,9 +89,6 @@ export default function PromoteStudents() {
 
   // ---------- students ----------
   const [students, setStudents] = useState<ResultStudentDTO[]>([]);
-  // 👇 FIX: full rows (all academic years) - used for the "Promoted" check
-  // and to send the complete academicInformation while promoting
-  const [fullStudents, setFullStudents] = useState<Record<number, ResultStudentDTO>>({});
   // 👇 FIX: ids promoted in this session -> "Promoted" shows immediately after promote
   const [promotedIds, setPromotedIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
@@ -120,19 +117,16 @@ export default function PromoteStudents() {
   }, []);
 
   // ---------- load students ----------
-  // 1) getAllCurrentYearStudentsData  (same as Results screen) -> login-year students
-  //    so a student promoted to e.g. 3rd now shows up when you log in with that year.
-  // 2) getAllStudentsByFilter -> full rows (all years), only for the Promoted check + payload.
+  // getAllCurrentYearStudentsData (same API as the Results screen) -> login-year students,
+  // so a student promoted to e.g. 3rd shows up when you log in with that year.
   const { user } = useAuth();
 
   const loadStudents = useCallback(async () => {
     setLoading(true);
 
-    // class scope of the logged-in user (admin = empty -> sees everything)
-    const scope: Record<string, string> = {};
-    if (user?.standard) scope.standard = user.standard;
-    if (user?.division) scope.division = user.division;
-    if (user?.medium) scope.medium = user.medium;
+    // SAME payload as Results / Achievements: { standard, division, medium }
+    // (teacher = own class, admin = empty -> sees everything)
+    const scope = user?.role === "TEACHER" ? getClassScope(user) : {};
 
     try {
       const curRes = await getAllCurrentYearStudentsData(0, MAX_FETCH_SIZE, scope);
@@ -146,30 +140,13 @@ export default function PromoteStudents() {
       const list = curRes.data?.data || [];
       // API returns newest first -> reverse (same as Results screen)
       setStudents(Array.isArray(list) ? [...list].reverse() : []);
-
-      // full rows for all years (not critical - if it fails we still show the list)
-      // 👇 FIX: NO standard/division filter here. With a standard filter the backend
-      // returns only the OLD standard row, so the new (promoted) year row was missing
-      // and the "Promoted" column stayed empty.
-      try {
-        const allRes: any = await getAllStudents(0, MAX_FETCH_SIZE, {} as any);
-        const all = allRes?.data?.Data || allRes?.data?.data || allRes?.data || [];
-        const map: Record<number, ResultStudentDTO> = {};
-        (Array.isArray(all) ? all : []).forEach((s: any) => {
-          map[s.studentId] = s;
-        });
-        setFullStudents(map);
-      } catch (e) {
-        console.warn("Could not load full student rows", e);
-        setFullStudents({});
-      }
     } catch (err: any) {
       message.error(err?.response?.data?.message || "Failed to load students");
       setStudents([]);
     } finally {
       setLoading(false);
     }
-  }, [user?.standard, user?.division, user?.medium]);
+  }, [user?.role, user?.standard, user?.division, user?.section, user?.medium]);
 
   useEffect(() => {
     loadStudents();
@@ -190,16 +167,11 @@ export default function PromoteStudents() {
   const isPromoted = useCallback(
     (r: ResultStudentDTO) => {
       if (promotedIds.includes(r.studentId)) return true;
-      // check BOTH the full row and the list row
-      const rows = [
-        ...(fullStudents[r.studentId]?.academicInformation || []),
-        ...(r.academicInformation || []),
-      ];
-      return rows.some(
+      return (r.academicInformation || []).some(
         (a) => String(a.academicYear || "").trim() === targetAcademicYear,
       );
     },
-    [fullStudents, promotedIds, targetAcademicYear],
+    [promotedIds, targetAcademicYear],
   );
 
   // promoted students are shown ticked + locked, so they are NOT part of the selection
@@ -228,8 +200,7 @@ export default function PromoteStudents() {
   //   division / medium / admissionNo / admissionDate = copied from the current row,
   //   rollNo = null, no academicInformationId, auditDetails = null
   const buildPromotePayload = (student: ResultStudentDTO) => {
-    // 👇 FIX: use the full row (all years) so old rows are not lost
-    const full: ResultStudentDTO = fullStudents[student.studentId] ?? student;
+    const full: ResultStudentDTO = student;
     const current: any = student.academicInformation?.[0] || {};
     return {
       ...full,
@@ -503,7 +474,7 @@ export default function PromoteStudents() {
               current: pagination.current,
               pageSize: pagination.pageSize,
               total,
-              showSizeChanger: true,
+              showSizeChanger: false,
               onChange: (current, pageSize) => setPagination({ current, pageSize }),
             }}
           />

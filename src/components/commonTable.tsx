@@ -45,6 +45,9 @@ export default function CommonTable<T extends object>({
         scroll={scroll ?? { x: "max-content" }}
         pagination={{
           ...pagination,
+          // every table shows exactly 10 records per page (no 10/20/50/100 dropdown)
+          pageSize: (pagination && pagination.pageSize) || 10,
+          showSizeChanger: false,
           showTotal: (total) => `Total: ${total}`,
         }}
         {...rest}

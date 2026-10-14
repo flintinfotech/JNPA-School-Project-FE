@@ -7,6 +7,7 @@ import UserForm from "./userForm";
 import UserViewer from "./UserViewer";
 import { getAllStaticData, type StaticDataResponse } from "../../services/staticDataService";
 import axiosInstance from "../../lib/axios"; // adjust to whatever you use for calls
+import { useAuth } from "../../hooks/useAuth";
 
 type UserFilter = "employee" | "student";
 
@@ -19,6 +20,12 @@ interface UserSearchFilters {
 }
 
 export default function UserManagement() {
+  // logged-in user's section + medium go in the payload of BOTH the Employee and the Student list
+  // (admin has none -> nothing is sent -> sees everyone)
+  const { user: loggedInUser } = useAuth();
+  const mySection = loggedInUser?.section || undefined;
+  const myMedium = loggedInUser?.medium || undefined;
+
   const [users, setUsers] = useState<UserDTO[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -75,6 +82,8 @@ export default function UserManagement() {
             role: roles,
             firstName: filters?.firstName || undefined,
             lastName: filters?.lastName || undefined,
+            section: mySection,
+            medium: myMedium,
           }
         );
         if (response.data.success) {
@@ -89,7 +98,7 @@ export default function UserManagement() {
         setTableLoading(false);
       }
     },
-    []
+    [mySection, myMedium]
   );
 
   const rolesForFilter = (filter: UserFilter) =>

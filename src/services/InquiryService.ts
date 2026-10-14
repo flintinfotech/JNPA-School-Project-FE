@@ -10,6 +10,8 @@ export type AdmissionInquiryDTO = {
   contactNumber: string;
   standard: string;
   medium: string;
+  section?: string;
+  inquiryDate?: string; // YYYY-MM-DD
   status: string;
 };
 
@@ -19,6 +21,8 @@ export type AdmissionInquiryResponseData = {
   firstName: string;
   lastName: string;
   medium: string;
+  section?: string | null;
+  inquiryDate?: string | null;
   standard: string;
   status: string;
   stream: string | null;

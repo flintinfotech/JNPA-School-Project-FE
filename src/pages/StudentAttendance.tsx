@@ -17,7 +17,8 @@ import dayjs from "dayjs";
 import type { Dayjs } from "dayjs";
 
 import { useAuth } from "../hooks/useAuth";
-import { getAllStudents, type StudentDTO } from "../services/studentService";
+// roster = students of the LOGIN academic year (same API as Results / Promote Students)
+import { getAllCurrentYearStudentsData, getClassScope, type ResultStudentDTO } from "../services/Resultservice";
 import {
   saveAttendance,
   getAttendanceByDate,
@@ -89,7 +90,7 @@ export default function StudentAttendance() {
   // ===========================
   // Step 2: roster for the assigned class (fetched once)
   // ===========================
-  const [students, setStudents] = useState<StudentDTO[]>([]);
+  const [students, setStudents] = useState<ResultStudentDTO[]>([]);
   const [studentsLoading, setStudentsLoading] = useState(false);
 
  useEffect(() => {
@@ -104,17 +105,17 @@ export default function StudentAttendance() {
   const medium =
     selectedClass.medium && selectedClass.medium !== "-" ? selectedClass.medium : undefined;
 
-  getAllStudents(0, 500, {
-    standard: selectedClass.standard,
-    division: selectedClass.division,
-    ...(medium ? { medium } : {}), // 👈 NEW: medium goes in the payload
-  } as any)
-    .then((res: any) => {
+  // POST student/getAllCurrentYearStudentsData  (login-year students of this class)
+  // size 500 = the whole class roster in one call (attendance needs every student)
+  // SAME payload as Results / Achievements: { standard, division, medium }
+  getAllCurrentYearStudentsData(0, 500, getClassScope(user))
+    .then((res) => {
       if (res?.success) {
-        const list: StudentDTO[] = res.data?.Data || res.data?.data || res.data || [];
-        const all = Array.isArray(list) ? list : [];
+        const list = res.data?.data || [];
+        // backend sends the newest student first -> reverse (oldest first, same as Results)
+        const all: ResultStudentDTO[] = Array.isArray(list) ? [...list].reverse() : [];
 
-        // 👈 NEW: also filter by medium here, in case the backend ignores it.
+        // also filter by medium here, in case the backend ignores it.
         // Students with no medium info are kept (not dropped by mistake).
         const filtered = medium
           ? all.filter((s) => {
@@ -134,7 +135,7 @@ export default function StudentAttendance() {
       setStudents([]);
     })
     .finally(() => setStudentsLoading(false));
-}, [selectedClass]);
+}, [selectedClass, user]);
 
   // ===========================
   // Calendar + attendance table state

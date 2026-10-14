@@ -221,6 +221,7 @@ export const extractFeesFromStudent = (
 export interface StudentFilter {
   standard?: string;
   section?: string;
+  medium?: string;
   admissionNo?: number;
   relation?: string;
   occupation?: string;
