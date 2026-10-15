@@ -70,6 +70,23 @@ export default function Results() {
   const isTeacher = user?.role === TEACHER_ROLE;
 
   // -------------------------------------------------------------
+  // NEW: logged-in user's section + medium go in the
+  // getAllCurrentYearStudentsData payload
+  // (admin has none -> nothing is sent -> sees everything)
+  // -------------------------------------------------------------
+
+  const mySection = user?.section || "";
+  const myMedium = user?.medium || "";
+
+  const sectionMediumScope = useMemo(
+    () => ({
+      ...(mySection ? { section: mySection } : {}),
+      ...(myMedium ? { medium: myMedium } : {}),
+    }),
+    [mySection, myMedium]
+  );
+
+  // -------------------------------------------------------------
   // Teacher class scope
   // -------------------------------------------------------------
 
@@ -117,6 +134,8 @@ export default function Results() {
 
   // -------------------------------------------------------------
   // Load Results
+  // POST student/getAllCurrentYearStudentsData
+  // payload: filters + section + medium
   // -------------------------------------------------------------
 
   const loadResults = useCallback(
@@ -127,40 +146,25 @@ export default function Results() {
       setLoading(true);
 
       try {
+        // NEW: section + medium of the logged-in user are always added
+        const payload = {
+          ...appliedFilters,
+          ...sectionMediumScope,
+        } as ResultFilters;
+
         const response =
           await getAllCurrentYearStudentsData(
             0,
             RESULTS_FETCH_SIZE,
-            appliedFilters
+            payload
           );
 
         if (response.success) {
           const students = response.data?.data || [];
 
-          // -----------------------------------------------------
-          // IMPORTANT FIX
-          //
-          // API is returning latest student first.
-          //
-          // Example API:
-          //
-          // Student 5  <- Newly added
-          // Student 4
-          // Student 3
-          // Student 2
-          // Student 1  <- Oldest
-          //
-          // We reverse it so UI becomes:
-          //
-          // Student 1
-          // Student 2
-          // Student 3
-          // Student 4
-          // Student 5  <- Newly added
-          //
-          // [...students] prevents mutation of original API array.
-          // -----------------------------------------------------
-
+          // API returns the latest student first -> reverse so the
+          // newly added student is shown at the end.
+          // [...students] prevents mutation of the original API array.
           setAllStudents([...students].reverse());
 
           if (resetPage) {
@@ -185,20 +189,20 @@ export default function Results() {
       }
     },
 
-    // Existing behavior
+    // reload function is rebuilt when the user's section/medium changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [sectionMediumScope]
   );
 
   // -------------------------------------------------------------
-  // Initial Load
+  // Initial Load (and again if the user's section/medium changes)
   // -------------------------------------------------------------
 
   useEffect(() => {
     loadResults(filters);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadResults]);
 
   // -------------------------------------------------------------
   // Filter Change
@@ -466,10 +470,7 @@ export default function Results() {
               size="small"
               icon={<EyeOutlined />}
               onClick={() =>
-                openDrawer(
-                  record,
-                  "view"
-                )
+                openDrawer(record, "view")
               }
             />
           </Tooltip>
@@ -481,10 +482,7 @@ export default function Results() {
               type="primary"
               icon={<EditOutlined />}
               onClick={() =>
-                openDrawer(
-                  record,
-                  "edit"
-                )
+                openDrawer(record, "edit")
               }
             />
           </Tooltip>
@@ -510,11 +508,7 @@ export default function Results() {
         }}
       >
         {/* First Name */}
-        <Col
-          xs={24}
-          sm={12}
-          md={6}
-        >
+        <Col xs={24} sm={12} md={6}>
           <Input
             placeholder="First Name"
             value={filters.firstName}
@@ -524,22 +518,14 @@ export default function Results() {
                 e.target.value
               )
             }
-            onKeyDown={
-              handleSearchKeyDown
-            }
-            style={{
-              width: "100%",
-            }}
+            onKeyDown={handleSearchKeyDown}
+            style={{ width: "100%" }}
             allowClear
           />
         </Col>
 
         {/* Last Name */}
-        <Col
-          xs={24}
-          sm={12}
-          md={6}
-        >
+        <Col xs={24} sm={12} md={6}>
           <Input
             placeholder="Last Name"
             value={filters.lastName}
@@ -549,22 +535,14 @@ export default function Results() {
                 e.target.value
               )
             }
-            onKeyDown={
-              handleSearchKeyDown
-            }
-            style={{
-              width: "100%",
-            }}
+            onKeyDown={handleSearchKeyDown}
+            style={{ width: "100%" }}
             allowClear
           />
         </Col>
 
         {/* Roll No */}
-        <Col
-          xs={24}
-          sm={12}
-          md={6}
-        >
+        <Col xs={24} sm={12} md={6}>
           <Input
             placeholder="Roll No"
             value={filters.rollNo}
@@ -574,49 +552,32 @@ export default function Results() {
                 e.target.value
               )
             }
-            onKeyDown={
-              handleSearchKeyDown
-            }
-            style={{
-              width: "100%",
-            }}
+            onKeyDown={handleSearchKeyDown}
+            style={{ width: "100%" }}
             allowClear
           />
         </Col>
 
         {/* Buttons */}
-        <Col
-          xs={24}
-          sm={24}
-          md={6}
-        >
+        <Col xs={24} sm={24} md={6}>
           <div
             style={{
               display: "flex",
-              justifyContent:
-                "flex-end",
+              justifyContent: "flex-end",
               gap: 8,
             }}
           >
             <Button
               type="primary"
-              icon={
-                <SearchOutlined />
-              }
-              onClick={
-                handleSearch
-              }
+              icon={<SearchOutlined />}
+              onClick={handleSearch}
             >
               Search
             </Button>
 
             <Button
-              icon={
-                <ReloadOutlined />
-              }
-              onClick={
-                handleReset
-              }
+              icon={<ReloadOutlined />}
+              onClick={handleReset}
             >
               Reset
             </Button>
@@ -639,8 +600,7 @@ export default function Results() {
 
           {/* No Data */}
           {!loading &&
-            displayedStudents.length ===
-              0 && (
+            displayedStudents.length === 0 && (
               <div className="text-center text-sm text-gray-400 py-6">
                 No results found
               </div>
@@ -648,125 +608,84 @@ export default function Results() {
 
           {/* Student Cards */}
           {!loading &&
-            displayedStudents.map(
-              (record) => (
-                <div
-                  key={
-                    record.studentId
-                  }
-                  className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-3"
-                >
-                  {/* Student Header */}
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-800">
-                        {
-                          record.firstName
-                        }{" "}
-                        {
-                          record.lastName
-                        }
-                      </p>
-
-                      <p className="text-xs text-gray-500">
-                        Code:{" "}
-                        {record.studentCode ||
-                          "-"}
-                      </p>
-
-                      <p className="text-xs text-gray-500">
-                        {
-                          getStandard(
-                            record
-                          )
-                        }{" "}
-                        -{" "}
-                        {
-                          getDivision(
-                            record
-                          )
-                        }{" "}
-                        | Roll No:{" "}
-                        {
-                          getRollNo(
-                            record
-                          )
-                        }
-                      </p>
-                    </div>
-
-                    {record.status && (
-                      <Tag
-                        color={
-                          record.status ===
-                          "ACTIVE"
-                            ? "green"
-                            : "red"
-                        }
-                      >
-                        {
-                          record.status
-                        }
-                      </Tag>
-                    )}
-                  </div>
-
-                  {/* Student Details */}
-                  <div className="text-xs text-gray-500 space-y-1">
-                    <p>
-                      Gender:{" "}
-                      {record.gender ||
-                        "-"}
+            displayedStudents.map((record) => (
+              <div
+                key={record.studentId}
+                className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-3"
+              >
+                {/* Student Header */}
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {record.firstName}{" "}
+                      {record.lastName}
                     </p>
 
-                    <p>
-                      Medium:{" "}
-                      {
-                        getMedium(
-                          record
-                        )
+                    <p className="text-xs text-gray-500">
+                      Code:{" "}
+                      {record.studentCode || "-"}
+                    </p>
+
+                    <p className="text-xs text-gray-500">
+                      {getStandard(record)} -{" "}
+                      {getDivision(record)} |
+                      Roll No:{" "}
+                      {getRollNo(record)}
+                    </p>
+                  </div>
+
+                  {record.status && (
+                    <Tag
+                      color={
+                        record.status === "ACTIVE"
+                          ? "green"
+                          : "red"
                       }
-                    </p>
-                  </div>
-
-                  {/* Mobile Actions */}
-                  <div className="flex justify-end gap-2 mt-3">
-                    {/* View */}
-                    <Tooltip title="View Result">
-                      <Button
-                        size="small"
-                        icon={
-                          <EyeOutlined />
-                        }
-                        onClick={() =>
-                          openDrawer(
-                            record,
-                            "view"
-                          )
-                        }
-                      />
-                    </Tooltip>
-
-                    {/* Edit */}
-                    <Tooltip title="Edit Result">
-                      <Button
-                        size="small"
-                        type="primary"
-                        icon={
-                          <EditOutlined />
-                        }
-                        onClick={() =>
-                          openDrawer(
-                            record,
-                            "edit"
-                          )
-                        }
-                      />
-                    </Tooltip>
-                  </div>
+                    >
+                      {record.status}
+                    </Tag>
+                  )}
                 </div>
-              )
-            )}
+
+                {/* Student Details */}
+                <div className="text-xs text-gray-500 space-y-1">
+                  <p>
+                    Gender:{" "}
+                    {record.gender || "-"}
+                  </p>
+
+                  <p>
+                    Medium: {getMedium(record)}
+                  </p>
+                </div>
+
+                {/* Mobile Actions */}
+                <div className="flex justify-end gap-2 mt-3">
+                  {/* View */}
+                  <Tooltip title="View Result">
+                    <Button
+                      size="small"
+                      icon={<EyeOutlined />}
+                      onClick={() =>
+                        openDrawer(record, "view")
+                      }
+                    />
+                  </Tooltip>
+
+                  {/* Edit */}
+                  <Tooltip title="Edit Result">
+                    <Button
+                      size="small"
+                      type="primary"
+                      icon={<EditOutlined />}
+                      onClick={() =>
+                        openDrawer(record, "edit")
+                      }
+                    />
+                  </Tooltip>
+                </div>
+              </div>
+            ))}
 
           {/* Mobile Pagination */}
           <div className="flex items-center justify-between pt-2">
@@ -778,19 +697,12 @@ export default function Results() {
               {/* Previous */}
               <Button
                 size="small"
-                disabled={
-                  pagination.current <=
-                  1
-                }
+                disabled={pagination.current <= 1}
                 onClick={() =>
-                  setPagination(
-                    (prev) => ({
-                      ...prev,
-                      current:
-                        prev.current -
-                        1,
-                    })
-                  )
+                  setPagination((prev) => ({
+                    ...prev,
+                    current: prev.current - 1,
+                  }))
                 }
               >
                 Prev
@@ -805,14 +717,10 @@ export default function Results() {
                   total
                 }
                 onClick={() =>
-                  setPagination(
-                    (prev) => ({
-                      ...prev,
-                      current:
-                        prev.current +
-                        1,
-                    })
-                  )
+                  setPagination((prev) => ({
+                    ...prev,
+                    current: prev.current + 1,
+                  }))
                 }
               >
                 Next
@@ -829,29 +737,16 @@ export default function Results() {
           <Table
             rowKey="studentId"
             columns={columns}
-            dataSource={
-              displayedStudents
-            }
+            dataSource={displayedStudents}
             loading={loading}
             bordered
             pagination={{
-              current:
-                pagination.current,
-
-              pageSize:
-                pagination.pageSize,
-
+              current: pagination.current,
+              pageSize: pagination.pageSize,
               total,
-
               showSizeChanger: false,
-
-              showTotal: (t) =>
-                `Total: ${t}`,
-
-              onChange: (
-                page,
-                pageSize
-              ) => {
+              showTotal: (t) => `Total: ${t}`,
+              onChange: (page, pageSize) => {
                 setPagination({
                   current: page,
                   pageSize,
@@ -869,31 +764,19 @@ export default function Results() {
       <ResultDrawer
         open={drawerOpen}
         mode={drawerMode}
-        studentId={
-          selectedStudent?.studentId ??
-          null
-        }
+        studentId={selectedStudent?.studentId ?? null}
         studentInfo={{
-          standard:
-            selectedStudent
-              ? getStandard(
-                  selectedStudent
-                )
-              : undefined,
+          standard: selectedStudent
+            ? getStandard(selectedStudent)
+            : undefined,
 
-          division:
-            selectedStudent
-              ? getDivision(
-                  selectedStudent
-                )
-              : undefined,
+          division: selectedStudent
+            ? getDivision(selectedStudent)
+            : undefined,
 
-          academicYear:
-            selectedStudent
-              ? getAcademicYear(
-                  selectedStudent
-                )
-              : undefined,
+          academicYear: selectedStudent
+            ? getAcademicYear(selectedStudent)
+            : undefined,
         }}
         onClose={closeDrawer}
         onSaved={handleSaved}

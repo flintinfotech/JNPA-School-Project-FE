@@ -79,6 +79,23 @@ export default function Achievements() {
 
   const isTeacher = user?.role === TEACHER_ROLE;
 
+  // -------------------------------------------------------
+  // NEW: logged-in user's section + medium go in the
+  // getAllCurrentYearStudentsData payload
+  // (admin has none -> nothing is sent -> sees everything)
+  // -------------------------------------------------------
+
+  const mySection = user?.section || "";
+  const myMedium = user?.medium || "";
+
+  const sectionMediumScope = useMemo(
+    () => ({
+      ...(mySection ? { section: mySection } : {}),
+      ...(myMedium ? { medium: myMedium } : {}),
+    }),
+    [mySection, myMedium]
+  );
+
   const classScope: Pick<
     ResultFilters,
     "standard" | "division" | "medium"
@@ -129,11 +146,19 @@ export default function Achievements() {
 
   // -------------------------------------------------------
   // Load Students
+  // POST student/getAllCurrentYearStudentsData?page=0&size=10000&sort=studentId,desc&paginate=true
+  // payload: filters + section + medium
   // -------------------------------------------------------
 
   const loadAchievements = useCallback(
     (appliedFilters = filters) => {
       setLoading(true);
+
+      // NEW: section + medium of the logged-in user are always added
+      const payload = {
+        ...appliedFilters,
+        ...sectionMediumScope,
+      } as ResultFilters;
 
       // -----------------------------------------------------
       // Get all students for the selected class.
@@ -143,7 +168,7 @@ export default function Achievements() {
       getAllCurrentYearStudentsData(
         0,
         MAX_FETCH_SIZE,
-        appliedFilters
+        payload
       )
         .then((response) => {
           if (response.success) {
@@ -151,27 +176,9 @@ export default function Achievements() {
               response.data?.data || [];
 
             // =================================================
-            // IMPORTANT FIX
-            // =================================================
-            //
             // Backend returns newly added student FIRST.
-            //
-            // Example API response:
-            //
-            // Student 5  <- NEW
-            // Student 4
-            // Student 3
-            // Student 2
-            // Student 1  <- OLD
-            //
-            // We need:
-            //
-            // Student 1
-            // Student 2
-            // Student 3
-            // Student 4
-            // Student 5  <- NEW
-            //
+            // We reverse it so the newly added student is
+            // shown at the end.
             // [...students] creates a copy before reverse()
             // so the original API array is not mutated.
             // =================================================
@@ -197,20 +204,20 @@ export default function Achievements() {
         });
     },
 
-    // Keep existing behavior
+    // function is rebuilt when the user's section/medium changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [sectionMediumScope]
   );
 
   // -------------------------------------------------------
-  // Initial API Call
+  // Initial API Call (and again if the user's section/medium changes)
   // -------------------------------------------------------
 
   useEffect(() => {
     loadAchievements(filters);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadAchievements]);
 
   // -------------------------------------------------------
   // Search Bar
@@ -386,11 +393,7 @@ export default function Achievements() {
       }}
     >
       {/* First Name */}
-      <Col
-        xs={24}
-        sm={12}
-        md={6}
-      >
+      <Col xs={24} sm={12} md={6}>
         <Input
           placeholder="First Name"
           value={filters.firstName}
@@ -400,22 +403,14 @@ export default function Achievements() {
               e.target.value
             )
           }
-          onKeyDown={
-            handleSearchKeyDown
-          }
-          style={{
-            width: "100%",
-          }}
+          onKeyDown={handleSearchKeyDown}
+          style={{ width: "100%" }}
           allowClear
         />
       </Col>
 
       {/* Last Name */}
-      <Col
-        xs={24}
-        sm={12}
-        md={6}
-      >
+      <Col xs={24} sm={12} md={6}>
         <Input
           placeholder="Last Name"
           value={filters.lastName}
@@ -425,22 +420,14 @@ export default function Achievements() {
               e.target.value
             )
           }
-          onKeyDown={
-            handleSearchKeyDown
-          }
-          style={{
-            width: "100%",
-          }}
+          onKeyDown={handleSearchKeyDown}
+          style={{ width: "100%" }}
           allowClear
         />
       </Col>
 
       {/* Roll No */}
-      <Col
-        xs={24}
-        sm={12}
-        md={6}
-      >
+      <Col xs={24} sm={12} md={6}>
         <Input
           placeholder="Roll No"
           value={filters.rollNo}
@@ -450,49 +437,32 @@ export default function Achievements() {
               e.target.value
             )
           }
-          onKeyDown={
-            handleSearchKeyDown
-          }
-          style={{
-            width: "100%",
-          }}
+          onKeyDown={handleSearchKeyDown}
+          style={{ width: "100%" }}
           allowClear
         />
       </Col>
 
       {/* Buttons */}
-      <Col
-        xs={24}
-        sm={24}
-        md={6}
-      >
+      <Col xs={24} sm={24} md={6}>
         <div
           style={{
             display: "flex",
-            justifyContent:
-              "flex-end",
+            justifyContent: "flex-end",
             gap: 8,
           }}
         >
           <Button
             type="primary"
-            icon={
-              <SearchOutlined />
-            }
-            onClick={
-              handleSearch
-            }
+            icon={<SearchOutlined />}
+            onClick={handleSearch}
           >
             Search
           </Button>
 
           <Button
-            icon={
-              <ReloadOutlined />
-            }
-            onClick={
-              handleReset
-            }
+            icon={<ReloadOutlined />}
+            onClick={handleReset}
           >
             Reset
           </Button>
@@ -524,8 +494,7 @@ export default function Achievements() {
         dataIndex: "studentCode",
         align: "center",
 
-        render: (value) =>
-          value || "-",
+        render: (value) => value || "-",
       },
 
       {
@@ -533,8 +502,7 @@ export default function Achievements() {
         dataIndex: "firstName",
         align: "center",
 
-        render: (value) =>
-          value || "-",
+        render: (value) => value || "-",
       },
 
       {
@@ -542,8 +510,7 @@ export default function Achievements() {
         dataIndex: "lastName",
         align: "center",
 
-        render: (value) =>
-          value || "-",
+        render: (value) => value || "-",
       },
 
       {
@@ -575,8 +542,7 @@ export default function Achievements() {
         dataIndex: "gender",
         align: "center",
 
-        render: (value) =>
-          value || "-",
+        render: (value) => value || "-",
       },
 
       {
@@ -630,13 +596,9 @@ export default function Achievements() {
             <Button
               size="small"
               type="primary"
-              icon={
-                <EditOutlined />
-              }
+              icon={<EditOutlined />}
               onClick={() =>
-                openAchievementDrawer(
-                  record
-                )
+                openAchievementDrawer(record)
               }
             />
           </Space>
@@ -663,8 +625,7 @@ export default function Achievements() {
 
           {/* No Data */}
           {!loading &&
-            displayedStudents.length ===
-              0 && (
+            displayedStudents.length === 0 && (
               <div className="text-center text-sm text-gray-400 py-6">
                 No achievement data found
               </div>
@@ -672,145 +633,96 @@ export default function Achievements() {
 
           {/* Student Cards */}
           {!loading &&
-            displayedStudents.map(
-              (record) => (
-                <div
-                  key={
-                    record.studentId
-                  }
-                  className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-3"
-                >
-                  {/* Header */}
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-800">
-                        {
-                          record.firstName
-                        }{" "}
-                        {
-                          record.lastName
-                        }
-                      </p>
-
-                      <p className="text-xs text-gray-500">
-                        Code:{" "}
-                        {record.studentCode ||
-                          "-"}
-                      </p>
-
-                      <p className="text-xs text-gray-500">
-                        {
-                          getStandard(
-                            record
-                          )
-                        }{" "}
-                        -{" "}
-                        {
-                          getDivision(
-                            record
-                          )
-                        }
-                      </p>
-
-                      <p className="text-xs text-gray-500">
-                        Roll No:{" "}
-                        {
-                          getRollNo(
-                            record
-                          )
-                        }
-                      </p>
-                    </div>
-
-                    {/* Status */}
-                    {record.status && (
-                      <Tag
-                        color={
-                          record.status ===
-                          "ACTIVE"
-                            ? "green"
-                            : "red"
-                        }
-                      >
-                        {
-                          record.status
-                        }
-                      </Tag>
-                    )}
-                  </div>
-
-                  {/* Details */}
-                  <div className="text-xs text-gray-500 space-y-1">
-                    <p>
-                      Gender:{" "}
-                      {record.gender ||
-                        "-"}
+            displayedStudents.map((record) => (
+              <div
+                key={record.studentId}
+                className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-3"
+              >
+                {/* Header */}
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {record.firstName}{" "}
+                      {record.lastName}
                     </p>
 
-                    <p>
-                      Medium:{" "}
-                      {
-                        getMedium(
-                          record
-                        )
-                      }
+                    <p className="text-xs text-gray-500">
+                      Code:{" "}
+                      {record.studentCode || "-"}
                     </p>
 
-                    <p>
-                      Academic Year:{" "}
-                      {
-                        getAcademicYear(
-                          record
-                        )
-                      }
+                    <p className="text-xs text-gray-500">
+                      {getStandard(record)} -{" "}
+                      {getDivision(record)}
+                    </p>
+
+                    <p className="text-xs text-gray-500">
+                      Roll No: {getRollNo(record)}
                     </p>
                   </div>
 
-                  {/* Action */}
-                  <div className="flex justify-end mt-3">
-                    <Button
-                      size="small"
-                      type="primary"
-                      icon={
-                        <EditOutlined />
-                      }
-                      onClick={() =>
-                        openAchievementDrawer(
-                          record
-                        )
+                  {/* Status */}
+                  {record.status && (
+                    <Tag
+                      color={
+                        record.status === "ACTIVE"
+                          ? "green"
+                          : "red"
                       }
                     >
-                      Achievement
-                    </Button>
-                  </div>
+                      {record.status}
+                    </Tag>
+                  )}
                 </div>
-              )
-            )}
+
+                {/* Details */}
+                <div className="text-xs text-gray-500 space-y-1">
+                  <p>
+                    Gender: {record.gender || "-"}
+                  </p>
+
+                  <p>
+                    Medium: {getMedium(record)}
+                  </p>
+
+                  <p>
+                    Academic Year:{" "}
+                    {getAcademicYear(record)}
+                  </p>
+                </div>
+
+                {/* Action */}
+                <div className="flex justify-end mt-3">
+                  <Button
+                    size="small"
+                    type="primary"
+                    icon={<EditOutlined />}
+                    onClick={() =>
+                      openAchievementDrawer(record)
+                    }
+                  >
+                    Achievement
+                  </Button>
+                </div>
+              </div>
+            ))}
 
           {/* Mobile Pagination */}
           <div className="flex items-center justify-between pt-2">
             <span className="text-xs text-gray-500">
-              Total:{" "}
-              {total}
+              Total: {total}
             </span>
 
             <div className="flex gap-2">
               {/* Previous */}
               <button
                 className="px-3 py-1 border rounded text-sm"
-                disabled={
-                  pagination.current <=
-                  1
-                }
+                disabled={pagination.current <= 1}
                 onClick={() =>
-                  setPagination(
-                    (prev) => ({
-                      ...prev,
-                      current:
-                        prev.current -
-                        1,
-                    })
-                  )
+                  setPagination((prev) => ({
+                    ...prev,
+                    current: prev.current - 1,
+                  }))
                 }
               >
                 Prev
@@ -825,14 +737,10 @@ export default function Achievements() {
                   total
                 }
                 onClick={() =>
-                  setPagination(
-                    (prev) => ({
-                      ...prev,
-                      current:
-                        prev.current +
-                        1,
-                    })
-                  )
+                  setPagination((prev) => ({
+                    ...prev,
+                    current: prev.current + 1,
+                  }))
                 }
               >
                 Next
@@ -846,54 +754,16 @@ export default function Achievements() {
         ===================================================== */}
 
         <AchievementDrawer
-          open={
-            achievementDrawerOpen
-          }
+          open={achievementDrawerOpen}
           studentId={
-            selectedStudent?.studentId ||
-            null
+            selectedStudent?.studentId || null
           }
-          studentInfo={{
-            studentCode:
-              selectedStudent?.studentCode,
-
-            firstName:
-              selectedStudent?.firstName,
-
-            lastName:
-              selectedStudent?.lastName,
-
-            standard:
-              selectedStudent
-                ? getStandard(
-                    selectedStudent
-                  )
-                : undefined,
-
-            division:
-              selectedStudent
-                ? getDivision(
-                    selectedStudent
-                  )
-                : undefined,
-
-            academicYear:
-              selectedStudent
-                ? getAcademicYear(
-                    selectedStudent
-                  )
-                : undefined,
-          }}
-          onClose={
-            closeAchievementDrawer
-          }
+          onClose={closeAchievementDrawer}
           onSaved={() => {
             // Refresh the list after achievement save.
             // Reverse is automatically applied inside
             // loadAchievements().
-            loadAchievements(
-              filters
-            );
+            loadAchievements(filters);
           }}
         />
       </>
@@ -913,32 +783,24 @@ export default function Achievements() {
           <Table
             rowKey="studentId"
             columns={columns}
-            dataSource={
-              displayedStudents
-            }
+            dataSource={displayedStudents}
             loading={loading}
             bordered
             scroll={{
               x: "max-content",
             }}
             pagination={{
-              current:
-                pagination.current,
+              current: pagination.current,
 
-              pageSize:
-                pagination.pageSize,
+              pageSize: pagination.pageSize,
 
               total: total,
 
               showSizeChanger: false,
 
-              showTotal: (t) =>
-                `Total: ${t}`,
+              showTotal: (t) => `Total: ${t}`,
 
-              onChange: (
-                page,
-                pageSize
-              ) => {
+              onChange: (page, pageSize) => {
                 setPagination({
                   current: page,
                   pageSize,
@@ -954,54 +816,16 @@ export default function Achievements() {
       ===================================================== */}
 
       <AchievementDrawer
-        open={
-          achievementDrawerOpen
-        }
+        open={achievementDrawerOpen}
         studentId={
-          selectedStudent?.studentId ||
-          null
+          selectedStudent?.studentId || null
         }
-        studentInfo={{
-          studentCode:
-            selectedStudent?.studentCode,
-
-          firstName:
-            selectedStudent?.firstName,
-
-          lastName:
-            selectedStudent?.lastName,
-
-          standard:
-            selectedStudent
-              ? getStandard(
-                  selectedStudent
-                )
-              : undefined,
-
-          division:
-            selectedStudent
-              ? getDivision(
-                  selectedStudent
-                )
-              : undefined,
-
-          academicYear:
-            selectedStudent
-              ? getAcademicYear(
-                  selectedStudent
-                )
-              : undefined,
-        }}
-        onClose={
-          closeAchievementDrawer
-        }
+        onClose={closeAchievementDrawer}
         onSaved={() => {
           // Refresh the list after achievement save.
           // Reverse is automatically applied inside
           // loadAchievements().
-          loadAchievements(
-            filters
-          );
+          loadAchievements(filters);
         }}
       />
     </>

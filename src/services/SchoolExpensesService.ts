@@ -194,11 +194,15 @@ interface SchoolExpenseReportFlatRow extends SchoolExpenseReportEntry {
 // {
 //   "productName": "Carrom",
 //   "category": "Physics Lab Equipment",
+//   "section": "Primary",
+//   "medium": "Marathi",
 //   "range:purchaseDate": { "start": "2026-10-01", "end": "2026-11-04" }
 // }
 export interface SchoolExpenseReportPayload {
   category?: string;
   productName?: string;
+  section?: string; // NEW (logged-in user)
+  medium?: string; // NEW (logged-in user)
   "range:purchaseDate"?: { start?: string; end?: string };
 }
 
@@ -248,6 +252,8 @@ export const getAllSchoolExpensesReportData = async (
   const body: Record<string, any> = {};
   if (payload.productName?.trim()) body.productName = payload.productName.trim();
   if (payload.category?.trim()) body.category = payload.category.trim();
+  if (payload.section?.trim()) body.section = payload.section.trim(); // NEW
+  if (payload.medium?.trim()) body.medium = payload.medium.trim(); // NEW
   const range = payload["range:purchaseDate"];
   if (range?.start || range?.end) {
     body["range:purchaseDate"] = {
@@ -255,6 +261,9 @@ export const getAllSchoolExpensesReportData = async (
       ...(range.end ? { end: range.end } : {}),
     };
   }
+
+  // DEBUG: browser console / Network tab me yahi body jata hai (kaam hone ke baad hata dena)
+  console.log("School expenses report payload:", body);
 
   do {
     const res = await axiosInstance.post(

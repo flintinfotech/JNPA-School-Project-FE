@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, Col, DatePicker, Empty, Input, Modal, Pagination, Row, Select, Spin, message } from "antd";
 import {
   DownloadOutlined,
@@ -18,6 +18,7 @@ import {
   type SchoolExpenseReportProduct,
 } from "../services/SchoolExpensesService";
 import { buildSchoolExpensesReportPdf } from "../services/SchoolExpensesReportPdf";
+import { useAuth } from "../hooks/useAuth"; // NEW
 
 interface ReportFilters {
   category?: string;
@@ -26,6 +27,12 @@ interface ReportFilters {
 }
 
 type DateRange = [Dayjs | null, Dayjs | null] | null;
+
+// NEW: logged-in user's section + medium
+interface ReportScope {
+  section?: string;
+  medium?: string;
+}
 
 const money = (v?: number | null) =>
   v === null || v === undefined
@@ -38,12 +45,20 @@ const money = (v?: number | null) =>
 // {
 //   "productName": "Carrom",
 //   "category": "Physics Lab Equipment",
+//   "section": "Primary",      <- NEW (logged-in user)
+//   "medium": "Marathi",       <- NEW (logged-in user)
 //   "range:purchaseDate": { "start": "2026-10-01", "end": "2026-11-04" }
 // }
-const buildPayload = (filters: ReportFilters, range: DateRange): SchoolExpenseReportPayload => {
+const buildPayload = (
+  filters: ReportFilters,
+  range: DateRange,
+  scope: ReportScope = {}
+): SchoolExpenseReportPayload => {
   const payload: SchoolExpenseReportPayload = {};
   if (filters.productName?.trim()) payload.productName = filters.productName.trim();
   if (filters.category) payload.category = filters.category;
+  if (scope.section) payload.section = scope.section; // NEW
+  if (scope.medium) payload.medium = scope.medium; // NEW
   if (range?.[0] || range?.[1]) {
     payload["range:purchaseDate"] = {
       ...(range?.[0] ? { start: range[0].format("YYYY-MM-DD") } : {}),
@@ -102,6 +117,27 @@ function useIsMobile(breakpoint = 768) {
 
 export default function SchoolExpensesReport() {
   const isMobile = useIsMobile();
+
+  // NEW: logged-in user's section + medium go in the report payload
+  // (admin has none -> nothing is sent -> sees everything)
+  const { user } = useAuth();
+  const mySection = user?.section || "";
+  const myMedium = user?.medium || "";
+
+  // DEBUG: user me section/medium aa raha hai ya nahi (kaam hone ke baad hata dena)
+  console.log("Logged-in user section/medium:", { section: user?.section, medium: user?.medium, user });
+
+  const scope = useMemo<ReportScope>(() => {
+    const p: ReportScope = {};
+    if (mySection) p.section = mySection;
+    if (myMedium) p.medium = myMedium;
+    return p;
+  }, [mySection, myMedium]);
+
+  // always holds the latest scope, so Search / Reset / Export never use a stale value
+  const scopeRef = useRef<ReportScope>(scope);
+  scopeRef.current = scope;
+
   const [allProducts, setAllProducts] = useState<SchoolExpenseReportProduct[]>([]);
   const [tableLoading, setTableLoading] = useState(false);
   const [page, setPage] = useState(0);
@@ -134,25 +170,33 @@ export default function SchoolExpensesReport() {
   };
 
   // ---------- DATA (School Expenses REPORT API, all pages) — called with the payload ----------
-  const fetchExpenses = useCallback(async (filters: ReportFilters, range: DateRange) => {
-    setTableLoading(true);
-    try {
-      const list = await getAllSchoolExpensesReportData(buildPayload(filters, range));
-      rememberCategories(list);
-      setAllProducts(list);
-    } catch (error: any) {
-      console.error("School expenses report error:", error);
-      message.error(error?.response?.data?.message || error?.message || "Failed to load school expenses report");
-      setAllProducts([]);
-    } finally {
-      setTableLoading(false);
-    }
-  }, []);
+  const fetchExpenses = useCallback(
+    async (filters: ReportFilters, range: DateRange) => {
+      setTableLoading(true);
+      try {
+        // NEW: scope (section + medium) goes in the payload
+        const list = await getAllSchoolExpensesReportData(
+          buildPayload(filters, range, scopeRef.current)
+        );
+        rememberCategories(list);
+        setAllProducts(list);
+      } catch (error: any) {
+        console.error("School expenses report error:", error);
+        message.error(error?.response?.data?.message || error?.message || "Failed to load school expenses report");
+        setAllProducts([]);
+      } finally {
+        setTableLoading(false);
+      }
+    },
+    []
+  );
 
-  // first load: nothing selected -> payload {}
+  // first load + whenever the user's section/medium changes (user loads after login)
+  // -> reloads with the latest scope, keeping the currently applied filters
   useEffect(() => {
-    fetchExpenses({}, null);
-  }, [fetchExpenses]);
+    fetchExpenses(appliedFilters, appliedRange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchExpenses, scope]);
 
   // free the blob URL if the screen is closed while the report is open
   useEffect(() => {
@@ -212,7 +256,10 @@ export default function SchoolExpensesReport() {
 
     setExporting(true);
     try {
-      const fetched = await getAllSchoolExpensesReportData(buildPayload(searchFilters, dateRange));
+      // NEW: scope (section + medium) goes in the payload
+      const fetched = await getAllSchoolExpensesReportData(
+        buildPayload(searchFilters, dateRange, scopeRef.current)
+      );
       rememberCategories(fetched);
       const products = applyClientFilters(fetched, searchFilters, dateRange);
 
@@ -249,7 +296,7 @@ export default function SchoolExpensesReport() {
     document.body.removeChild(a);
   };
 
-  // ---------- TABLE COLUMNS: Sr No, Category, Product Name, Quantity, Total, Status ----------
+  // ---------- TABLE COLUMNS: Sr No, Category, Product Name, Quantity, Total ----------
   const columns = [
     {
       title: "Sr No",
@@ -322,20 +369,6 @@ export default function SchoolExpensesReport() {
             allowClear
           />
         </Col>
-{/* 
-        <Col xs={24} sm={12} md={5}>
-          <Select
-            placeholder="Status"
-            value={searchFilters.status}
-            onChange={(value) => handleFilterChange("status", value)}
-            style={{ width: "100%" }}
-            allowClear
-            options={[
-              { label: "PAID", value: "PAID" },
-              { label: "PENDING", value: "PENDING" },
-            ]}
-          />
-        </Col> */}
 
         <Col xs={24} sm={12} md={7}>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
@@ -375,13 +408,23 @@ export default function SchoolExpensesReport() {
             {displayedRows.map((r, index) => {
               const entries = r.reportDataDTOList || [];
               return (
-                <Card key={r.productCode || `${r.category}-${r.productName}`} size="small" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                <Card
+                  key={r.productCode || `${r.category}-${r.productName}`}
+                  size="small"
+                  style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      marginBottom: 12,
+                    }}
+                  >
                     <div>
                       <div style={{ fontSize: 12, color: "#9ca3af" }}>Sr No {page * pageSize + index + 1}</div>
                       <div style={{ fontWeight: 600, fontSize: 16, marginTop: 4 }}>{(r.productName || "-").trim()}</div>
                     </div>
-                    {/* <Tag color={statusColor(st)} style={{ marginInlineEnd: 0 }}>{st}</Tag> */}
                   </div>
 
                   <div style={{ marginBottom: 12 }}>
@@ -389,7 +432,15 @@ export default function SchoolExpensesReport() {
                     <div style={{ fontWeight: 500 }}>{r.category || "-"}</div>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, borderTop: "1px solid #f0f0f0", paddingTop: 12 }}>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 12,
+                      borderTop: "1px solid #f0f0f0",
+                      paddingTop: 12,
+                    }}
+                  >
                     <div>
                       <div style={{ fontSize: 12, color: "#6b7280" }}>Quantity</div>
                       <div style={{ fontWeight: 500 }}>{sumReport(entries, "quantity")}</div>

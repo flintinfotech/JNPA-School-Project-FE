@@ -35,7 +35,8 @@ import dayjs, { type Dayjs } from "dayjs";
 import jsPDF from "jspdf"; // npm install jspdf jspdf-autotable
 import autoTable from "jspdf-autotable";
 import {
-  getAllEmployeeDetailsByFilter,
+  // getAllEmployeeDetailsByFilter,  <- NOT used any more: the list is called directly below
+  //                                    so section + medium always go in the payload
   getEmployeeDetailsById,
   type UserDTO,
   type UserSearchFilters,
@@ -49,6 +50,7 @@ import {
 } from "../../services/employeeSalaryService";
 import { getAllStaticData } from "../../services/staticDataService";
 import CommonTable from "../../components/commonTable"; // same table component as Purchase Master (change path if needed)
+import { useAuth } from "../../hooks/useAuth"; // NEW
 
 // Use the SAME two imports your other services use (only the paths may need a change)
 import axiosInstance from "../../lib/axios"; // your axios instance
@@ -149,13 +151,15 @@ const reportName = (e: SalaryReportEmployee) =>
   [e.firstName, e.middleName, e.lastName].filter(Boolean).join(" ").trim();
 const sumOf = (rows: any[], key: string) => rows.reduce((acc, r) => acc + num(r?.[key]), 0);
 
-// POST employeeDetails/getEmployeeSalaryReportData?page=&size=&paginate=true   body: {}
-// The backend gets an EMPTY payload and returns everyone, so we read ALL pages and then
+// POST employeeDetails/getEmployeeSalaryReportData?page=&size=&paginate=true
+// The backend returns the employees, so we read ALL pages and then
 // apply the search bar (role / first name / last name) AND the month range (From - To)
 // here in the browser, using salaryDate of every salary row.
+// NEW: scope = { section?, medium? } of the logged-in user, also goes in the payload.
 const fetchSalaryReport = async (
   filters: SearchFilters,
-  monthRange: MonthRange
+  monthRange: MonthRange,
+  scope: Record<string, string> = {}
 ): Promise<SalaryReportEmployee[]> => {
   const size = 10;
   let pageNo = 0;
@@ -172,6 +176,9 @@ const fetchSalaryReport = async (
   if (filters.role) payload.role = filters.role;
   if (filters.firstName?.trim()) payload.firstName = filters.firstName.trim();
   if (filters.lastName?.trim()) payload.lastName = filters.lastName.trim();
+  // NEW: logged-in user's section + medium
+  if (scope.section) payload.section = scope.section;
+  if (scope.medium) payload.medium = scope.medium;
 
   do {
     const res = await axiosInstance.post(apiEndpoints.getEmployeeSalaryReportData(pageNo, size), payload);
@@ -442,6 +449,16 @@ const buildSalaryReportPdf = (
 /* ===================================================================== */
 
 export default function EmployeeSalary() {
+  // NEW: logged-in user's section + medium go in the payload of the employee list
+  // and the salary report API (admin has none -> nothing is sent -> sees everything)
+  const { user } = useAuth();
+  const mySection = user?.section || "";
+  const myMedium = user?.medium || "";
+  const scope: Record<string, string> = {
+    ...(mySection ? { section: mySection } : {}),
+    ...(myMedium ? { medium: myMedium } : {}),
+  };
+
   // ---------- responsive (mobile) ----------
   const screens = Grid.useBreakpoint();
   const isMobile = screens.md === false; // below 768px
@@ -543,7 +560,11 @@ export default function EmployeeSalary() {
 
       // 2) fallback: departments that actually exist on employees (report API)
       if (!list.length) {
-        const emps = await fetchSalaryReport({ firstName: "", lastName: "", role: "" } as SearchFilters, null);
+        const emps = await fetchSalaryReport(
+          { firstName: "", lastName: "", role: "" } as SearchFilters,
+          null,
+          scope // NEW
+        );
         list = emps.map((e) => e.department || "").filter(Boolean);
       }
 
@@ -564,11 +585,24 @@ export default function EmployeeSalary() {
   };
 
   // ---------- EMPLOYEE LIST (same API as Employee Details) ----------
+  // POST employeeDetails/getAllEmployeeDetailsByFilter?page=&size=&paginate=true
+  // payload: firstName / lastName / role / department (search bar) + section / medium (logged-in user)
   const fetchUsers = useCallback(
     async (pageNum: number, size: number, filters?: SearchFilters) => {
       setTableLoading(true);
       try {
-        const response = await getAllEmployeeDetailsByFilter(pageNum, size, filters);
+        const payload: Record<string, string> = {};
+        if (filters?.firstName?.trim()) payload.firstName = filters.firstName.trim();
+        if (filters?.lastName?.trim()) payload.lastName = filters.lastName.trim();
+        if (filters?.role) payload.role = filters.role;
+        if (filters?.department) payload.department = filters.department;
+        // NEW: logged-in user's section + medium
+        if (mySection) payload.section = mySection;
+        if (myMedium) payload.medium = myMedium;
+
+        const res = await axiosInstance.post(apiEndpoints.getAllemployeeDetails(pageNum, size), payload);
+        const response = res.data;
+
         if (response.success) {
           setUsers(response.data.Data);
           setTotal(response.data.total);
@@ -581,7 +615,8 @@ export default function EmployeeSalary() {
         setTableLoading(false);
       }
     },
-    []
+    // rebuilt when the user's section/medium changes -> list reloads
+    [mySection, myMedium]
   );
 
   useEffect(() => {
@@ -628,7 +663,7 @@ export default function EmployeeSalary() {
 
     setExporting(true);
     try {
-      const employees = await fetchSalaryReport(searchFilters, monthRange);
+      const employees = await fetchSalaryReport(searchFilters, monthRange, scope); // NEW: scope
 
       if (!employees.length) {
         message.warning("No data found for the selected filters");
