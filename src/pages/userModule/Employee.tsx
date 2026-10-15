@@ -260,7 +260,7 @@ export default function User({
                 <Form.Item
                   label="Department"
                   name="department"
-                  rules={[{ required: true, message: "Please select department" }]}
+                  rules={[{  message: "Please select department" }]}
                 >
                   <Select placeholder="Select Department" loading={rolesLoading}>
                     {departments.map((dept) => (
@@ -522,7 +522,7 @@ export default function User({
                 <Form.Item
                   label="Bank Name"
                   name="bankName"
-                  rules={[{ required: true, message: "Please enter bank name" }]}
+                  rules={[{  message: "Please enter bank name" }]}
                 >
                   <Input placeholder="Enter Bank Name" />
                 </Form.Item>
@@ -532,7 +532,7 @@ export default function User({
                   name="ifscCode"
                   normalize={(value) => value?.toUpperCase()}
                   rules={[
-                    { required: true, message: "Please enter IFSC code" },
+                    { message: "Please enter IFSC code" },
                     {
                       pattern: /^[A-Z]{4}0[A-Z0-9]{6}$/,
                       message: "Enter a valid IFSC code (e.g. SBIN0001234)",
@@ -547,7 +547,7 @@ export default function User({
                   name="accountNo"
                   className="col-span-2"
                   rules={[
-                    { required: true, message: "Please enter account number" },
+                    {  message: "Please enter account number" },
                     {
                       pattern: /^\d{9,18}$/,
                       message: "Enter a valid account number (9-18 digits)",
