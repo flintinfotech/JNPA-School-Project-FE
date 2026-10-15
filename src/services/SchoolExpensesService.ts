@@ -130,6 +130,8 @@ export const deleteSchoolExpenses = async (
 export interface SchoolExpenseListPayload {
   productName?: string;
   category?: string;
+  section?: string;
+  medium?: string;
 }
 
 export const getAllSchoolExpensesByFilter = async (
@@ -141,6 +143,8 @@ export const getAllSchoolExpensesByFilter = async (
   const body: Record<string, string> = {};
   if (payload.productName?.trim()) body.productName = payload.productName.trim();
   if (payload.category?.trim()) body.category = payload.category.trim();
+  if (payload.section?.trim()) body.section = payload.section.trim();
+  if (payload.medium?.trim()) body.medium = payload.medium.trim();
 
   const response = await axiosInstance.post(
     apiEndpoints.getAllSchoolExpensesByFilter(page, size),
@@ -235,7 +239,7 @@ const groupReportRows = (rows: SchoolExpenseReportFlatRow[]): SchoolExpenseRepor
 export const getAllSchoolExpensesReportData = async (
   payload: SchoolExpenseReportPayload = {}
 ): Promise<SchoolExpenseReportProduct[]> => {
-  const size = 50;
+  const size = 10;
   let pageNo = 0;
   let totalCount = 0;
   const all: SchoolExpenseReportFlatRow[] = [];

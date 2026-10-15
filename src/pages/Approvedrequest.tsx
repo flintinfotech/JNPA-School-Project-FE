@@ -32,6 +32,7 @@ import dayjs, { type Dayjs } from "dayjs";
 import CommonTable from "../components/commonTable";
 import api from "../lib/axios";
 import { apiEndpoints } from "../services/apiEndpoints";
+import { useAuth } from "../hooks/useAuth";
 
 const { Option } = Select;
 
@@ -202,6 +203,18 @@ const extractVendorList = (raw: any): VendorRow[] => {
 };
 
 export default function RequestApproval() {
+  // logged-in user's section + medium go in the payload of this screen's list API(s)
+  // (admin has none -> payload stays as before -> sees everything)
+  const { user } = useAuth();
+  const mySection = user?.section || "";
+  const myMedium = user?.medium || "";
+  const scopePayload = useMemo(() => {
+    const p: Record<string, string> = {};
+    if (mySection) p.section = mySection;
+    if (myMedium) p.medium = myMedium;
+    return p;
+  }, [mySection, myMedium]);
+
   const [form] = Form.useForm();
 
   // ---------- responsive (mobile) ----------
@@ -253,7 +266,7 @@ export default function RequestApproval() {
       try {
         const res = await api.post(
           apiEndpoints.getAllRequestApprovalByFilter(pageNum, size),
-          LIST_FILTER_PAYLOAD,
+          { ...LIST_FILTER_PAYLOAD, ...scopePayload },
         );
         if (res.data?.success === false) {
           message.error(res.data?.message || "Failed to load requests");
@@ -274,7 +287,7 @@ export default function RequestApproval() {
         setTableLoading(false);
       }
     },
-    [],
+    [scopePayload],
   );
 
   useEffect(() => {
@@ -285,7 +298,7 @@ export default function RequestApproval() {
   const fetchPurchases = useCallback(async () => {
     setPurchaseLoading(true);
     try {
-      const res = await api.post(apiEndpoints.getAllPurchaseByFilter(0, 100), {});
+      const res = await api.post(apiEndpoints.getAllPurchaseByFilter(0, 100), scopePayload);
       setPurchases(res.data?.success === false ? [] : extractPurchaseList(res));
     } catch (error: any) {
       message.error(
@@ -295,7 +308,7 @@ export default function RequestApproval() {
     } finally {
       setPurchaseLoading(false);
     }
-  }, []);
+  }, [scopePayload]);
 
   useEffect(() => {
     fetchPurchases();

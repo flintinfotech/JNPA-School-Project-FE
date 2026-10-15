@@ -71,7 +71,7 @@ export const getAllEmployeeSalaryByFilter = async (
 export const getSalariesByEmployeeDetailsId = async (
   employeeDetailsId: number
 ): Promise<EmployeeSalaryDTO[]> => {
-  const size = 100;
+  const size = 10;
   const all: EmployeeSalaryDTO[] = [];
 
   for (let page = 0; page < 50; page++) {

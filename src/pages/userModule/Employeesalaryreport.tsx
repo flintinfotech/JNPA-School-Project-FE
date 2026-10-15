@@ -157,7 +157,7 @@ const fetchSalaryReport = async (
   filters: SearchFilters,
   monthRange: MonthRange
 ): Promise<SalaryReportEmployee[]> => {
-  const size = 20;
+  const size = 10;
   let pageNo = 0;
   let totalCount = 0;
   const all: SalaryReportEmployee[] = [];

@@ -48,7 +48,7 @@ interface RawAttendanceRecord {
   division?: string;
 }
 
-const FILTER_PAGE_SIZE = 200;
+const FILTER_PAGE_SIZE = 10;
 
 // Pages through getAllStudentAttendanceByFilter and collects every record
 // matching the given filter body (needed because a month can hold more

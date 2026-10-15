@@ -31,6 +31,7 @@ import CommonTable from "../components/commonTable"; // 👈 change to your actu
 import api from "../lib/axios"; // 👈 change to your actual axios instance path
 import { apiEndpoints } from "../services/apiEndpoints"; // 👈 change to your actual path
 import FeeReceiptModal from "../components/FeeReceipt";
+import { useAuth } from "../hooks/useAuth";
 
 const { Option } = Select;
 
@@ -916,6 +917,12 @@ interface StudentFeesSearchFilters {
 }
 
 export default function StudentFeesManagement() {
+  // logged-in user's section + medium go in the payload of this screen's list API(s)
+  // (admin has none -> payload stays as before -> sees everything)
+  const { user } = useAuth();
+  const mySection = user?.section || "";
+  const myMedium = user?.medium || "";
+
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -950,6 +957,8 @@ export default function StudentFeesManagement() {
           firstName: filters?.firstName || undefined,
           lastName: filters?.lastName || undefined,
           paymentStatus: filters?.paymentStatus || undefined,
+          section: mySection || undefined,
+          medium: myMedium || undefined,
         });
         const data = res.data?.data ?? {};
         setStudents(data.Data ?? []);
@@ -960,7 +969,7 @@ export default function StudentFeesManagement() {
         setTableLoading(false);
       }
     },
-    []
+    [mySection, myMedium]
   );
 
   useEffect(() => {
@@ -1223,6 +1232,7 @@ export default function StudentFeesManagement() {
           body: { background: DRAWER_BG_COLOR, padding: "20px 24px" },
         }}
       >
+        
         <Spin spinning={drawerLoading} tip="Loading fee details...">
           <StudentFeeForm
             form={form}

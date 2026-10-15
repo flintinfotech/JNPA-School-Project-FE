@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button, Drawer, Form, message, Input, Row, Col, Modal } from "antd";
 import { SearchOutlined, ReloadOutlined } from "@ant-design/icons";
 import { getUserById, saveUser, updateUser, type UserDTO } from "../../services/userService";
@@ -14,6 +14,20 @@ type UserFilter = "employee" | "student";
 const EMPLOYEE_ROLES = ["Teacher", "Accountant", "Admin", "Principal"];
 const STUDENT_ROLES = ["Student"];
 
+// Employees are fetched in ONE call and paginated in the browser (10 per page).
+// Reason: the backend page query returns duplicate rows for the same user, so a page showed
+// 9 users and the total counted 11 instead of 10.
+const EMPLOYEE_FETCH_SIZE = 1000;
+
+// keep one row per userId
+const dedupeByUserId = (list: UserDTO[]): UserDTO[] => {
+  const map = new Map<number, UserDTO>();
+  list.forEach((u) => {
+    if (!map.has(u.userId)) map.set(u.userId, u);
+  });
+  return Array.from(map.values());
+};
+
 interface UserSearchFilters {
   firstName?: string;
   lastName?: string;
@@ -26,7 +40,8 @@ export default function UserManagement() {
   const mySection = loggedInUser?.section || undefined;
   const myMedium = loggedInUser?.medium || undefined;
 
-  const [users, setUsers] = useState<UserDTO[]>([]);
+  const [users, setUsers] = useState<UserDTO[]>([]); // students (server page)
+  const [allEmployees, setAllEmployees] = useState<UserDTO[]>([]); // employees (all, unique)
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
@@ -75,9 +90,13 @@ export default function UserManagement() {
       filters?: UserSearchFilters
     ) => {
       setTableLoading(true);
+      const isEmployee = roles.includes("Teacher");
+      // employees: always page 0 + big size (see EMPLOYEE_FETCH_SIZE); students: normal server paging
+      const reqPage = isEmployee ? 0 : pageNum;
+      const reqSize = isEmployee ? EMPLOYEE_FETCH_SIZE : size;
       try {
         const response = await axiosInstance.post(
-          `http://flintinfotech-dev.in:8443/jnpa-school-project/user/getAllUsersByFilter?page=${pageNum}&size=${size}&paginate=true`,
+          `http://flintinfotech-dev.in:8443/jnpa-school-project/user/getAllUsersByFilter?page=${reqPage}&size=${reqSize}&paginate=true`,
           {
             role: roles,
             firstName: filters?.firstName || undefined,
@@ -87,8 +106,15 @@ export default function UserManagement() {
           }
         );
         if (response.data.success) {
-          setUsers(response.data.data.Data);
-          setTotal(response.data.data.total);
+          const list: UserDTO[] = response.data.data.Data || [];
+          if (isEmployee) {
+            const unique = dedupeByUserId(list);
+            setAllEmployees(unique);
+            setTotal(unique.length); // real count of unique employees
+          } else {
+            setUsers(list);
+            setTotal(response.data.data.total);
+          }
         } else {
           message.error(response.data.message || "Failed to load users");
         }
@@ -104,10 +130,29 @@ export default function UserManagement() {
   const rolesForFilter = (filter: UserFilter) =>
     filter === "employee" ? EMPLOYEE_ROLES : STUDENT_ROLES;
 
+  // Employees: fetched ONCE (all), paging is done in the browser -> no refetch on page change
   useEffect(() => {
-    fetchUsersByFilter(page, pageSize, rolesForFilter(activeFilter), searchFilters);
+    if (activeFilter === "employee") {
+      fetchUsersByFilter(0, pageSize, EMPLOYEE_ROLES, searchFilters);
+    }
     // searchFilters intentionally left out of deps — search only fires on button click, not per keystroke
+  }, [activeFilter, fetchUsersByFilter]);
+
+  // Students: normal server-side pagination
+  useEffect(() => {
+    if (activeFilter === "student") {
+      fetchUsersByFilter(page, pageSize, STUDENT_ROLES, searchFilters);
+    }
   }, [page, pageSize, activeFilter, fetchUsersByFilter]);
+
+  // rows shown in the table: employees = 10 from the full list, students = the server page
+  const displayedUsers = useMemo(
+    () =>
+      activeFilter === "employee"
+        ? allEmployees.slice(page * pageSize, page * pageSize + pageSize)
+        : users,
+    [activeFilter, allEmployees, users, page, pageSize]
+  );
 
   const handleFilterClick = (filter: UserFilter) => {
     setPage(0);
@@ -291,7 +336,7 @@ export default function UserManagement() {
       </Row>
 
       <UserTable
-        data={users}
+        data={displayedUsers}
         loading={tableLoading}
         pagination={{
           current: page + 1,

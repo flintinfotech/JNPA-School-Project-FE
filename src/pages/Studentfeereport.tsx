@@ -141,7 +141,7 @@ const sumOf = (rows: any[], key: string) =>
 const fetchStudentFeeReport = async (
   filters: StudentSearchFilters,
 ): Promise<FeeReportStudent[]> => {
-  const size = 20;
+  const size = 10;
   let pageNo = 0;
   let totalCount = 0;
   const all: FeeReportStudent[] = [];
