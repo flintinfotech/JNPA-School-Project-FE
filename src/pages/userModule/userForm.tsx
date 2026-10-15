@@ -26,6 +26,7 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
   const roleUpper = String(selectedRole || "").toUpperCase();
   const isTeacher = roleUpper === "TEACHER";
   const isPrincipal = roleUpper === "PRINCIPAL";
+  const isAccountant = roleUpper === "ACCOUNTANT";
 
   useEffect(() => {
     const fetchScreens = async () => {
@@ -122,10 +123,10 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
         value: screen.screenId,
       })),
     },
-    // Section + Medium: TEACHER and PRINCIPAL.
+    // Section + Medium: TEACHER, PRINCIPAL and ACCOUNTANT.
     // Standard + Division: TEACHER only.
     // (not "required"; allowClear shows the "x" icon, same as the Category dropdown in SchoolExpenses)
-    ...(isTeacher || isPrincipal
+    ...(isTeacher || isPrincipal || isAccountant
       ? [
         {
           name: "section",

@@ -15,8 +15,15 @@ import User from "./Employee";
 import dayjs from "dayjs";
 import { getAllStaticData, type StaticDataResponse } from "../../services/staticDataService";
 import EmployeeViewer from "./EmployeeViewer";
+import { useAuth } from "../../hooks/useAuth";
 
 export default function UpdateUserProfile() {
+  // logged-in user's section + medium go in the getAllEmployeeDetailsByFilter payload
+  // (admin has none -> nothing is sent -> sees every employee)
+  const { user: loggedInUser } = useAuth();
+  const mySection = loggedInUser?.section || "";
+  const myMedium = loggedInUser?.medium || "";
+
   const [users, setUsers] = useState<UserDTO[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -111,7 +118,11 @@ export default function UpdateUserProfile() {
     async (pageNum: number, size: number, filters?: UserSearchFilters) => {
       setTableLoading(true);
       try {
-        const response = await getAllEmployeeDetailsByFilter(pageNum, size, filters);
+        const response = await getAllEmployeeDetailsByFilter(pageNum, size, {
+          ...filters,
+          section: mySection || undefined,
+          medium: myMedium || undefined,
+        });
         if (response.success) {
           setUsers(response.data.Data);
           setTotal(response.data.total);
@@ -124,7 +135,7 @@ export default function UpdateUserProfile() {
         setTableLoading(false);
       }
     },
-    []
+    [mySection, myMedium]
   );
 
   useEffect(() => {

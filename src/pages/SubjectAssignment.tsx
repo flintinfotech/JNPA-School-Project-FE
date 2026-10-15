@@ -150,16 +150,13 @@ const SubjectAssignment: React.FC = () => {
   // POST subjectMaster/getAllSubjectMasterByFilter -> payload: medium, section
   // (medium + section of the class being edited)
 
-  const loadAllSubjects = async (medium?: string | null, section?: string | null) => {
+    const loadAllSubjects = async (medium?: string | null, section?: string | null) => {
     try {
-<<<<<<< HEAD
+      // every request is size 10 (pages are joined inside getAllSubjectsAllPages)
       const response = await getAllSubjectsAllPages({
-        ...(mySection ? { section: mySection } : {}),
-        ...(myMedium ? { medium: myMedium } : {}),
+        medium: medium || undefined,
+        section: section || undefined,
       });
-=======
-      const response = await getAllSubjects(0, 100, { medium, section });
->>>>>>> origin/feature/vikas/new-changes
       setAllSubjects(response.data.subjectMasterDTOS || []);
     } catch (error) {
       console.log(error);
