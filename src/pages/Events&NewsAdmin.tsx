@@ -73,7 +73,7 @@ const EventsAndNewsAdmin: React.FC = () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const res = await newsService.getAllNews(0, 50, signal);
+      const res = await newsService.getAllNewsAll(signal);
       const list = res?.data?.newsDTOS ?? [];
       setCards(list.length ? list.map(dtoToCard) : [emptyCard()]);
       setCurrentPage(1);

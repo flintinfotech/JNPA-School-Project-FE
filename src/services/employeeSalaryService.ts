@@ -74,7 +74,7 @@ export const getSalariesByEmployeeDetailsId = async (
   const size = 10;
   const all: EmployeeSalaryDTO[] = [];
 
-  for (let page = 0; page < 50; page++) {
+  for (let page = 0; page < 500; page++) {
     const res = await getAllEmployeeSalaryByFilter(page, size, { employeeDetailsId });
     if (!res?.success) break;
 

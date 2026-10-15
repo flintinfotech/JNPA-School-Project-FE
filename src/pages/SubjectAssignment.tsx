@@ -5,7 +5,7 @@ import { EditOutlined, SearchOutlined, ReloadOutlined } from "@ant-design/icons"
 
 import { getAllClassMaster, type ClassMasterSearchFilters } from "../services/classMasterService";
 import { getSubjectsByClassId, assignOrUnassignSubjects } from "../services/subjectAssignmentService";
-import { getAllSubjects } from "../services/subjectService";
+import { getAllSubjectsAllPages } from "../services/subjectService";
 import { useAuth } from "../hooks/useAuth";
 import { getAllStaticData, type StaticDataResponse } from "../services/staticDataService";
 
@@ -30,7 +30,7 @@ interface SubjectDTO {
 type ClassSearchFilters = ClassMasterSearchFilters;
 
 const SubjectAssignment: React.FC = () => {
-  // logged-in user's section + medium go in the getAllClassMaster and getAllSubjects payloads
+  // logged-in user's section + medium go in the getAllClassMaster and getAllSubjectsAllPages payloads
   // (admin has none -> nothing is sent -> sees everything)
   const { user } = useAuth();
   const mySection = user?.section || "";
@@ -139,7 +139,7 @@ const SubjectAssignment: React.FC = () => {
 
   const loadAllSubjects = async () => {
     try {
-      const response = await getAllSubjects(0, 100, {
+      const response = await getAllSubjectsAllPages({
         ...(mySection ? { section: mySection } : {}),
         ...(myMedium ? { medium: myMedium } : {}),
       });

@@ -24,6 +24,7 @@ import dayjs from "dayjs";
 import CommonTable from "../components/commonTable";
 import api from "../lib/axios";
 import { apiEndpoints } from "../services/apiEndpoints";
+import { fetchAllPages, getTotalFromResponse } from "../utils/fetchAllPages";
 import { useAuth } from "../hooks/useAuth";
 
 // ============================================================
@@ -331,8 +332,15 @@ export default function RequestApproval() {
   const fetchPurchases = useCallback(async () => {
     setPurchaseLoading(true);
     try {
-      const res = await api.post(apiEndpoints.getAllPurchaseByFilter(0, 100), scopePayload);
-      setPurchases(res.data?.success === false ? [] : extractPurchaseList(res));
+      // every request is size 10: first page, then the remaining pages, joined into one list
+      const list = await fetchAllPages<any>(async (p, s) => {
+        const res = await api.post(apiEndpoints.getAllPurchaseByFilter(p, s), scopePayload);
+        return {
+          list: res.data?.success === false ? [] : extractPurchaseList(res),
+          total: getTotalFromResponse(res),
+        };
+      });
+      setPurchases(list);
     } catch (error: any) {
       message.error(
         error?.response?.data?.message || "Failed to load products",

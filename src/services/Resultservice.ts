@@ -1,5 +1,6 @@
 import axiosInstance from "../lib/axios";
 import { apiEndpoints } from "./apiEndpoints";
+import { fetchAllPages, readTotal } from "../utils/fetchAllPages";
 
 export interface AcademicInformationDTO {
   academicInformationId: number;
@@ -77,7 +78,8 @@ export interface CurrentYearStudentsResponse {
   timestamp: string;
 }
 
-export const getAllCurrentYearStudentsData = async (
+// one real request (the only place that calls the API)
+const fetchCurrentYearPage = async (
   page: number,
   size: number,
   filters: ResultFilters
@@ -87,6 +89,43 @@ export const getAllCurrentYearStudentsData = async (
     filters
   );
   return response.data;
+};
+
+export const getAllCurrentYearStudentsData = async (
+  page: number,
+  size: number,
+  filters: ResultFilters
+): Promise<CurrentYearStudentsResponse> => {
+  // Screens ask for "everything" with a big size (1000 / 2000 / 10000).
+  // The API is never called with such a size: every request is size 10
+  // and the pages are joined, so the screens get the full list as before.
+  if (page === 0 && size > 10) {
+    const holder: { first?: CurrentYearStudentsResponse } = {};
+
+    const all = await fetchAllPages<ResultStudentDTO>(async (p, s) => {
+      const res = await fetchCurrentYearPage(p, s, filters);
+      if (p === 0) holder.first = res;
+      if (!res?.success) return { list: [], total: 0 };
+      return { list: res.data?.data || [], total: res.data?.totalElements };
+    });
+
+    const first = holder.first as CurrentYearStudentsResponse;
+    if (!first?.success) return first; // failed -> screen shows first.message as before
+
+    return {
+      ...first,
+      data: {
+        ...first.data,
+        data: all,
+        totalElements: all.length,
+        totalPages: 1,
+        pageSize: all.length,
+        currentPage: 0,
+      },
+    };
+  }
+
+  return fetchCurrentYearPage(page, size, filters);
 };
 
 export interface SubjectMasterDTO {
@@ -325,4 +364,35 @@ export const extractExamTypeOptions = (staticData: Record<string, any>): string[
       typeof item === "string" ? item : item?.name || item?.value || item?.examType
     )
     .filter((v): v is string => Boolean(v));
+};
+
+export const getAllCurrentYearStudentsDataAll = async (
+  filters: ResultFilters
+): Promise<CurrentYearStudentsResponse> => {
+  const holder: { first?: CurrentYearStudentsResponse } = {};
+  const all = await fetchAllPages<ResultStudentDTO>(async (page, size) => {
+    const res = await getAllCurrentYearStudentsData(page, size, filters);
+    if (page === 0) holder.first = res;
+    if (!res?.success) return { list: [], total: 0 };
+    return { list: res.data?.data || [], total: res.data?.totalElements };
+  });
+  const first = holder.first as CurrentYearStudentsResponse;
+  if (!first?.success) return first;
+  return {
+    ...first,
+    data: { ...first.data, data: all, totalElements: all.length, totalPages: 1, pageSize: all.length, currentPage: 0 },
+  };
+};
+
+export const getAllSubjectsAllPages = async (): Promise<GetAllSubjectsResponse> => {
+  const holder: { first?: GetAllSubjectsResponse } = {};
+  const all = await fetchAllPages<SubjectMasterDTO>(async (page, size) => {
+    const res = await getAllSubjects(page, size);
+    if (page === 0) holder.first = res;
+    if (!res?.success) return { list: [], total: 0 };
+    return { list: res.data?.subjectMasterDTOS || [], total: readTotal(res.data) };
+  });
+  const first = holder.first as GetAllSubjectsResponse;
+  if (!first?.success) return first;
+  return { ...first, data: { ...first.data, subjectMasterDTOS: all, "total element": all.length } };
 };

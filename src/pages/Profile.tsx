@@ -30,6 +30,7 @@ import {
 import dayjs from "dayjs";
 import api from "../lib/axios";
 import { apiEndpoints } from "../services/apiEndpoints";
+import { fetchAllPages, getTotalFromResponse } from "../utils/fetchAllPages";
 import { getEmployeeDetailsById } from "../services/userService";
 import {
   getEmployeeSalaryByFilter,
@@ -382,15 +383,22 @@ const [selectedSalary, setSelectedSalary] = useState<EmployeeSalaryDTO | null>(n
   }) => {
     setViewLoading(true);
     try {
-      const res = await api.post(apiEndpoints.getAllHomeworkByFilter(0, 100), {});
+      // every request is size 10: first page, then the remaining pages
+      const fail: { msg: string | null } = { msg: null };
+      const list = await fetchAllPages<HomeworkRecord>(async (p, s) => {
+        const res = await api.post(apiEndpoints.getAllHomeworkByFilter(p, s), {});
+        if (res?.data?.success === false) {
+          fail.msg = res?.data?.message || "Failed to load homework";
+          return { list: [], total: 0 };
+        }
+        return { list: extractHomeworkList(res), total: getTotalFromResponse(res) };
+      });
 
-      if (res?.data?.success === false) {
-        message.error(res?.data?.message || "Failed to load homework");
+      if (fail.msg) {
+        message.error(fail.msg);
         setHomeworkList([]);
         return;
       }
-
-      const list = extractHomeworkList(res);
 
       const filtered = list.filter(
         (item) =>
@@ -1114,4 +1122,3 @@ const salaryTab = (
     
   );
 }
-

@@ -1,6 +1,6 @@
 import axiosInstance from "../lib/axios";
 import { apiEndpoints } from "./apiEndpoints";
-
+import { fetchAllPages, readTotal } from "../utils/fetchAllPages";
 
 export interface SubjectDTO {
   subjectMasterId: number;
@@ -54,6 +54,22 @@ export const getAllSubjects = async (
 
   return response.data;
 };
+
+export const getAllSubjectsAllPages = async (
+  filters: { section?: string; medium?: string } = {}
+): Promise<ApiResponse<GetAllSubjectData>> => {
+  const holder: { first?: ApiResponse<GetAllSubjectData> } = {};
+  const all = await fetchAllPages<SubjectDTO>(async (page, size) => {
+    const res = await getAllSubjects(page, size, filters);
+    if (page === 0) holder.first = res;
+    if (!res?.success) return { list: [], total: 0 };
+    return { list: res.data?.subjectMasterDTOS || [], total: readTotal(res.data) };
+  });
+  const first = holder.first as ApiResponse<GetAllSubjectData>;
+  if (!first?.success) return first;
+  return { ...first, data: { ...first.data, subjectMasterDTOS: all, "total element": all.length } };
+};
+
 export interface UpdateSubjectRequestDTO {
   subjectMasterId: number;
   subjectCode: string;

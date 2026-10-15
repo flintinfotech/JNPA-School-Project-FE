@@ -1,4 +1,3 @@
-
 import schoolLogo from '../assets/SchoolLogo.avif';
 import AnnaulDay from '../assets/EventsImages/AnnualD.png';
 import GraduationDay from '../assets/EventsImages/FairsExhibitions.png';
@@ -30,7 +29,7 @@ export default function Events() {
     const controller = new AbortController();
     (async () => {
       try {
-        const res = await newsService.getAllNews(0, 50, controller.signal);
+        const res = await newsService.getAllNewsAll(controller.signal);
         setNewsList(res?.data?.newsDTOS ?? []);
       } catch (err: any) {
         if (err?.name !== 'CanceledError' && err?.code !== 'ERR_CANCELED') {

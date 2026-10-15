@@ -23,7 +23,8 @@ import {
 import dayjs from "dayjs";
 import type { FormInstance } from "antd/es/form";
 import CommonTable from "../components/commonTable"; // 👈 change to your actual path
-import api from "../lib/axios"; // 👈 change to your actual axios instance path
+import api from "../lib/axios";
+import { fetchAllPages } from "../utils/fetchAllPages"; // 👈 change to your actual axios instance path
 import { useAuth } from "../hooks/useAuth"; // 👈 same hook Results.tsx uses for role/user info
 import { apiEndpoints } from "../services/apiEndpoints"; // 👈 change to your actual path
 
@@ -1760,8 +1761,11 @@ export default function TimeTable() {
     if (viewerIsTeacher) return;
     (async () => {
       try {
-        const res = await api.post(apiEndpoints.getAllSubjects(0, 100), {});
-        const { list } = extractListAndTotal(res);
+        // every request is size 10: first page, then the remaining pages
+        const list = await fetchAllPages<any>(async (p, s) => {
+          const res = await api.post(apiEndpoints.getAllSubjects(p, s), {});
+          return extractListAndTotal(res);
+        });
         setSubjectOptions(list);
       } catch (error: any) {
         showApiError(error, "Failed to load subjects");
@@ -1774,10 +1778,13 @@ export default function TimeTable() {
     if (teacherOptionsLoadedRef.current || teacherOptionsLoadingRef.current) return;
     teacherOptionsLoadingRef.current = true;
     try {
-      const res = await api.post(apiEndpoints.getAllemployeeDetails(0, 200), {
-        role: "Teacher",
+      // every request is size 10: first page, then the remaining pages
+      const list = await fetchAllPages<any>(async (p, s) => {
+        const res = await api.post(apiEndpoints.getAllemployeeDetails(p, s), {
+          role: "Teacher",
+        });
+        return extractListAndTotal(res);
       });
-      const { list } = extractListAndTotal(res);
       setTeacherOptions(list);
       teacherOptionsLoadedRef.current = true;
     } catch (error: any) {
@@ -1818,12 +1825,13 @@ export default function TimeTable() {
     }
 
     try {
-      const res = await api.post(getAllTimeTableByFilterEndpoint(0, 500), payload);
-      assertApiSuccess(res);
-
-      // response: res.data.data["Time TableDTOS"] (also tolerates the
-      // other list keys via extractListAndTotal)
-      const { list: timetableList } = extractListAndTotal(res);
+      // every request is size 10: first page, then the remaining pages
+      const timetableList = await fetchAllPages<any>(async (p, s) => {
+        const res = await api.post(getAllTimeTableByFilterEndpoint(p, s), payload);
+        assertApiSuccess(res);
+        // response: res.data.data["Time TableDTOS"] (list keys handled by extractListAndTotal)
+        return extractListAndTotal(res);
+      });
 
       const allPeriods = timetableList.flatMap((tt: any) => {
         const periods = Array.isArray(tt?.timeTablePeriods) ? tt.timeTablePeriods : [];

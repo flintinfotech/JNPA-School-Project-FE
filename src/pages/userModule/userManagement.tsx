@@ -8,6 +8,7 @@ import UserViewer from "./UserViewer";
 import { getAllStaticData, type StaticDataResponse } from "../../services/staticDataService";
 import axiosInstance from "../../lib/axios"; // adjust to whatever you use for calls
 import { useAuth } from "../../hooks/useAuth";
+import { fetchAllPages } from "../../utils/fetchAllPages";
 
 type UserFilter = "employee" | "student";
 
@@ -91,34 +92,35 @@ export default function UserManagement() {
     ) => {
       setTableLoading(true);
       const isEmployee = roles.includes("Teacher");
-      // employees: always page 0 + big size (see EMPLOYEE_FETCH_SIZE); students: normal server paging
-      const reqPage = isEmployee ? 0 : pageNum;
-      const reqSize = isEmployee ? EMPLOYEE_FETCH_SIZE : size;
+            const body = {
+        role: roles,
+        firstName: filters?.firstName || undefined,
+        lastName: filters?.lastName || undefined,
+        section: mySection,
+        medium: myMedium,
+      };
+      const urlFor = (p: number, s: number) =>
+        `http://flintinfotech-dev.in:8443/jnpa-school-project/user/getAllUsersByFilter?page=${p}&size=${s}&paginate=true`;
       try {
-        const response = await axiosInstance.post(
-          `http://flintinfotech-dev.in:8443/jnpa-school-project/user/getAllUsersByFilter?page=${reqPage}&size=${reqSize}&paginate=true`,
-          {
-            role: roles,
-            firstName: filters?.firstName || undefined,
-            lastName: filters?.lastName || undefined,
-            section: mySection,
-            medium: myMedium,
-          }
-        );
-        if (response.data.success) {
-          const list: UserDTO[] = response.data.data.Data || [];
-          if (isEmployee) {
-            const unique = dedupeByUserId(list);
-            setAllEmployees(unique);
-            setTotal(unique.length); // real count of unique employees
-          } else {
-            setUsers(list);
-            setTotal(response.data.data.total);
-          }
+        if (isEmployee) {
+          const all = await fetchAllPages<UserDTO>(async (p, s) => {
+            const r = await axiosInstance.post(urlFor(p, s), body);
+            if (!r.data.success) throw new Error(r.data.message || "Failed to load users");
+            return { list: r.data.data.Data || [], total: r.data.data.total };
+          });
+          const unique = dedupeByUserId(all);
+          setAllEmployees(unique);
+          setTotal(unique.length);
         } else {
-          message.error(response.data.message || "Failed to load users");
+          const response = await axiosInstance.post(urlFor(pageNum, size), body);
+          if (response.data.success) {
+            setUsers(response.data.data.Data || []);
+            setTotal(response.data.data.total);
+          } else {
+            message.error(response.data.message || "Failed to load users");
+          }
         }
-      } catch (error: any) {
+        } catch (error: any) {
         message.error(error?.response?.data?.message || "Failed to load users");
       } finally {
         setTableLoading(false);

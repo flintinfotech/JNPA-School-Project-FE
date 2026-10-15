@@ -32,6 +32,7 @@ import dayjs, { type Dayjs } from "dayjs";
 import CommonTable from "../components/commonTable";
 import api from "../lib/axios";
 import { apiEndpoints } from "../services/apiEndpoints";
+import { fetchAllPages, getTotalFromResponse } from "../utils/fetchAllPages";
 import { useAuth } from "../hooks/useAuth";
 
 const { Option } = Select;
@@ -298,8 +299,15 @@ export default function RequestApproval() {
   const fetchPurchases = useCallback(async () => {
     setPurchaseLoading(true);
     try {
-      const res = await api.post(apiEndpoints.getAllPurchaseByFilter(0, 100), scopePayload);
-      setPurchases(res.data?.success === false ? [] : extractPurchaseList(res));
+      // every request is size 10: first page, then the remaining pages, joined into one list
+      const list = await fetchAllPages<any>(async (p, s) => {
+        const res = await api.post(apiEndpoints.getAllPurchaseByFilter(p, s), scopePayload);
+        return {
+          list: res.data?.success === false ? [] : extractPurchaseList(res),
+          total: getTotalFromResponse(res),
+        };
+      });
+      setPurchases(list);
     } catch (error: any) {
       message.error(
         error?.response?.data?.message || "Failed to load products",
@@ -319,8 +327,15 @@ export default function RequestApproval() {
   const fetchVendors = useCallback(async () => {
     setVendorLoading(true);
     try {
-      const res = await api.post(apiEndpoints.getAllVendorMasterByFilter(0, 100), {});
-      setVendors(res.data?.success === false ? [] : extractVendorList(res));
+      // every request is size 10: first page, then the remaining pages, joined into one list
+      const list = await fetchAllPages<any>(async (p, s) => {
+        const res = await api.post(apiEndpoints.getAllVendorMasterByFilter(p, s), {});
+        return {
+          list: res.data?.success === false ? [] : extractVendorList(res),
+          total: getTotalFromResponse(res),
+        };
+      });
+      setVendors(list);
     } catch (error: any) {
       message.error(
         error?.response?.data?.message || "Failed to load vendors",

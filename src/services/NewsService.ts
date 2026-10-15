@@ -2,6 +2,7 @@
 
 import axiosInstance from "../lib/axios";
 import { apiEndpoints } from "./apiEndpoints";
+import { fetchAllPages, readTotal } from "../utils/fetchAllPages";
 
 export interface NewsDTO {
   newsId?: number | null;
@@ -131,12 +132,25 @@ const getAllNews = async (page = 0, size = 10, signal?: AbortSignal): Promise<Ap
   const response = await axiosInstance.post(apiEndpoints.getAllNewsByFilter(page, size), {}, { signal });
   return response.data;
 };
+const getAllNewsAll = async (signal?: AbortSignal): Promise<ApiResponse<GetAllNewsData>> => {
+  const holder: { first?: ApiResponse<GetAllNewsData> } = {};
+  const all = await fetchAllPages<NewsDTO>(async (page, size) => {
+    const res = await getAllNews(page, size, signal);
+    if (page === 0) holder.first = res;
+    if (!res?.success) return { list: [], total: 0 };
+    return { list: res.data?.newsDTOS ?? [], total: readTotal(res.data) };
+  });
+  const first = holder.first as ApiResponse<GetAllNewsData>;
+  if (!first?.success) return first;
+  return { ...first, data: { ...first.data, newsDTOS: all, "total element": all.length } };
+};
 
 export const newsService = {
   saveNews,
   updateNews,
   deleteNews,
   getAllNews,
+   getAllNewsAll,
 };
 
 export default newsService;

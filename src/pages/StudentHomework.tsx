@@ -8,6 +8,7 @@ import type { Dayjs } from "dayjs";
 
 import api from "../lib/axios";
 import { apiEndpoints } from "../services/apiEndpoints";
+import { fetchAllPages, getTotalFromResponse } from "../utils/fetchAllPages";
 import {
     getStudentById,
     getStudentByUserId,
@@ -222,18 +223,25 @@ export default function StudentHomework() {
             setHomeworkError(null);
 
             try {
-                const res = await api.post(
-                    apiEndpoints.getAllHomeworkByFilter(0, 10),
-                    requestPayload
-                );
+                // every request is size 10: first page, then the remaining pages
+                const fail: { msg: string | null } = { msg: null };
+                const list = await fetchAllPages<any>(async (p, s) => {
+                    const res = await api.post(
+                        apiEndpoints.getAllHomeworkByFilter(p, s),
+                        requestPayload
+                    );
+                    if (res?.data?.success === false) {
+                        fail.msg = res?.data?.message || "Failed to load homework";
+                        return { list: [], total: 0 };
+                    }
+                    return { list: extractHomeworkList(res), total: getTotalFromResponse(res) };
+                });
 
-                if (res?.data?.success === false) {
-                    setHomeworkError(res?.data?.message || "Failed to load homework");
+                if (fail.msg) {
+                    setHomeworkError(fail.msg);
                     setHomework([]);
                     return;
                 }
-
-                const list = extractHomeworkList(res);
 
                 // Safety filter against the same class scope, in case the
                 // backend ever ignores some fields or returns a broader
