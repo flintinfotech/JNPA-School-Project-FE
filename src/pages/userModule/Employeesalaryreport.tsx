@@ -161,7 +161,7 @@ const fetchSalaryReport = async (
   monthRange: MonthRange,
   scope: Record<string, string> = {}
 ): Promise<SalaryReportEmployee[]> => {
-  const size = 20;
+  const size = 10;
   let pageNo = 0;
   let totalCount = 0;
   const all: SalaryReportEmployee[] = [];

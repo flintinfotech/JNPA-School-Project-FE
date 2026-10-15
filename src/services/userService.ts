@@ -119,6 +119,8 @@ export interface UserSearchFilters {
   lastName?: string;
   role?: string;
   department?: string; // <-- added
+  section?: string;
+  medium?: string;
 }
 
 // Users API: unchanged (department is NOT sent here)
@@ -158,6 +160,8 @@ export const getAllEmployeeDetailsByFilter = async (
     lastName: filters?.lastName || undefined,
     role: filters?.role || undefined,
     department: filters?.department || undefined, // <-- added
+    section: filters?.section || undefined,
+    medium: filters?.medium || undefined,
   };
 
   const response = await axiosInstance.post<ApiResponse<GetAllUsersData>>(

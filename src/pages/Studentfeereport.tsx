@@ -145,7 +145,7 @@ const fetchStudentFeeReport = async (
   filters: StudentSearchFilters,
   scope: Record<string, string> = {}, // NEW: { section?, medium? } of the logged-in user
 ): Promise<FeeReportStudent[]> => {
-  const size = 20;
+  const size = 10;
   let pageNo = 0;
   let totalCount = 0;
   const all: FeeReportStudent[] = [];

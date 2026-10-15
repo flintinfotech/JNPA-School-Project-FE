@@ -38,6 +38,7 @@ import {
   type UserDTO,
   type UserSearchFilters,
 } from "../../services/userService";
+import { useAuth } from "../../hooks/useAuth";
 import {
   saveEmployeeSalary,
   updateEmployeeSalary,
@@ -107,6 +108,12 @@ const useIsMobile = (breakpoint = 768) => {
 };
 
 export default function EmployeeSalary() {
+  // logged-in user's section + medium go in the payload of this screen's list API(s)
+  // (admin has none -> payload stays as before -> sees everything)
+  const { user } = useAuth();
+  const mySection = user?.section || "";
+  const myMedium = user?.medium || "";
+
   const isMobile = useIsMobile(); // 🔴 NEW
 
   const [users, setUsers] = useState<EmployeeRow[]>([]);
@@ -167,7 +174,11 @@ export default function EmployeeSalary() {
     async (pageNum: number, size: number, filters?: UserSearchFilters) => {
       setTableLoading(true);
       try {
-        const response = await getAllEmployeeDetailsByFilter(pageNum, size, filters);
+        const response = await getAllEmployeeDetailsByFilter(pageNum, size, {
+          ...filters,
+          section: mySection || undefined,
+          medium: myMedium || undefined,
+        });
         if (response.success) {
           setUsers(response.data.Data);
           setTotal(response.data.total);
@@ -180,7 +191,7 @@ export default function EmployeeSalary() {
         setTableLoading(false);
       }
     },
-    []
+    [mySection, myMedium]
   );
 
   useEffect(() => {

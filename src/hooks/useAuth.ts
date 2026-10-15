@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { loginUser } from "../services/authService";
+import { getUserById } from "../services/userService";
 
 interface AuthUser {
   userId?: number;
@@ -56,16 +57,38 @@ export function useAuth() {
         // Save Token
         localStorage.setItem("token", response.data.token);
 
+        // 🛠️ Section / Medium / Standard / Division of the logged-in user.
+        // Many screens send them in their list payloads. If the login response does not
+        // carry them, read them from the user's own record (same API the Edit User form uses),
+        // so they are always saved in localStorage "user".
+        let userDTO: any = response.data.userDTO;
+        if (userDTO?.userId && (!userDTO.section || !userDTO.medium)) {
+          try {
+            const detail = await getUserById(userDTO.userId);
+            if (detail?.success && detail.data) {
+              userDTO = {
+                ...userDTO,
+                section: userDTO.section || detail.data.section || null,
+                medium: userDTO.medium || detail.data.medium || null,
+                standard: userDTO.standard || detail.data.standard || null,
+                division: userDTO.division || detail.data.division || null,
+              };
+            }
+          } catch {
+            // optional - login must still work if this call fails
+          }
+        }
+
         // Save Username
         localStorage.setItem(
           "username",
-          response.data.userDTO?.userName || username
+          userDTO?.userName || username
         );
 
         // Save User Details
         localStorage.setItem(
           "user",
-          JSON.stringify(response.data.userDTO)
+          JSON.stringify(userDTO)
         );
 
         // 🛠️ FIX — Parent login couldn't see screens like "Student
@@ -88,7 +111,7 @@ export function useAuth() {
         localStorage.setItem("isParent", isParent ? "true" : "false");
         localStorage.setItem(
           "screens",
-          JSON.stringify(response.data.userDTO?.screens || [])
+          JSON.stringify(userDTO?.screens || [])
         );
 
         // Optional: Save Academic Year
@@ -99,7 +122,7 @@ export function useAuth() {
 
         setAuth({
           isAuthenticated: true,
-          user: response.data.userDTO,
+          user: userDTO,
           academicYear,
         });
 
@@ -140,4 +163,3 @@ export function useAuth() {
     logout,
   };
 }
-

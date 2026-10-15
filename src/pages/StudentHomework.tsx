@@ -223,7 +223,7 @@ export default function StudentHomework() {
 
             try {
                 const res = await api.post(
-                    apiEndpoints.getAllHomeworkByFilter(0, 20),
+                    apiEndpoints.getAllHomeworkByFilter(0, 10),
                     requestPayload
                 );
 
