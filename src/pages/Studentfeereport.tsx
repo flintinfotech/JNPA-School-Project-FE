@@ -25,6 +25,7 @@ import jsPDF from "jspdf"; // npm install jspdf jspdf-autotable
 import autoTable from "jspdf-autotable";
 import { getAllStaticData } from "../services/staticDataService";
 import CommonTable from "../components/commonTable";
+import { useAuth } from "../hooks/useAuth"; // NEW
 
 // Same two imports as the Employee Salary screen (only the paths may need a change)
 import axiosInstance from "../lib/axios";
@@ -133,13 +134,16 @@ const sumOf = (rows: any[], key: string) =>
 // Body example (only the selected filters are sent, nothing selected -> {}):
 // {
 //   "standard": "1st Standard",
-//   "division": "A"
+//   "division": "A",
+//   "section": "Primary",     <- NEW (logged-in user)
+//   "medium": "Marathi"       <- NEW (logged-in user)
 // }
 // Response: { success, message, data: { "Total elements": 2, "Data": [ ...students ] } }
 // This function is used by BOTH Search and Export Report.
 // We read ALL pages, then first / last name are filtered here in the browser.
 const fetchStudentFeeReport = async (
   filters: StudentSearchFilters,
+  scope: Record<string, string> = {}, // NEW: { section?, medium? } of the logged-in user
 ): Promise<FeeReportStudent[]> => {
   const size = 20;
   let pageNo = 0;
@@ -150,6 +154,9 @@ const fetchStudentFeeReport = async (
   const payload: Record<string, string> = {};
   if (filters.standard) payload.standard = filters.standard;
   if (filters.division) payload.division = filters.division;
+  // NEW: logged-in user's section + medium
+  if (scope.section) payload.section = scope.section;
+  if (scope.medium) payload.medium = scope.medium;
   // if (filters.fromDate) payload.fromDate = filters.fromDate.format("YYYY-MM-DD");
   // if (filters.toDate) payload.toDate = filters.toDate.format("YYYY-MM-DD");
 
@@ -445,6 +452,18 @@ const buildFeeReportPdf = (
 /* ===================================================================== */
 
 export default function StudentFeeReport() {
+  // NEW: logged-in user's section + medium go in the fee report payload
+  // (admin has none -> nothing is sent -> sees everything)
+  const { user } = useAuth();
+  const mySection = user?.section || "";
+  const myMedium = user?.medium || "";
+  const scope = useMemo(() => {
+    const p: Record<string, string> = {};
+    if (mySection) p.section = mySection;
+    if (myMedium) p.medium = myMedium;
+    return p;
+  }, [mySection, myMedium]);
+
   // ---------- responsive (mobile) ----------
   const screens = Grid.useBreakpoint();
   const isMobile = screens.md === false; // below 768px
@@ -491,24 +510,29 @@ export default function StudentFeeReport() {
   // !!f.fromDate && !!f.toDate && f.fromDate.isAfter(f.toDate, "day");
 
   // ---------- LOAD DATA (fee report API with the payload) — used by first load, Search and Reset ----------
-  const loadReport = useCallback(async (filters: StudentSearchFilters) => {
-    setTableLoading(true);
-    try {
-      setAllStudents(await fetchStudentFeeReport(filters));
-    } catch (error: any) {
-      console.error("Student fee report error:", error);
-      message.error(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Failed to load student fee report",
-      );
-      setAllStudents([]);
-    } finally {
-      setTableLoading(false);
-    }
-  }, []);
+  const loadReport = useCallback(
+    async (filters: StudentSearchFilters) => {
+      setTableLoading(true);
+      try {
+        // NEW: scope (section + medium) goes in the payload
+        setAllStudents(await fetchStudentFeeReport(filters, scope));
+      } catch (error: any) {
+        console.error("Student fee report error:", error);
+        message.error(
+          error?.response?.data?.message ||
+            error?.message ||
+            "Failed to load student fee report",
+        );
+        setAllStudents([]);
+      } finally {
+        setTableLoading(false);
+      }
+    },
+    // rebuilt when the user's section/medium changes -> list reloads
+    [scope],
+  );
 
-  // first load: nothing selected -> payload {}
+  // first load: nothing selected -> payload has only section / medium (if any)
   useEffect(() => {
     loadReport(EMPTY_FILTERS);
   }, [loadReport]);
@@ -557,7 +581,7 @@ export default function StudentFeeReport() {
     // }
     setExporting(true);
     try {
-      const list = await fetchStudentFeeReport(searchFilters);
+      const list = await fetchStudentFeeReport(searchFilters, scope); // NEW: scope
 
       if (!list.length) {
         message.warning("No data found for the selected filters");

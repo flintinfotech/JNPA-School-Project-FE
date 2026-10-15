@@ -143,19 +143,24 @@ const TAB_CONFIGS: TabConfig[] = [
 // return the logged-in user's role and, for teachers, the section + medium
 // they're assigned to teach. Everything else in this file only depends on
 // the shape below.
+// ---------------------------------------------------------------------------
+// Auth wiring
+// ---------------------------------------------------------------------------
+// Tabs are filtered by the logged-in user's SECTION + MEDIUM (not by role).
+//   - user has section/medium  -> only the matching tab is shown
+//   - user has none (admin)    -> all tabs are shown
 type UserAssignment = {
-  role: "ADMIN" | "TEACHER" | string;
-  // Must match a TabConfig.classRoomName exactly, e.g. "Primary".
+  role?: string;
+  // Must match a TabConfig.classRoomName, e.g. "Primary"
   assignedClassRoomName?: string;
-  // Must match a TabConfig.medium exactly, e.g. "Marathi". Leave undefined
-  // for a Pre-Primary teacher (no medium split there).
+  // Must match a TabConfig.medium, e.g. "Marathi"
   assignedMedium?: string;
 };
 
 function useUserAssignment(): UserAssignment {
   const { user } = useAuth();
 
-  if (!user) return { role: "GUEST" };
+  if (!user) return {};
 
   return {
     role: user.role,
@@ -164,19 +169,46 @@ function useUserAssignment(): UserAssignment {
   };
 }
 
+// "Primary " / "primary" / "PRIMARY" -> same value
+const norm = (v?: string | null) => (v ?? "").trim().toLowerCase();
+
 export default function AcademicsForm() {
   const assignment = useUserAssignment();
 
-  const visibleTabs =
-    assignment.role === "TEACHER"
-      ? TAB_CONFIGS.filter(
-        (tab) =>
-          tab.classRoomName === assignment.assignedClassRoomName &&
-          tab.medium === assignment.assignedMedium
-      )
-      : TAB_CONFIGS;
+  const hasAssignment = !!(assignment.assignedClassRoomName || assignment.assignedMedium);
 
-  if (assignment.role === "TEACHER" && visibleTabs.length === 0) {
+  const visibleTabs = TAB_CONFIGS.filter((tab) => {
+    // admin (no section/medium) -> everything
+    if (!hasAssignment) return true;
+
+    // section must match (Pre-Primary / Primary / Secondary)
+    if (
+      assignment.assignedClassRoomName &&
+      norm(tab.classRoomName) !== norm(assignment.assignedClassRoomName)
+    ) {
+      return false;
+    }
+
+    // medium must match, only for tabs that have a medium
+    // (Pre-Primary has no medium split, so it is matched by section only)
+    if (
+      assignment.assignedMedium &&
+      tab.medium &&
+      norm(tab.medium) !== norm(assignment.assignedMedium)
+    ) {
+      return false;
+    }
+
+    return true;
+  });
+
+  // controlled active tab, so it stays valid even if the user data arrives late
+  const [activeKey, setActiveKey] = useState<string | undefined>();
+  const currentKey = visibleTabs.some((t) => t.key === activeKey)
+    ? activeKey
+    : visibleTabs[0]?.key;
+
+  if (hasAssignment && visibleTabs.length === 0) {
     return (
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: 60 }}>
         <Empty description="No section/medium has been assigned to your account yet. Please contact the admin." />
@@ -186,7 +218,12 @@ export default function AcademicsForm() {
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-      <Tabs defaultActiveKey={visibleTabs[0]?.key} size="large" destroyInactiveTabPane>
+      <Tabs
+        activeKey={currentKey}
+        onChange={setActiveKey}
+        size="large"
+        destroyInactiveTabPane
+      >
         {visibleTabs.map((tab) => (
           <TabPane tab={tab.label} key={tab.key}>
             <ClassRoomSection classRoomName={tab.classRoomName} medium={tab.medium} title={tab.label} />

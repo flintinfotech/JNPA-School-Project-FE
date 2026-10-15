@@ -23,6 +23,7 @@ import { getAllStaticData } from "../services/staticDataService";
 import {
   getAllCurrentYearStudentsData,
   getClassScope,
+  type ResultFilters,
   type ResultStudentDTO,
 } from "../services/Resultservice";
 import { useAuth } from "../hooks/useAuth";
@@ -132,8 +133,15 @@ export default function PromoteStudents() {
     // (teacher = own class, admin = empty -> sees everything)
     const scope = user?.role === "TEACHER" ? getClassScope(user) : {};
 
+    // NEW: logged-in user's section + medium go in the payload
+const payload = {
+  ...scope,
+  ...(user?.section ? { section: user.section } : {}),
+  ...(user?.medium ? { medium: user.medium } : {}),
+} as ResultFilters;
+
     try {
-      const curRes = await getAllCurrentYearStudentsData(0, MAX_FETCH_SIZE, scope);
+     const curRes = await getAllCurrentYearStudentsData(0, MAX_FETCH_SIZE, payload);
 
       if (!curRes?.success) {
         message.error(curRes?.message || "Failed to load students");

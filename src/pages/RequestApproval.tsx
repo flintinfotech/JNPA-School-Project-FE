@@ -487,6 +487,8 @@ export default function RequestApproval() {
         // purchaseDTO = the product selected in the Product Name dropdown
         purchaseDTO: buildPurchaseDTO(values.purchaseId),
         // Edit only: the request id
+        // NEW: logged-in user's section + medium go in the save / update payload
+...scopePayload,
         ...(editingId ? { requestApprovalId: editingId } : {}),
       };
 
