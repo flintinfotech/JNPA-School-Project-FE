@@ -48,8 +48,7 @@ const TYPE_META: Record<string, { label: string; dot: string }> = {
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-// Same responsive hook used on the Student Fees / Purchase screens — only
-// used here to switch the events LIST (right side) between the table and
+// Only used to switch the events LIST (right side) between the table and
 // a stacked card layout; the calendar grid itself is untouched.
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(
@@ -70,17 +69,9 @@ interface EventFormValues {
   description?: string;
 }
 
-// 🛠️ Academic-year-aware "today". If the user is logged into a PAST
-// academic year (e.g. 2025-2026, while the real calendar date is already
-// in 2026-2027), the calendar should still open on the current month/day
-// — just placed on that academic year's own timeline instead of the real
-// current year. Example: academic year 2025-2026 starts June 2025; if
-// today is really 4 Sept 2026, this returns 4 Sept 2025 (Sept belongs to
-// the FIRST calendar year of that academic year, since it's on/after the
-// start month). If today were, say, 4 Feb (which belongs to the SECOND
-// calendar year of an AY that starts in June), it returns 4 Feb (start
-// year + 1). For the currently-ongoing academic year this naturally
-// resolves back to the real today, so one formula covers both cases.
+// Academic-year-aware "today". If the user is logged into a PAST academic
+// year, the calendar still opens on the current month/day, just placed on
+// that academic year's own timeline.
 const getAcademicYearAwareToday = (
   academicYear: { startDate: string; endDate: string } | null,
 ): Dayjs => {
@@ -101,6 +92,10 @@ export default function AcademicCalendar() {
   const canManage = MANAGE_ROLES.includes((user?.role || "").toUpperCase());
   const isMobile = useIsMobile();
 
+  // logged-in user's section + medium (admin has none)
+  const userSection = user?.section || null;
+  const userMedium = user?.medium || null;
+
   const [events, setEvents] = useState<AcademicCalendarEventDTO[]>([]);
   const [totalEvents, setTotalEvents] = useState(0);
   const [currentPage, setCurrentPage] = useState(1); // 1-indexed for the UI
@@ -111,10 +106,6 @@ export default function AcademicCalendar() {
   const [editingEvent, setEditingEvent] =
     useState<AcademicCalendarEventDTO | null>(null);
 
-  // 🛠️ FIX — the calendar was defaulting to the academic year's stored
-  // start date (via getLoggedInSessionStartDate), not today, which is why
-  // it opened on a different month/date than expected. It now always
-  // opens on the current month with today selected.
   const [visibleMonth, setVisibleMonth] = useState<Dayjs>(() =>
     getAcademicYearAwareToday(academicYear),
   );
@@ -125,6 +116,33 @@ export default function AcademicCalendar() {
     "ALL" | AcademicCalendarEventType
   >("ALL");
   const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const fetchEvents = useCallback(
+    async (page: number) => {
+      setLoading(true);
+      try {
+        const res = await getAllAcademicCalendarEvents(page - 1, PAGE_SIZE, {
+          section: userSection,
+          medium: userMedium,
+        });
+        if (res.success) {
+          setEvents(res.data?.["Academic calendar events"] || []);
+          setTotalEvents(res.data?.["total events"] || 0);
+        } else {
+          message.error(res.message || "Failed to fetch events");
+        }
+      } catch (err: any) {
+        message.error(err?.response?.data?.message || "Failed to fetch events");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [userSection, userMedium],
+  );
+
+  useEffect(() => {
+    fetchEvents(currentPage);
+  }, [fetchEvents, currentPage]);
 
   const handleDelete = async (event: AcademicCalendarEventDTO) => {
     setDeletingId(event.academicCalendarId);
@@ -149,27 +167,6 @@ export default function AcademicCalendar() {
       setDeletingId(null);
     }
   };
-
-  const fetchEvents = useCallback(async (page: number) => {
-    setLoading(true);
-    try {
-      const res = await getAllAcademicCalendarEvents(page - 1, PAGE_SIZE);
-      if (res.success) {
-        setEvents(res.data?.["Academic calendar events"] || []);
-        setTotalEvents(res.data?.["total events"] || 0);
-      } else {
-        message.error(res.message || "Failed to fetch events");
-      }
-    } catch (err: any) {
-      message.error(err?.response?.data?.message || "Failed to fetch events");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchEvents(currentPage);
-  }, [fetchEvents, currentPage]);
 
   const openModal = () => {
     form.resetFields();
@@ -208,7 +205,7 @@ export default function AcademicCalendar() {
           startDate: startDate.format("YYYY-MM-DD"),
           endDate: endDate.format("YYYY-MM-DD"),
           description: values.description || "",
-          // logged-in user's section + medium (admin has none -> keep the event's own values)
+          // user's section + medium (admin has none -> keep the event's own values)
           section: user?.section || editingEvent.section || undefined,
           medium: user?.medium || editingEvent.medium || undefined,
         });
@@ -227,7 +224,7 @@ export default function AcademicCalendar() {
           startDate: startDate.format("YYYY-MM-DD"),
           endDate: endDate.format("YYYY-MM-DD"),
           description: values.description || "",
-          // logged-in user's section + medium (admin has none -> not sent)
+          // user's section + medium (admin has none -> not sent)
           section: user?.section || undefined,
           medium: user?.medium || undefined,
         });
@@ -235,9 +232,7 @@ export default function AcademicCalendar() {
         if (res.success) {
           message.success(res.message || "Event saved successfully");
           closeModal();
-          // New events land wherever the backend places them; safest is to
-          // jump back to page 1 so the user sees it (adjust if your API
-          // sorts differently).
+          // Jump back to page 1 so the user sees the new event.
           setCurrentPage(1);
           fetchEvents(1);
         } else {
@@ -404,10 +399,7 @@ export default function AcademicCalendar() {
           {!loading && filteredEvents.length === 0 ? (
             <Empty description="No events added yet" />
           ) : isMobile ? (
-            /* 🆕 Mobile card list — replaces the 4-column table below,
-               which needed horizontal scrolling to see Type/Edit/Delete
-               on a phone. Each event is now a self-contained card with
-               everything visible at once, no side-scrolling needed. */
+            /* Mobile card list — replaces the table, no side-scrolling. */
             <div className="space-y-3">
               {filteredEvents.map((event) => (
                 <div
@@ -529,7 +521,6 @@ export default function AcademicCalendar() {
                             </button>
                             <Popconfirm
                               title="This event will be permanently removed."
-                            
                               onConfirm={() => handleDelete(event)}
                               okText="Delete"
                               okButtonProps={{

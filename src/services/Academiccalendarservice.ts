@@ -1,4 +1,4 @@
-import axiosInstance from "../lib/axios"; 
+import axiosInstance from "../lib/axios";
 import { apiEndpoints } from "../services/apiEndpoints";
 
 // ---------------- Types ----------------
@@ -17,6 +17,8 @@ export interface AcademicCalendarEventDTO {
   startDate: string; // "YYYY-MM-DD"
   endDate: string; // "YYYY-MM-DD"
   description?: string;
+  section?: string; // 🆕
+  medium?: string; // 🆕
 }
 
 export interface SaveAcademicCalendarEventPayload {
@@ -25,6 +27,14 @@ export interface SaveAcademicCalendarEventPayload {
   startDate: string; // "YYYY-MM-DD"
   endDate: string; // "YYYY-MM-DD"
   description?: string;
+  section?: string; // 🆕
+  medium?: string; // 🆕
+}
+
+// 🆕 Filter payload for the getAll (list) API
+export interface AcademicCalendarFilterPayload {
+  section?: string | null;
+  medium?: string | null;
 }
 
 export interface ApiResponse<T> {
@@ -41,7 +51,7 @@ export const saveAcademicCalendarEvent = async (
 ): Promise<ApiResponse<AcademicCalendarEventDTO>> => {
   const response = await axiosInstance.post(
     apiEndpoints.saveAcademicCalendarEvent(),
-    payload
+    payload // includes section + medium
   );
   return response.data;
 };
@@ -53,11 +63,12 @@ export interface AcademicCalendarEventListResponse {
 
 export const getAllAcademicCalendarEvents = async (
   page: number,
-  size: number
+  size: number,
+  filter: AcademicCalendarFilterPayload = {} // 🆕 section + medium
 ): Promise<ApiResponse<AcademicCalendarEventListResponse>> => {
   const response = await axiosInstance.post(
     apiEndpoints.getAllAcademicCalendarEventsByFilter(page, size),
-    {}
+    filter // 🆕 pahile {} hota
   );
   return response.data;
 };
@@ -67,7 +78,7 @@ export const updateAcademicCalendarEvent = async (
 ): Promise<ApiResponse<AcademicCalendarEventDTO>> => {
   const response = await axiosInstance.put(
     apiEndpoints.updateAcademicCalendarEvent(),
-    payload
+    payload // includes section + medium
   );
   return response.data;
 };
