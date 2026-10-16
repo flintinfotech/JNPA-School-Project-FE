@@ -1,45 +1,34 @@
-import axiosInstance from "../lib/axios";
-import { apiEndpoints } from "./apiEndpoints"; // adjust path to match your project structure
+import axiosInstance from "../lib/axios"; 
+import { apiEndpoints } from "../services/apiEndpoints";
 
-// ---- Types matching the backend DTO exactly ----
+// ---------------- Types ----------------
+export type AcademicCalendarEventType =
+  | "EXAMINATION"
+  | "HOLIDAY"
+  | "EVENT"
+  | "MEETING"
+  | "VACATION"
+  | "OTHER";
 
-export interface AuditDetails {
-  createTime: string;
-  createUser: string;
-  modifyTime: string;
-  modifyUser: string;
+export interface AcademicCalendarEventDTO {
+  academicCalendarId: number;
+  eventTitle: string;
+  eventType: AcademicCalendarEventType | string;
+  startDate: string; // "YYYY-MM-DD"
+  endDate: string; // "YYYY-MM-DD"
+  description?: string;
+  section?: string;
+  medium?: string;
 }
 
-// One "Add Data" entry inside a sub-screen: a subject/label plus an
-// optional file (stored as raw base64, same convention as ClassRoomDTO.brochure).
-export interface SubScreenDataEntityDTO {
-  subScreenDataId?: number; // present only for existing entries (update)
-  subScreenId?: number; // present only for existing entries (update)
-  subjectName: string;
-  subjectData?: string | null; // raw base64 payload, no data: prefix
-}
-
-// One "Achievements" sub-screen (e.g. "Intra group"), containing multiple
-// subScreenDataEntities.
-export interface SubScreenDTO {
-  subScreenId?: number; // present only for existing sub-screens (update)
-  academicYearId?: number; // present only for existing sub-screens (update)
-  subScreenName: string;
-  subScreenDataEntities: SubScreenDataEntityDTO[];
-}
-
-export interface AcademicYearDTO {
-  academicYearId?: number;
-  academicYearName: string;
-  startDate: string;
-  endDate: string;
-  isCurrent: boolean;
-  cbseAffiliated: string;
-  avgPassingPercentage: string;
-  subjectOffered: string;
-  studentTeacherRatio: string;
-  subScreenDTOS?: SubScreenDTO[];
-  auditDetails?: AuditDetails;
+export interface SaveAcademicCalendarEventPayload {
+  eventTitle: string;
+  eventType: AcademicCalendarEventType | string;
+  startDate: string; // "YYYY-MM-DD"
+  endDate: string; // "YYYY-MM-DD"
+  description?: string;
+  section?: string;
+  medium?: string;
 }
 
 export interface ApiResponse<T> {
@@ -49,26 +38,49 @@ export interface ApiResponse<T> {
   timestamp: string;
 }
 
-// ---- Service functions ----
+// ---------------- API calls ----------------
 
-export const saveAcademicYear = (
-  payload: Omit<AcademicYearDTO, "academicYearId" | "auditDetails">
-) => {
-  return axiosInstance.post<ApiResponse<AcademicYearDTO>>(apiEndpoints.saveAcademicYear(), payload);
-};
-
-export const updateAcademicYear = (payload: AcademicYearDTO) => {
-  return axiosInstance.put<ApiResponse<AcademicYearDTO>>(apiEndpoints.updateAcademicYear(), payload);
-};
-
-export const getAcademicYearById = (academicYearId: number | string) => {
-  return axiosInstance.get<ApiResponse<AcademicYearDTO>>(
-    apiEndpoints.getAcademicYearById(academicYearId)
+export const saveAcademicCalendarEvent = async (
+  payload: SaveAcademicCalendarEventPayload
+): Promise<ApiResponse<AcademicCalendarEventDTO>> => {
+  const response = await axiosInstance.post(
+    apiEndpoints.saveAcademicCalendarEvent(),
+    payload
   );
+  return response.data;
 };
-export const getAllAcademicYears = (page: number, size: number) => {
-  return axiosInstance.post<ApiResponse<AcademicYearDTO[]>>(
-    apiEndpoints.getAllAcademicYears(page, size),
+
+export interface AcademicCalendarEventListResponse {
+  "Academic calendar events": AcademicCalendarEventDTO[];
+  "total events": number;
+}
+
+export const getAllAcademicCalendarEvents = async (
+  page: number,
+  size: number
+): Promise<ApiResponse<AcademicCalendarEventListResponse>> => {
+  const response = await axiosInstance.post(
+    apiEndpoints.getAllAcademicCalendarEventsByFilter(page, size),
     {}
   );
+  return response.data;
+};
+
+export const updateAcademicCalendarEvent = async (
+  payload: AcademicCalendarEventDTO
+): Promise<ApiResponse<AcademicCalendarEventDTO>> => {
+  const response = await axiosInstance.put(
+    apiEndpoints.updateAcademicCalendarEvent(),
+    payload
+  );
+  return response.data;
+};
+
+export const deleteAcademicCalendarEvent = async (
+  academicCalendarId: number
+): Promise<ApiResponse<null>> => {
+  const response = await axiosInstance.delete(
+    apiEndpoints.deleteAcademicCalendarEvent(academicCalendarId)
+  );
+  return response.data;
 };
