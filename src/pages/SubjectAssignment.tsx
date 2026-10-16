@@ -3,11 +3,12 @@ import { Card, Table, Typography, Button, Drawer, Input, Select, Grid, Checkbox,
 import type { ColumnsType } from "antd/es/table";
 import { EditOutlined, SearchOutlined, ReloadOutlined } from "@ant-design/icons";
 
-import { getAllClassMaster, type ClassMasterSearchFilters } from "../services/classMasterService";
+import { type ClassMasterSearchFilters } from "../services/classMasterService";
 import { getSubjectsByClassId, assignOrUnassignSubjects } from "../services/subjectAssignmentService";
-import { getAllSubjectsAllPages } from "../services/subjectService";
 import { useAuth } from "../hooks/useAuth";
 import { getAllStaticData, type StaticDataResponse } from "../services/staticDataService";
+import axiosInstance from "../lib/axios"; // NEW
+import { apiEndpoints } from "../services/apiEndpoints"; // NEW
 
 const { Title } = Typography;
 const { useBreakpoint } = Grid;
@@ -18,8 +19,7 @@ interface ClassMasterDTO {
   standard: string;
   division: string;
   medium: string;
-  section?: string | null; // NEW
-  section?: string;
+  section?: string | null;
 }
 
 interface SubjectDTO {
@@ -31,7 +31,7 @@ interface SubjectDTO {
 type ClassSearchFilters = ClassMasterSearchFilters;
 
 const SubjectAssignment: React.FC = () => {
-  // logged-in user's section + medium go in the getAllClassMaster and getAllSubjectsAllPages payloads
+  // logged-in user's section + medium go in the class list and subject list payloads
   // (admin has none -> nothing is sent -> sees everything)
   const { user } = useAuth();
   const mySection = user?.section || "";
@@ -55,7 +55,7 @@ const SubjectAssignment: React.FC = () => {
 
   const [staticData, setStaticData] = useState<StaticDataResponse | null>(null);
 
-  // NEW: Section options come from "class name" in the static data
+  // Section options come from "class name" in the static data
   // (Pre-Primary / Primary / Secondary)
   const sectionOptions: string[] = (staticData as any)?.["class name"] || [];
 
@@ -64,7 +64,7 @@ const SubjectAssignment: React.FC = () => {
     standard: "",
     division: "",
     medium: "",
-    section: "", // NEW
+    section: "",
   });
 
   // ================= PAGINATION =================
@@ -94,7 +94,9 @@ const SubjectAssignment: React.FC = () => {
   }, []);
 
   // ================= LOAD CLASS =================
-  // POST classMaster/getAllClassMasterByFilter  -> payload: standard, division, medium, section
+  // POST classMaster/getAllClassMasterByFilter
+  // payload: standard, division, medium, section
+  // medium + section: logged-in user's values win, otherwise the search bar values
 
   const loadClassMaster = async (
     page = pagination.current,
@@ -104,12 +106,17 @@ const SubjectAssignment: React.FC = () => {
     try {
       setLoading(true);
 
-      const response = await getAllClassMaster(page - 1, pageSize, {
+      const payload = {
         standard: filters.standard || undefined,
         division: filters.division || undefined,
-        medium: filters.medium || undefined,
-        section: filters.section || undefined, // NEW
-      });
+        medium: myMedium || filters.medium || undefined,
+        section: mySection || filters.section || undefined,
+      };
+
+      const response = await axiosInstance.post(
+        apiEndpoints.getAllClassMaster(page - 1, pageSize),
+        payload
+      );
 
       setClassList(response.data.data.classMasterDTOS || []);
 
@@ -140,24 +147,45 @@ const SubjectAssignment: React.FC = () => {
       standard: "",
       division: "",
       medium: "",
-      section: "", // NEW
+      section: "",
     };
     setSearchFilters(cleared);
     loadClassMaster(1, pagination.pageSize, cleared);
   };
 
   // ================= LOAD ALL SUBJECTS =================
-  // POST subjectMaster/getAllSubjectMasterByFilter -> payload: medium, section
-  // (medium + section of the class being edited)
+  // POST subjectMaster/getAllSubjectMasterByFilter
+  // payload: medium, section
+  // logged-in user's values win, otherwise medium + section of the class being edited
 
-    const loadAllSubjects = async (medium?: string | null, section?: string | null) => {
+  const loadAllSubjects = async (medium?: string | null, section?: string | null) => {
     try {
-      // every request is size 10 (pages are joined inside getAllSubjectsAllPages)
-      const response = await getAllSubjectsAllPages({
-        medium: medium || undefined,
-        section: section || undefined,
-      });
-      setAllSubjects(response.data.subjectMasterDTOS || []);
+      const payload = {
+        medium: myMedium || medium || undefined,
+        section: mySection || section || undefined,
+      };
+
+      // every request is size 10, all pages are joined here
+      const size = 10;
+      let pageNo = 0;
+      let totalCount = 0;
+      const all: SubjectDTO[] = [];
+
+      do {
+        const res = await axiosInstance.post(
+          apiEndpoints.getAllSubjects(pageNo, size),
+          payload
+        );
+        const data = res.data?.data;
+        const list: SubjectDTO[] = data?.subjectMasterDTOS || [];
+        totalCount = data?.["total element"] ?? list.length;
+        all.push(...list);
+
+        if (list.length === 0) break; // safety: never loop forever
+        pageNo += 1;
+      } while (all.length < totalCount);
+
+      setAllSubjects(all);
     } catch (error) {
       console.log(error);
     }
@@ -180,7 +208,7 @@ const SubjectAssignment: React.FC = () => {
         assigned.map((item: SubjectDTO) => item.subjectMasterId)
       );
 
-      // NEW: send the class's medium + section in the subject list payload
+      // class's medium + section (or the logged-in user's) go in the subject list payload
       await loadAllSubjects(record.medium, record.section);
 
       setDrawerOpen(true);
@@ -249,9 +277,10 @@ const SubjectAssignment: React.FC = () => {
     }
   };
 
+  // also reload when the logged-in user's section / medium changes
   useEffect(() => {
     loadClassMaster();
-  }, []);
+  }, [mySection, myMedium]);
 
   // ================= MAIN TABLE =================
 
@@ -262,7 +291,7 @@ const SubjectAssignment: React.FC = () => {
       render: (_, __, index) =>
         (pagination.current - 1) * pagination.pageSize + index + 1,
     },
-    // NEW: Section column (before Standard)
+    // Section column (before Standard)
     {
       title: "Section",
       dataIndex: "section",
@@ -323,7 +352,7 @@ const SubjectAssignment: React.FC = () => {
     <Card>
       {/* Search Bar */}
       <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
-        {/* NEW: Section filter */}
+        {/* Section filter */}
         <Col xs={24} sm={12} md={5}>
           <Select
             placeholder="Section"
@@ -428,7 +457,7 @@ const SubjectAssignment: React.FC = () => {
                 </Title>
               </div>
 
-              {/* NEW: Section (before Standard) */}
+              {/* Section (before Standard) */}
               <div
                 style={{
                   display: "flex",
@@ -547,7 +576,7 @@ const SubjectAssignment: React.FC = () => {
               gap: 20,
             }}
           >
-            {/* NEW: Section (before Standard) */}
+            {/* Section (before Standard) */}
             <div style={{ flex: 1 }}>
               <p>
                 <b>Section</b>
@@ -567,13 +596,6 @@ const SubjectAssignment: React.FC = () => {
                 <b>Division</b>
               </p>
               <Input value={selectedClass?.division} readOnly />
-            </div>
-
-            <div style={{ flex: 1 }}>
-              <p>
-                <b>Section</b>
-              </p>
-              <Input value={selectedClass?.section} readOnly />
             </div>
 
             <div style={{ flex: 1 }}>
