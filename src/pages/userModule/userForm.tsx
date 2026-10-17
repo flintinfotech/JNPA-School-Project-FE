@@ -27,6 +27,7 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
   const isTeacher = roleUpper === "TEACHER";
   const isPrincipal = roleUpper === "PRINCIPAL";
   const isAccountant = roleUpper === "ACCOUNTANT";
+  const isAdmin = roleUpper === "ADMIN"; // 👈 NEW: Admin ke liye bhi Section + Medium
 
   useEffect(() => {
     const fetchScreens = async () => {
@@ -58,7 +59,7 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
       label: "Username",
       type: "text" as const,
       required: true,
-      // 👇 These identity fields shouldn't be changed once a user exists —
+      // These identity fields shouldn't be changed once a user exists —
       // locked (grayed out, not editable) only while updating; still fully
       // editable when adding a new user.
       disabled: isEditing,
@@ -123,10 +124,10 @@ export default function UserForm({ form, onFinish, isEditing, loading, staticDat
         value: screen.screenId,
       })),
     },
-    // Section + Medium: TEACHER, PRINCIPAL and ACCOUNTANT.
+    // Section + Medium: TEACHER, PRINCIPAL, ACCOUNTANT and ADMIN.
     // Standard + Division: TEACHER only.
     // (not "required"; allowClear shows the "x" icon, same as the Category dropdown in SchoolExpenses)
-    ...(isTeacher || isPrincipal || isAccountant
+    ...(isTeacher || isPrincipal || isAccountant || isAdmin
       ? [
         {
           name: "section",
