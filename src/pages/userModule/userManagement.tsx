@@ -8,17 +8,17 @@ import UserViewer from "./UserViewer";
 import { getAllStaticData, type StaticDataResponse } from "../../services/staticDataService";
 import axiosInstance from "../../lib/axios"; // adjust to whatever you use for calls
 import { useAuth } from "../../hooks/useAuth";
-import { fetchAllPages } from "../../utils/fetchAllPages";
 
 type UserFilter = "employee" | "student";
 
 const EMPLOYEE_ROLES = ["Teacher", "Accountant", "Admin", "Principal"];
 const STUDENT_ROLES = ["Student"];
 
-// Employees are fetched in ONE call and paginated in the browser (10 per page).
-// Reason: the backend page query returns duplicate rows for the same user, so a page showed
-// 9 users and the total counted 11 instead of 10.
-const EMPLOYEE_FETCH_SIZE = 1000;
+// Employees: the API is always called with size=10, page after page, and all pages are merged here;
+// the table then shows exactly 10 per page (browser paging).
+// Reason: the backend sometimes returns fewer than 10 rows for a page (e.g. 9) while "total"
+// still counts the missing row (26), so a server page showed 9 users and the total was wrong.
+const EMPLOYEE_PAGE_SIZE = 10;
 
 // keep one row per userId
 const dedupeByUserId = (list: UserDTO[]): UserDTO[] => {
@@ -92,35 +92,47 @@ export default function UserManagement() {
     ) => {
       setTableLoading(true);
       const isEmployee = roles.includes("Teacher");
-            const body = {
+      const buildUrl = (p: number, sz: number) =>
+        `http://flintinfotech-dev.in:8443/jnpa-school-project/user/getAllUsersByFilter?page=${p}&size=${sz}&paginate=true`;
+      const body = {
         role: roles,
         firstName: filters?.firstName || undefined,
         lastName: filters?.lastName || undefined,
         section: mySection,
         medium: myMedium,
       };
-      const urlFor = (p: number, s: number) =>
-        `http://flintinfotech-dev.in:8443/jnpa-school-project/user/getAllUsersByFilter?page=${p}&size=${s}&paginate=true`;
       try {
         if (isEmployee) {
-          const all = await fetchAllPages<UserDTO>(async (p, s) => {
-            const r = await axiosInstance.post(urlFor(p, s), body);
-            if (!r.data.success) throw new Error(r.data.message || "Failed to load users");
-            return { list: r.data.data.Data || [], total: r.data.data.total };
-          });
+          // call page 0, 1, 2 ... (size 10 each) until "total" is covered, then merge
+          const all: UserDTO[] = [];
+          let p = 0;
+          let apiTotal = 0;
+          do {
+            const res = await axiosInstance.post(buildUrl(p, EMPLOYEE_PAGE_SIZE), body);
+            if (!res.data.success) {
+              message.error(res.data.message || "Failed to load users");
+              return;
+            }
+            all.push(...((res.data.data.Data as UserDTO[]) || []));
+            apiTotal = Number(res.data.data.total) || 0;
+            p++;
+          } while (p * EMPLOYEE_PAGE_SIZE < apiTotal && p < 100); // 100 = safety stop
+
           const unique = dedupeByUserId(all);
           setAllEmployees(unique);
-          setTotal(unique.length);
-        } else {
-          const response = await axiosInstance.post(urlFor(pageNum, size), body);
-          if (response.data.success) {
-            setUsers(response.data.data.Data || []);
-            setTotal(response.data.data.total);
-          } else {
-            message.error(response.data.message || "Failed to load users");
-          }
+          setTotal(unique.length); // real count of employees that were actually returned
+          return;
         }
-        } catch (error: any) {
+
+        // students: normal server-side pagination (size = pageSize = 10)
+        const response = await axiosInstance.post(buildUrl(pageNum, size), body);
+        if (response.data.success) {
+          setUsers(response.data.data.Data || []);
+          setTotal(response.data.data.total);
+        } else {
+          message.error(response.data.message || "Failed to load users");
+        }
+      } catch (error: any) {
         message.error(error?.response?.data?.message || "Failed to load users");
       } finally {
         setTableLoading(false);
