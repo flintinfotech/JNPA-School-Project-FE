@@ -680,7 +680,7 @@ const myMedium = user?.medium || "";
             />
           </Col>
 
-          <Col xs={24} sm={12} md={6}>
+          {/* <Col xs={24} sm={12} md={6}>
             <Select
               placeholder="Section"
               value={searchFilters.section || undefined}
@@ -694,9 +694,9 @@ const myMedium = user?.medium || "";
                 </Option>
               ))}
             </Select>
-          </Col>
+          </Col> */}
 
-          <Col xs={24} sm={12} md={6}>
+          {/* <Col xs={24} sm={12} md={6}>
             <Select
               placeholder="Medium"
               value={searchFilters.medium || undefined}
@@ -710,7 +710,7 @@ const myMedium = user?.medium || "";
                 </Option>
               ))}
             </Select>
-          </Col>
+          </Col> */}
 
           <Col xs={24} sm={24} md={24}>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>

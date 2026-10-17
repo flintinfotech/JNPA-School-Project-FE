@@ -129,7 +129,7 @@ const SubjectMaster: React.FC = () => {
           medium : values.medium,
         });
 
-        message.success(response.message);
+        message.error(response.message);
       }
 
       form.resetFields();

@@ -192,7 +192,7 @@ const EventsAndNewsAdmin: React.FC = () => {
     try {
       const res = await newsService.deleteNews(card.newsId);
       setCards((prev) => prev.filter((c) => c.localId !== card.localId));
-      message.success(res?.message || "News deleted successfully");
+      message.error(res?.message || "News deleted successfully");
     } catch (err) {
       const errorMessage = extractErrorMessage(err, "Delete failed. Please try again.");
       updateCard(card.localId, { deleting: false, error: errorMessage });

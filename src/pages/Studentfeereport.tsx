@@ -25,21 +25,19 @@ import jsPDF from "jspdf"; // npm install jspdf jspdf-autotable
 import autoTable from "jspdf-autotable";
 import { getAllStaticData } from "../services/staticDataService";
 import CommonTable from "../components/commonTable";
-import { useAuth } from "../hooks/useAuth"; // NEW
+import { useAuth } from "../hooks/useAuth";
 
-// Same two imports as the Employee Salary screen (only the paths may need a change)
 import axiosInstance from "../lib/axios";
 import { apiEndpoints } from "../services/apiEndpoints";
 
-// Search bar: Standard, Division, First name, Last name
-// (From / To date are commented out until the backend supports them)
+// Search bar: Standard, Division, First name, Last name (+ Section, Medium only for superadmin)
 interface StudentSearchFilters {
   firstName: string;
   lastName: string;
   standard?: string;
   division?: string;
-  // fromDate: Dayjs | null;
-  // toDate: Dayjs | null;
+  section?: string; // NEW (sirf superadmin)
+  medium?: string; // NEW (sirf superadmin)
 }
 
 const EMPTY_FILTERS: StudentSearchFilters = {
@@ -47,8 +45,8 @@ const EMPTY_FILTERS: StudentSearchFilters = {
   lastName: "",
   standard: undefined,
   division: undefined,
-  // fromDate: null,
-  // toDate: null,
+  section: undefined,
+  medium: undefined,
 };
 
 // static data may come as plain strings or as objects -> always give the Select a string
@@ -71,7 +69,6 @@ const money = (v?: number | null) =>
         maximumFractionDigits: 2,
       });
 
-// Fallback only (used if the API sends no academic year): academic year starts in April: Sep 2026 -> "2026-2027", Feb 2027 -> "2026-2027"
 const getAcademicYear = (d: Dayjs = dayjs()) => {
   const y = d.year();
   return d.month() >= 3 ? `${y}-${y + 1}` : `${y - 1}-${y}`;
@@ -81,7 +78,6 @@ const getAcademicYear = (d: Dayjs = dayjs()) => {
    EXPORT REPORT (report API + PDF builder, all inside this file)
    ===================================================================== */
 
-// API response row (feeName is no longer sent by the backend)
 interface FeeReportRow {
   academicYear: string;
   paidAmount: number;
@@ -99,7 +95,6 @@ interface FeeReportStudent {
   feeReportDataDTOS: FeeReportRow[];
 }
 
-// Put your real school details here (they appear in the report header)
 const SCHOOL = {
   name: "JNPV School",
   subtitle: "Jawaharlal Nehru Port Vidyalaya",
@@ -110,7 +105,6 @@ const SCHOOL = {
 
 const MAROON: [number, number, number] = [128, 0, 0];
 const PDF_MARGIN = { top: 15, left: 10, right: 10, bottom: 18 };
-// 4 columns now (Fee Name removed because the API does not return it)
 const PDF_COLUMNS = ["Academic Year", "Total Fee", "Paid Amount", "Pending Amount"];
 const PDF_COL_WIDTHS = [40, 50, 50, 50]; // = 190mm
 const pdfColumnStyles = PDF_COL_WIDTHS.reduce(
@@ -131,34 +125,21 @@ const sumOf = (rows: any[], key: string) =>
   rows.reduce((acc, r) => acc + num(r?.[key]), 0);
 
 // POST studentFee/getStudentFeeReportData?page=&size=&desc&paginate=true
-// Body example (only the selected filters are sent, nothing selected -> {}):
-// {
-//   "standard": "1st Standard",
-//   "division": "A",
-//   "section": "Primary",     <- NEW (logged-in user)
-//   "medium": "Marathi"       <- NEW (logged-in user)
-// }
-// Response: { success, message, data: { "Total elements": 2, "Data": [ ...students ] } }
-// This function is used by BOTH Search and Export Report.
-// We read ALL pages, then first / last name are filtered here in the browser.
+// Body: { standard?, division?, section?, medium? }  (only selected values are sent)
 const fetchStudentFeeReport = async (
   filters: StudentSearchFilters,
-  scope: Record<string, string> = {}, // NEW: { section?, medium? } of the logged-in user
+  scope: Record<string, string> = {}, // { section?, medium? }
 ): Promise<FeeReportStudent[]> => {
   const size = 10;
   let pageNo = 0;
   let totalCount = 0;
   const all: FeeReportStudent[] = [];
 
-  // Only the selected filters go in the payload
   const payload: Record<string, string> = {};
   if (filters.standard) payload.standard = filters.standard;
   if (filters.division) payload.division = filters.division;
-  // NEW: logged-in user's section + medium
   if (scope.section) payload.section = scope.section;
   if (scope.medium) payload.medium = scope.medium;
-  // if (filters.fromDate) payload.fromDate = filters.fromDate.format("YYYY-MM-DD");
-  // if (filters.toDate) payload.toDate = filters.toDate.format("YYYY-MM-DD");
 
   do {
     const res = await axiosInstance.post(
@@ -170,7 +151,6 @@ const fetchStudentFeeReport = async (
       throw new Error(data?.message || "Failed to load fee report");
 
     const list: FeeReportStudent[] = data.data?.Data || [];
-    // this API sends the count as "Total elements"
     totalCount =
       data.data?.["Total elements"] ?? data.data?.Total ?? list.length;
     all.push(...list);
@@ -179,7 +159,6 @@ const fetchStudentFeeReport = async (
     pageNo += 1;
   } while (all.length < totalCount);
 
-  // First / last name are filtered here in the browser
   const first = (filters.firstName || "").trim().toLowerCase();
   const last = (filters.lastName || "").trim().toLowerCase();
 
@@ -190,8 +169,6 @@ const fetchStudentFeeReport = async (
   );
 };
 
-// Builds the report in the same layout as the Employee Salary report
-// and returns it as a Blob (shown in a preview popup, can be downloaded from there).
 const buildFeeReportPdf = (
   students: FeeReportStudent[],
   academicYear: string,
@@ -202,7 +179,6 @@ const buildFeeReportPdf = (
   const pageHeight = doc.internal.pageSize.getHeight();
   const centerX = pageWidth / 2;
 
-  // ----- header (first page only) -----
   let y = 14;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
@@ -235,12 +211,11 @@ const buildFeeReportPdf = (
   doc.setTextColor(0, 0, 0);
   doc.text(`Academic Year: ${academicYear}`, centerX, y, { align: "center" });
 
-  // applied filters (only the ones that were selected)
   const filterParts = [
     filters.standard ? `Standard: ${filters.standard}` : "",
     filters.division ? `Division: ${filters.division}` : "",
-    // filters.fromDate ? `From: ${filters.fromDate.format("DD-MM-YYYY")}` : "",
-    // filters.toDate ? `To: ${filters.toDate.format("DD-MM-YYYY")}` : "",
+    filters.section ? `Section: ${filters.section}` : "", // NEW
+    filters.medium ? `Medium: ${filters.medium}` : "", // NEW
   ].filter(Boolean);
   if (filterParts.length) {
     y += 5;
@@ -254,7 +229,6 @@ const buildFeeReportPdf = (
 
   let cursorY = y + 6;
 
-  // ----- one block per student -----
   const allRows: FeeReportRow[] = [];
   const bold = { fontStyle: "bold" as const };
 
@@ -263,14 +237,12 @@ const buildFeeReportPdf = (
     allRows.push(...rows);
     const hasFees = rows.length > 0;
 
-    // keep one student block together on a page
     const estimatedHeight = ((hasFees ? 2 : 1) + rows.length + 2) * 6.5 + 6;
     if (cursorY + estimatedHeight > pageHeight - PDF_MARGIN.bottom) {
       doc.addPage();
       cursorY = PDF_MARGIN.top;
     }
 
-    // Student info row (+ column titles only when the student has fees — empty ones stay blank)
     const head: any[] = [
       [
         {
@@ -299,7 +271,6 @@ const buildFeeReportPdf = (
       );
     }
 
-    // Academic Year column: comes straight from the API response
     const body: any[] = rows.map((r) => [
       r.academicYear || "-",
       fix2(r.totalFeeAmount),
@@ -309,7 +280,6 @@ const buildFeeReportPdf = (
 
     const totalPending = sumOf(rows, "pendingAmount");
 
-    // Total row (0.00 when there are no fees)
     body.push([
       { content: "Total", styles: bold },
       { content: fix2(sumOf(rows, "totalFeeAmount")), styles: bold },
@@ -317,7 +287,6 @@ const buildFeeReportPdf = (
       { content: fix2(totalPending), styles: bold },
     ]);
 
-    // closing line, right aligned
     body.push([
       {
         content: `Total Pending Amount: ${fix2(totalPending)}`,
@@ -373,7 +342,6 @@ const buildFeeReportPdf = (
     cursorY = (doc as any).lastAutoTable.finalY + 6;
   });
 
-  // ----- grand total -----
   if (cursorY + 14 > pageHeight - PDF_MARGIN.bottom) {
     doc.addPage();
     cursorY = PDF_MARGIN.top;
@@ -409,7 +377,6 @@ const buildFeeReportPdf = (
     },
   });
 
-  // ----- footer on every page: Print Date / Time / Page x of y -----
   const firstStu = students[0];
   const printDate = firstStu?.printDate ? dayjs(firstStu.printDate) : dayjs();
   const printTime = firstStu?.printTime
@@ -452,29 +419,40 @@ const buildFeeReportPdf = (
 /* ===================================================================== */
 
 export default function StudentFeeReport() {
-  // NEW: logged-in user's section + medium go in the fee report payload
-  // (admin has none -> nothing is sent -> sees everything)
+  // logged-in user's section + medium
   const { user } = useAuth();
   const mySection = user?.section || "";
   const myMedium = user?.medium || "";
-  const scope = useMemo(() => {
-    const p: Record<string, string> = {};
-    if (mySection) p.section = mySection;
-    if (myMedium) p.medium = myMedium;
-    return p;
-  }, [mySection, myMedium]);
 
-  // ---------- responsive (mobile) ----------
+  // NEW: superadmin check
+  const normalizedRole = String(user?.role || "")
+    .toUpperCase()
+    .replace(/[^A-Z]/g, "");
+  const isSuperAdmin =
+    normalizedRole === "SUPERADMIN" ||
+    (normalizedRole === "ADMIN" && !mySection && !myMedium);
+
+  // NEW: payload scope. Superadmin -> dropdown ki value (khali ho to apna), baaki -> apna section/medium
+  const buildScope = useCallback(
+    (filters: StudentSearchFilters) => {
+      const p: Record<string, string> = {};
+      const section = isSuperAdmin ? filters.section || mySection : mySection;
+      const medium = isSuperAdmin ? filters.medium || myMedium : myMedium;
+      if (section) p.section = section;
+      if (medium) p.medium = medium;
+      return p;
+    },
+    [isSuperAdmin, mySection, myMedium],
+  );
+
   const screens = Grid.useBreakpoint();
   const isMobile = screens.md === false; // below 768px
 
-  // table data = fee report API result (all pages), paginated in the browser
   const [allStudents, setAllStudents] = useState<FeeReportStudent[]>([]);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [tableLoading, setTableLoading] = useState(false);
 
-  // Export report
   const [exporting, setExporting] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportUrl, setReportUrl] = useState<string | null>(null);
@@ -482,17 +460,22 @@ export default function StudentFeeReport() {
     "Student_Fee_Report.pdf",
   );
 
-  // Search bar state
   const [searchFilters, setSearchFilters] =
     useState<StudentSearchFilters>(EMPTY_FILTERS);
 
-  // Standard / Division dropdown options (same static data as Class Master)
+  // Standard / Division / Section / Medium dropdown options (static data)
   const [standardOptions, setStandardOptions] = useState<
     { label: string; value: string }[]
   >([]);
   const [divisionOptions, setDivisionOptions] = useState<
     { label: string; value: string }[]
   >([]);
+  const [sectionOptions, setSectionOptions] = useState<
+    { label: string; value: string }[]
+  >([]); // NEW
+  const [mediumOptions, setMediumOptions] = useState<
+    { label: string; value: string }[]
+  >([]); // NEW
 
   useEffect(() => {
     getAllStaticData()
@@ -500,22 +483,19 @@ export default function StudentFeeReport() {
         if (res?.success) {
           setStandardOptions((res.data.standard || []).map(toOption));
           setDivisionOptions((res.data.division || []).map(toOption));
+          setSectionOptions((res.data["class name"] || []).map(toOption)); // NEW
+          setMediumOptions((res.data.medium || []).map(toOption)); // NEW
         }
       })
-      .catch((e) => console.error("Failed to load standard / division", e));
+      .catch((e) => console.error("Failed to load static data", e));
   }, []);
 
-  // both dates are optional, but From can never be after To
-  // const datesInvalid = (f: StudentSearchFilters) =>
-  // !!f.fromDate && !!f.toDate && f.fromDate.isAfter(f.toDate, "day");
-
-  // ---------- LOAD DATA (fee report API with the payload) — used by first load, Search and Reset ----------
+  // ---------- LOAD DATA ----------
   const loadReport = useCallback(
     async (filters: StudentSearchFilters) => {
       setTableLoading(true);
       try {
-        // NEW: scope (section + medium) goes in the payload
-        setAllStudents(await fetchStudentFeeReport(filters, scope));
+        setAllStudents(await fetchStudentFeeReport(filters, buildScope(filters)));
       } catch (error: any) {
         console.error("Student fee report error:", error);
         message.error(
@@ -528,16 +508,14 @@ export default function StudentFeeReport() {
         setTableLoading(false);
       }
     },
-    // rebuilt when the user's section/medium changes -> list reloads
-    [scope],
+    [buildScope],
   );
 
-  // first load: nothing selected -> payload has only section / medium (if any)
+  // first load
   useEffect(() => {
     loadReport(EMPTY_FILTERS);
   }, [loadReport]);
 
-  // free the blob URL if the screen is closed while the report is open
   useEffect(() => {
     return () => {
       if (reportUrl) URL.revokeObjectURL(reportUrl);
@@ -556,12 +534,7 @@ export default function StudentFeeReport() {
     setSearchFilters((prev) => ({ ...prev, [field]: value }));
   };
 
-  // ---------- SEARCH -> calls the fee report API with the payload ----------
   const handleSearch = () => {
-    // if (datesInvalid(searchFilters)) {
-    //   message.warning("From date cannot be after To date");
-    //   return;
-    // }
     setPage(0);
     loadReport(searchFilters);
   };
@@ -572,23 +545,20 @@ export default function StudentFeeReport() {
     loadReport(EMPTY_FILTERS);
   };
 
-  // ---------- EXPORT REPORT -> calls the fee report API again with the payload, then builds the PDF ----------
-  // Uses the search bar: Standard, Division, first / last name.
+  // ---------- EXPORT REPORT ----------
   const handleExportReport = async () => {
-    // if (datesInvalid(searchFilters)) {
-    //   message.warning("From date cannot be after To date");
-    //   return;
-    // }
     setExporting(true);
     try {
-      const list = await fetchStudentFeeReport(searchFilters, scope); // NEW: scope
+      const list = await fetchStudentFeeReport(
+        searchFilters,
+        buildScope(searchFilters),
+      );
 
       if (!list.length) {
         message.warning("No data found for the selected filters");
         return;
       }
 
-      // Header academic year = the one sent by the API (fallback: computed from today)
       const apiYear =
         list.find((s) => s.feeReportDataDTOS?.[0]?.academicYear)
           ?.feeReportDataDTOS?.[0]?.academicYear || getAcademicYear();
@@ -627,13 +597,11 @@ export default function StudentFeeReport() {
     document.body.removeChild(a);
   };
 
-  // Mobile browsers often cannot show a PDF inside an iframe, so this opens it in a new tab
   const openReportInNewTab = () => {
     if (!reportUrl) return;
     window.open(reportUrl, "_blank");
   };
 
-  // totals of one student (from the fee report rows)
   const totalsOf = (s: FeeReportStudent) => {
     const rows = s.feeReportDataDTOS || [];
     return {
@@ -643,7 +611,6 @@ export default function StudentFeeReport() {
     };
   };
 
-  // ---------- TABLE COLUMNS (from the fee report API) ----------
   const columns = [
     {
       title: "Sr No",
@@ -694,7 +661,6 @@ export default function StudentFeeReport() {
     },
   ];
 
-  // ---------- MOBILE: one row inside a student card ----------
   const cardRow = (label: string, value?: string | null) => (
     <div
       style={{
@@ -716,7 +682,6 @@ export default function StudentFeeReport() {
     </div>
   );
 
-  // ---------- MOBILE: all students as cards ----------
   const renderStudentCards = () => (
     <Spin spinning={tableLoading}>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -810,27 +775,32 @@ export default function StudentFeeReport() {
           />
         </Col>
 
-        {/* <Col xs={24} sm={12} md={4}>
-          <DatePicker
-            placeholder="From Date"
-            format="DD-MM-YYYY"
-            value={searchFilters.fromDate}
-            onChange={(d) => handleFilterChange("fromDate", d)}
-            disabledDate={(d) => !!searchFilters.toDate && d.isAfter(searchFilters.toDate, "day")}
-            style={{ width: "100%" }}
-          />
-        </Col> */}
+        {/* NEW: sirf SUPERADMIN ko dikhenge */}
+        {isSuperAdmin && (
+          <>
+            <Col xs={24} sm={12} md={4}>
+              <Select
+                placeholder="Section"
+                value={searchFilters.section}
+                onChange={(value) => handleFilterChange("section", value)}
+                options={sectionOptions}
+                style={{ width: "100%" }}
+                allowClear
+              />
+            </Col>
 
-        {/* <Col xs={24} sm={12} md={4}>
-          <DatePicker
-            placeholder="To Date"
-            format="DD-MM-YYYY"
-            value={searchFilters.toDate}
-            onChange={(d) => handleFilterChange("toDate", d)}
-            disabledDate={(d) => !!searchFilters.fromDate && d.isBefore(searchFilters.fromDate, "day")}
-            style={{ width: "100%" }}
-          />
-        </Col> */}
+            <Col xs={24} sm={12} md={4}>
+              <Select
+                placeholder="Medium"
+                value={searchFilters.medium}
+                onChange={(value) => handleFilterChange("medium", value)}
+                options={mediumOptions}
+                style={{ width: "100%" }}
+                allowClear
+              />
+            </Col>
+          </>
+        )}
 
         <Col xs={24}>
           <div
@@ -856,7 +826,6 @@ export default function StudentFeeReport() {
             >
               Reset
             </Button>
-            {/* Export Report, right next to Reset */}
             <Button
               icon={<FilePdfOutlined />}
               loading={exporting}
@@ -876,10 +845,8 @@ export default function StudentFeeReport() {
       {!tableLoading && allStudents.length === 0 ? (
         <Empty description="No students found" style={{ padding: "40px 0" }} />
       ) : isMobile ? (
-        // MOBILE: students in card view
         renderStudentCards()
       ) : (
-        // DESKTOP: table
         <div style={{ width: "100%", overflowX: "auto" }}>
           <CommonTable
             data={displayedRows}
@@ -901,7 +868,6 @@ export default function StudentFeeReport() {
         </div>
       )}
 
-      {/* ---------- Report preview (opens when Export Report is clicked) ---------- */}
       <Modal
         title="Student Fee Report"
         open={reportOpen}
@@ -911,7 +877,6 @@ export default function StudentFeeReport() {
         destroyOnClose
         footer={
           isMobile ? (
-            // MOBILE: Open in new tab full width, Download + Close side by side
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               <Button
                 block

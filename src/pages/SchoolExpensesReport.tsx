@@ -18,17 +18,20 @@ import {
   type SchoolExpenseReportProduct,
 } from "../services/SchoolExpensesService";
 import { buildSchoolExpensesReportPdf } from "../services/SchoolExpensesReportPdf";
-import { useAuth } from "../hooks/useAuth"; // NEW
+import { getAllStaticData } from "../services/staticDataService"; // NEW
+import { useAuth } from "../hooks/useAuth";
 
 interface ReportFilters {
   category?: string;
   productName?: string;
   status?: string;
+  section?: string; // NEW (sirf superadmin)
+  medium?: string; // NEW (sirf superadmin)
 }
 
 type DateRange = [Dayjs | null, Dayjs | null] | null;
 
-// NEW: logged-in user's section + medium
+// logged-in user's section + medium (ya superadmin ki selected value)
 interface ReportScope {
   section?: string;
   medium?: string;
@@ -39,14 +42,12 @@ const money = (v?: number | null) =>
     ? "-"
     : Number(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-// const statusColor = (s?: string) => (s === "PAID" ? "green" : s === "PENDING" ? "orange" : "default");
-
 // Payload sent to the report API (empty values are skipped, so it stays {} when nothing is selected):
 // {
 //   "productName": "Carrom",
 //   "category": "Physics Lab Equipment",
-//   "section": "Primary",      <- NEW (logged-in user)
-//   "medium": "Marathi",       <- NEW (logged-in user)
+//   "section": "Primary",
+//   "medium": "Marathi",
 //   "range:purchaseDate": { "start": "2026-10-01", "end": "2026-11-04" }
 // }
 const buildPayload = (
@@ -57,8 +58,8 @@ const buildPayload = (
   const payload: SchoolExpenseReportPayload = {};
   if (filters.productName?.trim()) payload.productName = filters.productName.trim();
   if (filters.category) payload.category = filters.category;
-  if (scope.section) payload.section = scope.section; // NEW
-  if (scope.medium) payload.medium = scope.medium; // NEW
+  if (scope.section) payload.section = scope.section;
+  if (scope.medium) payload.medium = scope.medium;
   if (range?.[0] || range?.[1]) {
     payload["range:purchaseDate"] = {
       ...(range?.[0] ? { start: range[0].format("YYYY-MM-DD") } : {}),
@@ -69,7 +70,6 @@ const buildPayload = (
 };
 
 // Safety net, in case the backend ignores some payload keys: the same filters are re-checked here.
-// With a date range selected, only purchases inside it are kept (and products with none are hidden).
 const applyClientFilters = (
   products: SchoolExpenseReportProduct[],
   filters: ReportFilters,
@@ -102,7 +102,7 @@ const applyClientFilters = (
     .filter((p) => !filters.status || reportProductStatus(p.reportDataDTOList || []) === filters.status);
 };
 
-// Switches to the mobile card layout below `breakpoint`px (same idea as Purchase Master)
+// Switches to the mobile card layout below `breakpoint`px
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" ? window.innerWidth < breakpoint : false
@@ -118,25 +118,53 @@ function useIsMobile(breakpoint = 768) {
 export default function SchoolExpensesReport() {
   const isMobile = useIsMobile();
 
-  // NEW: logged-in user's section + medium go in the report payload
+  // logged-in user's section + medium go in the report payload
   // (admin has none -> nothing is sent -> sees everything)
   const { user } = useAuth();
   const mySection = user?.section || "";
   const myMedium = user?.medium || "";
 
-  // DEBUG: user me section/medium aa raha hai ya nahi (kaam hone ke baad hata dena)
-  console.log("Logged-in user section/medium:", { section: user?.section, medium: user?.medium, user });
+  // NEW: superadmin check
+  const normalizedRole = String(user?.role || "").toUpperCase().replace(/[^A-Z]/g, "");
+  const isSuperAdmin =
+    normalizedRole === "SUPERADMIN" ||
+    (normalizedRole === "ADMIN" && !mySection && !myMedium);
 
-  const scope = useMemo<ReportScope>(() => {
+  // always holds the latest auth values, so Search / Reset / Export never use a stale value
+  const authRef = useRef({ isSuperAdmin, mySection, myMedium });
+  authRef.current = { isSuperAdmin, mySection, myMedium };
+
+  // NEW: superadmin -> dropdown ki value (khali ho to apna), baaki -> apna section/medium
+  const scopeFor = (filters: ReportFilters): ReportScope => {
+    const a = authRef.current;
+    const section = a.isSuperAdmin ? filters.section || a.mySection : a.mySection;
+    const medium = a.isSuperAdmin ? filters.medium || a.myMedium : a.myMedium;
     const p: ReportScope = {};
-    if (mySection) p.section = mySection;
-    if (myMedium) p.medium = myMedium;
+    if (section) p.section = section;
+    if (medium) p.medium = medium;
     return p;
-  }, [mySection, myMedium]);
+  };
 
-  // always holds the latest scope, so Search / Reset / Export never use a stale value
-  const scopeRef = useRef<ReportScope>(scope);
-  scopeRef.current = scope;
+  // used only to reload the list when the user loads after login
+  const scope = useMemo(
+    () => ({ mySection, myMedium, isSuperAdmin }),
+    [mySection, myMedium, isSuperAdmin]
+  );
+
+  // NEW: Section / Medium dropdown options (sirf superadmin ke liye load hote hain)
+  const [sectionOptions, setSectionOptions] = useState<{ label: string; value: string }[]>([]);
+  const [mediumOptions, setMediumOptions] = useState<{ label: string; value: string }[]>([]);
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    getAllStaticData()
+      .then((res) => {
+        if (res?.success) {
+          setSectionOptions((res.data["class name"] || []).map((v: string) => ({ label: v, value: v })));
+          setMediumOptions((res.data.medium || []).map((v: string) => ({ label: v, value: v })));
+        }
+      })
+      .catch((e) => console.error("Failed to load static data", e));
+  }, [isSuperAdmin]);
 
   const [allProducts, setAllProducts] = useState<SchoolExpenseReportProduct[]>([]);
   const [tableLoading, setTableLoading] = useState(false);
@@ -151,8 +179,7 @@ export default function SchoolExpensesReport() {
   const [dateRange, setDateRange] = useState<DateRange>(null);
   const [appliedRange, setAppliedRange] = useState<DateRange>(null);
 
-  // Category dropdown options. Kept in their own state (and only ever added to), because after a
-  // filtered search the API returns fewer products and the list would otherwise shrink.
+  // Category dropdown options. Kept in their own state (and only ever added to)
   const [categories, setCategories] = useState<string[]>([]);
 
   // Export report
@@ -174,9 +201,9 @@ export default function SchoolExpensesReport() {
     async (filters: ReportFilters, range: DateRange) => {
       setTableLoading(true);
       try {
-        // NEW: scope (section + medium) goes in the payload
+        // scope (section + medium) goes in the payload
         const list = await getAllSchoolExpensesReportData(
-          buildPayload(filters, range, scopeRef.current)
+          buildPayload(filters, range, scopeFor(filters))
         );
         rememberCategories(list);
         setAllProducts(list);
@@ -188,11 +215,11 @@ export default function SchoolExpensesReport() {
         setTableLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
-  // first load + whenever the user's section/medium changes (user loads after login)
-  // -> reloads with the latest scope, keeping the currently applied filters
+  // first load + whenever the user's section/medium/role changes (user loads after login)
   useEffect(() => {
     fetchExpenses(appliedFilters, appliedRange);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -247,7 +274,6 @@ export default function SchoolExpensesReport() {
   };
 
   // ---------- EXPORT REPORT -> calls the report API again with the payload, then builds the PDF ----------
-  // Uses whatever is selected/typed in the search bar right now.
   const handleExportReport = async () => {
     if (rangeIsIncomplete(dateRange)) {
       message.warning("Please select both From date and To date");
@@ -256,9 +282,8 @@ export default function SchoolExpensesReport() {
 
     setExporting(true);
     try {
-      // NEW: scope (section + medium) goes in the payload
       const fetched = await getAllSchoolExpensesReportData(
-        buildPayload(searchFilters, dateRange, scopeRef.current)
+        buildPayload(searchFilters, dateRange, scopeFor(searchFilters))
       );
       rememberCategories(fetched);
       const products = applyClientFilters(fetched, searchFilters, dateRange);
@@ -321,14 +346,6 @@ export default function SchoolExpensesReport() {
       key: "total",
       render: (_: any, r: SchoolExpenseReportProduct) => `₹ ${money(sumReport(r.reportDataDTOList || [], "total"))}`,
     },
-    // {
-    //   title: "Status",
-    //   key: "status",
-    //   render: (_: any, r: SchoolExpenseReportProduct) => {
-    //     const st = reportProductStatus(r.reportDataDTOList || []);
-    //     return <Tag color={statusColor(st)}>{st}</Tag>;
-    //   },
-    // },
   ];
 
   return (
@@ -358,6 +375,32 @@ export default function SchoolExpensesReport() {
           />
         </Col>
 
+        {/* NEW: sirf SUPERADMIN ko dikhenge */}
+        {isSuperAdmin && (
+          <>
+            <Col xs={24} sm={12} md={4}>
+              <Select
+                placeholder="Section"
+                value={searchFilters.section}
+                onChange={(value) => handleFilterChange("section", value)}
+                style={{ width: "100%" }}
+                allowClear
+                options={sectionOptions}
+              />
+            </Col>
+            <Col xs={24} sm={12} md={4}>
+              <Select
+                placeholder="Medium"
+                value={searchFilters.medium}
+                onChange={(value) => handleFilterChange("medium", value)}
+                style={{ width: "100%" }}
+                allowClear
+                options={mediumOptions}
+              />
+            </Col>
+          </>
+        )}
+
         {/* From date -> To date (purchase date), sent to the backend */}
         <Col xs={24} sm={12} md={7}>
           <DatePicker.RangePicker
@@ -370,7 +413,7 @@ export default function SchoolExpensesReport() {
           />
         </Col>
 
-        <Col xs={24} sm={12} md={7}>
+        <Col xs={24} sm={12} md={isSuperAdmin ? 24 : 7}>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
             <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
               Search
@@ -499,7 +542,6 @@ export default function SchoolExpensesReport() {
         centered={!isMobile}
         destroyOnHidden
         footer={[
-          // Phones (esp. iPhone) show only page 1 inside an iframe, so give a way to open the full PDF
           isMobile && (
             <Button key="open" icon={<ExportOutlined />} onClick={() => reportUrl && window.open(reportUrl, "_blank")}>
               Open

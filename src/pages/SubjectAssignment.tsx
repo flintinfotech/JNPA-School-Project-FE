@@ -353,8 +353,8 @@ const SubjectAssignment: React.FC = () => {
       {/* Search Bar */}
       <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
         {/* Section filter */}
-        <Col xs={24} sm={12} md={5}>
-          <Select
+        {/* <Col xs={24} sm={12} md={5}>
+          {/* <Select
             placeholder="Section"
             value={searchFilters.section || undefined}
             onChange={(value) => handleFilterChange("section", value || "")}
@@ -366,8 +366,8 @@ const SubjectAssignment: React.FC = () => {
                 {s}
               </Option>
             ))}
-          </Select>
-        </Col>
+          </Select> */}
+        {/* </Col> */} 
 
         <Col xs={24} sm={12} md={5}>
           <Select
@@ -401,7 +401,7 @@ const SubjectAssignment: React.FC = () => {
           </Select>
         </Col>
 
-        <Col xs={24} sm={12} md={5}>
+        {/* <Col xs={24} sm={12} md={5}>
           <Select
             placeholder="Medium"
             value={searchFilters.medium || undefined}
@@ -415,7 +415,7 @@ const SubjectAssignment: React.FC = () => {
               </Option>
             ))}
           </Select>
-        </Col>
+        </Col> */}
 
         <Col xs={24} sm={24} md={5}>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>

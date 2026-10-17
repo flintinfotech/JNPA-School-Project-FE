@@ -57,17 +57,19 @@ export function useAuth() {
         // Save Token
         localStorage.setItem("token", response.data.token);
 
-        // 🛠️ Section / Medium / Standard / Division of the logged-in user.
+        // Section / Medium / Standard / Division / Role of the logged-in user.
         // Many screens send them in their list payloads. If the login response does not
         // carry them, read them from the user's own record (same API the Edit User form uses),
         // so they are always saved in localStorage "user".
         let userDTO: any = response.data.userDTO;
-        if (userDTO?.userId && (!userDTO.section || !userDTO.medium)) {
+        // 👈 CHANGED: !userDTO.role bhi check hota hai
+        if (userDTO?.userId && (!userDTO.section || !userDTO.medium || !userDTO.role)) {
           try {
             const detail = await getUserById(userDTO.userId);
             if (detail?.success && detail.data) {
               userDTO = {
                 ...userDTO,
+                role: userDTO.role || detail.data.role || null,
                 section: userDTO.section || detail.data.section || null,
                 medium: userDTO.medium || detail.data.medium || null,
                 standard: userDTO.standard || detail.data.standard || null,
@@ -80,18 +82,12 @@ export function useAuth() {
         }
 
         // Save Username
-        localStorage.setItem(
-          "username",
-          userDTO?.userName || username
-        );
+        localStorage.setItem("username", userDTO?.userName || username);
 
         // Save User Details
-        localStorage.setItem(
-          "user",
-          JSON.stringify(userDTO)
-        );
+        localStorage.setItem("user", JSON.stringify(userDTO));
 
-        // 🛠️ FIX — Parent login couldn't see screens like "Student
+        // FIX — Parent login couldn't see screens like "Student
         // Homework" even though the backend was actually sending them.
         //
         // Root cause: this branch used to hard-overwrite "screens" with a
@@ -109,16 +105,10 @@ export function useAuth() {
         // both parents and staff/admin logins. isParent is still saved
         // separately for route-guard purposes elsewhere in the app.
         localStorage.setItem("isParent", isParent ? "true" : "false");
-        localStorage.setItem(
-          "screens",
-          JSON.stringify(userDTO?.screens || [])
-        );
+        localStorage.setItem("screens", JSON.stringify(userDTO?.screens || []));
 
         // Optional: Save Academic Year
-        localStorage.setItem(
-          "academicYear",
-          JSON.stringify(academicYear)
-        );
+        localStorage.setItem("academicYear", JSON.stringify(academicYear));
 
         setAuth({
           isAuthenticated: true,
@@ -131,10 +121,7 @@ export function useAuth() {
 
       return response.message || "Login failed.";
     } catch (error: any) {
-      return (
-        error?.response?.data?.message ||
-        "Invalid username or password."
-      );
+      return error?.response?.data?.message || "Invalid username or password.";
     }
   };
 
