@@ -152,6 +152,11 @@ const onlyDigits = (v?: string) =>
 export default function VendorMaster() {
   const [form] = Form.useForm<VendorFormValues>();
 
+  // Bank Name / Account Number / IFSC are mandatory ONLY when the payment type is Bank Transfer.
+  // For Cash (or any other type) they are optional (still validated if the user types them).
+  const watchedPaymentType = Form.useWatch("paymentType", form);
+  const isBankTransfer = watchedPaymentType === "BANK_TRANSFER";
+
   // ---------- responsive (mobile) ----------
   const screens = Grid.useBreakpoint();
   const isMobile = screens.md === false; // below 768px
@@ -577,7 +582,7 @@ export default function VendorMaster() {
 
   return (
     <Card
-      title="Vendor Master"
+      
       extra={
         <Button type="primary" icon={<PlusOutlined />} onClick={openAddDrawer}>
           {isMobile ? "Add" : "Add Vendor"}
@@ -727,7 +732,13 @@ export default function VendorMaster() {
                 <Form.Item
                   label="Bank Name"
                   name="bankName"
-                  rules={[{ required: true, whitespace: true, message: "Enter bank name" }]}
+                  rules={[
+                    {
+                      required: isBankTransfer,
+                      whitespace: true,
+                      message: "Enter bank name",
+                    },
+                  ]}
                 >
                   <Input placeholder="Bank Name" maxLength={100} />
                 </Form.Item>
@@ -739,7 +750,20 @@ export default function VendorMaster() {
                   name="paymentType"
                   rules={[{ required: true, message: "Select payment type" }]}
                 >
-                  <Select placeholder="Payment Type" options={paymentTypeOptions} />
+                  <Select
+                    placeholder="Payment Type"
+                    options={paymentTypeOptions}
+                    onChange={(value) => {
+                      // not Bank Transfer -> remove the old "required" error messages
+                      if (value !== "BANK_TRANSFER") {
+                        form.setFields([
+                          { name: "bankName", errors: [] },
+                          { name: "accountNumber", errors: [] },
+                          { name: "ifscCode", errors: [] },
+                        ]);
+                      }
+                    }}
+                  />
                 </Form.Item>
               </Col>
 
@@ -749,7 +773,7 @@ export default function VendorMaster() {
                   name="accountNumber"
                   normalize={onlyDigits}
                   rules={[
-                    { required: true, message: "Enter account number" },
+                    { required: isBankTransfer, message: "Enter account number" },
                     { pattern: ACCOUNT_REGEX, message: "Enter a valid account number (9-18 digits)" },
                   ]}
                 >
@@ -763,7 +787,7 @@ export default function VendorMaster() {
                   name="ifscCode"
                   normalize={toUpper}
                   rules={[
-                    { required: true, message: "Enter IFSC code" },
+                    { required: isBankTransfer, message: "Enter IFSC code" },
                     { pattern: IFSC_REGEX, message: "Enter a valid IFSC (e.g. HDFC0001234)" },
                   ]}
                 >
