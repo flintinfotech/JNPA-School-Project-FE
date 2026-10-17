@@ -335,6 +335,8 @@ getSchoolExpensesReportData: (page: number, size: number) =>
 getStudentFeeReportData: (page: number, size: number) =>
   `/jnpa-school-project/studentFee/getStudentFeeReportData?page=${page}&size=${size}&desc&paginate=true`,
 
+checkSchoolExpenseIsPresent: (orderNo: string | number) =>
+  `/jnpa-school-project/schoolExpenses/checkSchoolExpenseIsPresent/${orderNo}`,
 
 
 //Request Approval 
