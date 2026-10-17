@@ -219,7 +219,7 @@ export default function StudentTable({
                   </Popconfirm>
                 </div>
               </div>
-            ))}
+            ))} 
 
           <div className="flex items-center justify-between pt-2">
             <span className="text-xs text-gray-500">Total: {pagination.total}</span>
