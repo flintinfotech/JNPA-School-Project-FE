@@ -29,7 +29,6 @@ import dayjs, { type Dayjs } from "dayjs";
 import CommonTable from "../components/commonTable";
 import api from "../lib/axios";
 import { apiEndpoints } from "../services/apiEndpoints";
-import { fetchAllPages, getTotalFromResponse } from "../utils/fetchAllPages";
 import { useAuth } from "../hooks/useAuth";
 // School Expense APIs: list (getAllSchoolExpensesByFilter), edit (getSchoolExpensesById), save (updateSchoolExpenses)
 import {
@@ -263,15 +262,8 @@ export default function SchoolExpenses() {
   const fetchPurchases = useCallback(async () => {
     setPurchaseLoading(true);
     try {
-      // every request is size 10: first page, then the remaining pages, joined into one list
-      const list = await fetchAllPages<any>(async (p, s) => {
-        const res = await api.post(apiEndpoints.getAllPurchaseByFilter(p, s), scopePayload);
-        return {
-          list: res.data?.success === false ? [] : extractPurchaseList(res),
-          total: getTotalFromResponse(res),
-        };
-      });
-      setPurchases(list);
+      const res = await api.post(apiEndpoints.getAllPurchaseByFilter(0, 100), scopePayload);
+      setPurchases(res.data?.success === false ? [] : extractPurchaseList(res));
     } catch (error: any) {
       message.error(
         error?.response?.data?.message || "Failed to load products",
@@ -291,15 +283,8 @@ export default function SchoolExpenses() {
   const fetchVendors = useCallback(async () => {
     setVendorLoading(true);
     try {
-      // every request is size 10: first page, then the remaining pages, joined into one list
-      const list = await fetchAllPages<any>(async (p, s) => {
-        const res = await api.post(apiEndpoints.getAllVendorMasterByFilter(p, s), {});
-        return {
-          list: res.data?.success === false ? [] : extractVendorList(res),
-          total: getTotalFromResponse(res),
-        };
-      });
-      setVendors(list);
+      const res = await api.post(apiEndpoints.getAllVendorMasterByFilter(0, 100), {});
+      setVendors(res.data?.success === false ? [] : extractVendorList(res));
     } catch (error: any) {
       message.error(
         error?.response?.data?.message || "Failed to load vendors",
@@ -424,7 +409,7 @@ export default function SchoolExpenses() {
           d.vendorMasterDTO?.vendorMasterId ??
           d.vendorMaster?.vendorMasterId ??
           undefined,
-        orderNumber: d.orderNumber,
+        orderNumber: d.orderNumber ?? record.orderNumber,
         quantity,
         price,
         total: totalValue,
@@ -549,6 +534,12 @@ export default function SchoolExpenses() {
         page * pageSize + index + 1,
     },
     {
+      title: "Order Number",
+      dataIndex: "orderNumber",
+      key: "orderNumber",
+      render: (v: string | number) => v ?? "-",
+    },
+    {
       title: "Product Name",
       dataIndex: "productName",
       key: "productName",
@@ -558,12 +549,6 @@ export default function SchoolExpenses() {
       title: "Category",
       dataIndex: "category",
       key: "category",
-      render: (v: string) => v || "-",
-    },
-    {
-      title: "Product Code",
-      dataIndex: "productCode",
-      key: "productCode",
       render: (v: string) => v || "-",
     },
     {
@@ -676,8 +661,8 @@ export default function SchoolExpenses() {
             }
             extra={r.status ? statusTag(r.status) : null}
           >
+            {cardRow("Order Number", r.orderNumber != null ? String(r.orderNumber) : "-")}
             {cardRow("Category", r.category)}
-            {cardRow("Product Code", r.productCode)}
             {cardRow("Price", money(r.price))}
             {cardRow("Quantity", r.quantity != null ? String(r.quantity) : "-")}
             {cardRow("Total", money(r.total))}
@@ -849,6 +834,16 @@ export default function SchoolExpenses() {
                 </Select>
               </Form.Item>
 
+              {/* Order Number — comes from the backend, disabled (dark text so it stays readable) */}
+              <ConfigProvider theme={{ token: { colorTextDisabled: "#1f1f1f" } }}>
+                <Form.Item
+                  label={<span style={{ fontWeight: 600 }}>Order Number</span>}
+                  name="orderNumber"
+                >
+                  <Input size="large" disabled placeholder="Order Number" />
+                </Form.Item>
+              </ConfigProvider>
+
               <Form.Item
                 label={<span style={{ fontWeight: 600 }}>Product Name</span>}
                 name="productKey"
@@ -867,12 +862,9 @@ export default function SchoolExpenses() {
                     <Option
                       key={productKey(purchase)}
                       value={productKey(purchase)}
-                      label={`${purchase.productName ?? ""} ${purchase.productCode ?? ""}`}
+                      label={`${purchase.productName ?? ""}`}
                     >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span>{purchase.productName}</span>
-                        <span style={{ color: "#9ca3af", fontSize: 12, marginLeft: 8 }}>{purchase.productCode}</span>
-                      </div>
+                      <span>{purchase.productName}</span>
                     </Option>
                   ))}
                 </Select>
@@ -922,10 +914,6 @@ export default function SchoolExpenses() {
                     <div style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.5 }}>Category</div>
                     <div style={{ fontWeight: 600, color: "#1e3a8a" }}>{selectedPurchase.category || "-"}</div>
                   </div>
-                  <div style={{ flex: "1 1 120px" }}>
-                    <div style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.5 }}>Product Code</div>
-                    <div style={{ fontWeight: 600, color: "#1e3a8a" }}>{selectedPurchase.productCode || "-"}</div>
-                  </div>
                 </div>
               )}
             </Card>
@@ -947,16 +935,6 @@ export default function SchoolExpenses() {
                 </span>
                 <span style={{ fontWeight: 700, fontSize: 15, color: "#111827" }}>Billing Details</span>
               </div>
-
-              {/* Order Number — comes from the backend, disabled (dark text so it stays readable) */}
-              <ConfigProvider theme={{ token: { colorTextDisabled: "#1f1f1f" } }}>
-                <Form.Item
-                  label={<span style={{ fontWeight: 600 }}>Order Number</span>}
-                  name="orderNumber"
-                >
-                  <Input size="large" disabled placeholder="Order Number" />
-                </Form.Item>
-              </ConfigProvider>
 
               {/* Quantity + Price */}
               <Row gutter={12}>
@@ -1069,7 +1047,7 @@ export default function SchoolExpenses() {
             </Card>
 
             <div style={{ fontSize: 12, color: "#9ca3af", lineHeight: 1.6, marginTop: 14, textAlign: "center" }}>
-              Select a product to auto-fill its category and product code. Quantity and Price
+              Select a product to auto-fill its category. Quantity and Price
               automatically calculate the Total.
             </div>
           </Form>

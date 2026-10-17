@@ -241,6 +241,8 @@ export default function RequestApproval() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [drawerLoading, setDrawerLoading] = useState(false);
+  // order number whose "expense already added" check is running (Edit button loader)
+  const [checkingOrder, setCheckingOrder] = useState<string | number | null>(null);
   // the approved request that is being edited (its academic year is reused in the expense)
   const [editingRecord, setEditingRecord] = useState<RequestApprovalRow | null>(null);
   const [selectedPurchase, setSelectedPurchase] = useState<PurchaseRow | null>(null);
@@ -435,11 +437,50 @@ export default function RequestApproval() {
     setDocumentFileList([]);
   };
 
+  // ---------- CHECK: can the school expense be added for this order? ----------
+  // GET /jnpa-school-project/schoolExpenses/checkSchoolExpenseIsPresent/{orderNo}
+  // true  -> drawer opens (expense can be added)
+  // false -> expense already added, drawer does NOT open
+  const checkExpenseIsPresent = async (
+    orderNo: string | number,
+  ): Promise<boolean> => {
+    const res = await api.get(apiEndpoints.checkSchoolExpenseIsPresent(orderNo));
+    const body = res.data;
+    const value =
+      typeof body === "boolean" ? body : (body?.data ?? body?.Data ?? false);
+    return value === true || value === "true";
+  };
+
   // ---------- DRAWER ----------
   // Edit (on an approved request) opens the School Expense form,
   // with the product and quantity of that request already filled.
   const openEditDrawer = async (record: RequestApprovalRow) => {
     if (record.requestApprovalId === undefined) return;
+
+    if (record.orderNumber === undefined || record.orderNumber === null) {
+      message.error("Order number not found for this request");
+      return;
+    }
+
+    // 1) first check: true -> open drawer, false -> expense already added
+    setCheckingOrder(record.orderNumber);
+    try {
+      const isPresent = await checkExpenseIsPresent(record.orderNumber);
+      if (!isPresent) {
+        message.warning("School expense already added for this order");
+        return; // drawer does not open
+      }
+    } catch (error: any) {
+      // backend sent an error (ex. expense already exists) -> show it, drawer does not open
+      message.error(
+        error?.response?.data?.message || "School expense already added for this order",
+      );
+      return;
+    } finally {
+      setCheckingOrder(null);
+    }
+
+    // 2) true -> open the drawer
     setDrawerOpen(true);
     setDrawerLoading(true);
     handleDocumentRemove(); // fresh document for every Edit
@@ -689,6 +730,8 @@ export default function RequestApproval() {
             type="primary"
             size="small"
             icon={<EditOutlined />}
+            loading={checkingOrder === record.orderNumber}
+            disabled={checkingOrder !== null}
             onClick={() => openEditDrawer(record)}
           />
         </div>
@@ -777,6 +820,8 @@ export default function RequestApproval() {
               <Button
                 type="primary"
                 icon={<EditOutlined />}
+                loading={checkingOrder === r.orderNumber}
+                disabled={checkingOrder !== null}
                 onClick={() => openEditDrawer(r)}
                 style={{ flex: 1 }}
               >
@@ -1174,8 +1219,14 @@ export default function RequestApproval() {
               automatically calculate the Total.
             </div>
           </Form>
+
+          
         </Spin>
+
+
       </Drawer>
+
     </Card>
+    
   );
 }

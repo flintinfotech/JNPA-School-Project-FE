@@ -96,6 +96,7 @@ interface ClassSubjectGroup {
   standard: string;
   division: string;
   medium: string;
+  section: string;
   subjects: SubjectDTO[];
 }
 
@@ -106,6 +107,7 @@ interface HomeworkRecord {
   standard: string;
   division: string;
   medium: string;
+  section?: string | null;
   academicYear: string;
   homeworkDate: string;
   remark: string | null;
@@ -118,13 +120,26 @@ const parseClassMasterKey = (key: string) => {
   const idMatch = key.match(/classMasterId=([^,]+)/);
   const standardMatch = key.match(/standard=([^,]+)/);
   const divisionMatch = key.match(/division=([^,]+)/);
-  const mediumMatch = key.match(/medium=([^)]+)/);
+  const mediumMatch = key.match(/medium=([^,)]+)/);
+  const sectionMatch = key.match(/section=([^,)]+)/);
 
   return {
     classMasterId: idMatch ? idMatch[1].trim() : "-",
     standard: standardMatch ? standardMatch[1].trim() : "-",
     division: divisionMatch ? divisionMatch[1].trim() : "-",
     medium: mediumMatch ? mediumMatch[1].trim() : "-",
+    section: sectionMatch ? sectionMatch[1].trim() : "",
+  };
+};
+
+// Old homework records were saved with medium = "English, section=Secondary".
+// This splits such a value into a clean medium and section.
+const splitMedium = (raw?: string | null) => {
+  const value = raw || "";
+  const sectionMatch = value.match(/section=([^,)]+)/);
+  return {
+    medium: value.split(",")[0].trim(),
+    section: sectionMatch ? sectionMatch[1].trim() : "",
   };
 };
 
@@ -305,7 +320,7 @@ const [selectedSalary, setSelectedSalary] = useState<EmployeeSalaryDTO | null>(n
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [viewLoading, setViewLoading] = useState(false);
   const [viewContext, setViewContext] = useState<
-    { subject: string; standard: string; division: string; medium: string } | null
+    { subject: string; standard: string; division: string; medium: string; section: string } | null
   >(null);
   const [homeworkList, setHomeworkList] = useState<HomeworkRecord[]>([]);
 
@@ -380,6 +395,7 @@ const [selectedSalary, setSelectedSalary] = useState<EmployeeSalaryDTO | null>(n
     standard: string;
     division: string;
     medium: string;
+    section: string;
   }) => {
     setViewLoading(true);
     try {
@@ -405,7 +421,7 @@ const [selectedSalary, setSelectedSalary] = useState<EmployeeSalaryDTO | null>(n
           item.subject === context.subject &&
           item.standard === context.standard &&
           item.division === context.division &&
-          item.medium === context.medium
+          splitMedium(item.medium).medium === context.medium
       );
 
       setHomeworkList(filtered);
@@ -426,6 +442,7 @@ const [selectedSalary, setSelectedSalary] = useState<EmployeeSalaryDTO | null>(n
       standard: group.standard,
       division: group.division,
       medium: group.medium,
+      section: group.section,
     };
     setViewContext(context);
     setViewModalOpen(true);
@@ -460,6 +477,7 @@ const closeSalaryDetail = () => {
       standard: group.standard,
       division: group.division,
       medium: group.medium,
+      section: group.section,
       academicYear: getCurrentAcademicYear(),
       homeworkDate: null,
       remark: "",
@@ -480,12 +498,16 @@ const closeSalaryDetail = () => {
       setFilePreview(null);
     }
 
+    // old records can have "English, section=Secondary" in medium -> split it
+    const cleanedMedium = splitMedium(record.medium);
+
     homeworkForm.resetFields();
     homeworkForm.setFieldsValue({
       subject: record.subject,
       standard: record.standard,
       division: record.division,
-      medium: record.medium,
+      medium: cleanedMedium.medium,
+      section: record.section || cleanedMedium.section || viewContext?.section || "",
       // Academic Year is always shown as the current login year (same rule
       // as the Add flow), not whatever was stored on the old record.
       academicYear: getCurrentAcademicYear() || record.academicYear,
@@ -544,6 +566,7 @@ const closeSalaryDetail = () => {
           standard: values.standard,
           division: values.division,
           medium: values.medium,
+          section: values.section,
           academicYear: values.academicYear,
           homeworkDate: values.homeworkDate ? values.homeworkDate.format("YYYY-MM-DD") : null,
           remark: values.remark ? values.remark : null,
@@ -746,6 +769,10 @@ const closeSalaryDetail = () => {
                     <span className="font-medium text-gray-600">Medium: </span>
                     {group.medium}
                   </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Section: </span>
+                    {group.section || "-"}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -944,6 +971,9 @@ const salaryTab = (
                 <Input disabled />
               </Form.Item>
               <Form.Item label="Medium" name="medium">
+                <Input disabled />
+              </Form.Item>
+              <Form.Item label="Section" name="section">
                 <Input disabled />
               </Form.Item>
             </div>
