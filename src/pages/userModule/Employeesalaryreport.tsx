@@ -35,8 +35,6 @@ import dayjs, { type Dayjs } from "dayjs";
 import jsPDF from "jspdf"; // npm install jspdf jspdf-autotable
 import autoTable from "jspdf-autotable";
 import {
-  // getAllEmployeeDetailsByFilter,  <- NOT used any more: the list is called directly below
-  //                                    so section + medium always go in the payload
   getEmployeeDetailsById,
   type UserDTO,
   type UserSearchFilters,
@@ -49,16 +47,15 @@ import {
   type EmployeeSalaryDTO,
 } from "../../services/employeeSalaryService";
 import { getAllStaticData } from "../../services/staticDataService";
-import CommonTable from "../../components/commonTable"; // same table component as Purchase Master (change path if needed)
-import { useAuth } from "../../hooks/useAuth"; // NEW
+import CommonTable from "../../components/commonTable";
+import { useAuth } from "../../hooks/useAuth";
 
-// Use the SAME two imports your other services use (only the paths may need a change)
-import axiosInstance from "../../lib/axios"; // your axios instance
-import { apiEndpoints } from "../../services/apiEndpoints"; // the file that contains apiEndpoints
+import axiosInstance from "../../lib/axios";
+import { apiEndpoints } from "../../services/apiEndpoints";
 
 type EmployeeRow = UserDTO;
-// search bar filters = existing filters + department
-type SearchFilters = UserSearchFilters & { department?: string };
+// search bar filters = existing filters + department + section + medium (section/medium sirf superadmin)
+type SearchFilters = UserSearchFilters & { department?: string; section?: string; medium?: string };
 type MonthRange = [Dayjs | null, Dayjs | null] | null;
 
 // ---------- helpers ----------
@@ -117,7 +114,7 @@ interface SalaryReportRow {
 
 interface SalaryReportEmployee {
   designation: string;
-  department?: string; // <-- if your backend uses another key name, change it here and in the PDF below
+  department?: string;
   firstName: string;
   lastName: string;
   middleName?: string;
@@ -152,10 +149,7 @@ const reportName = (e: SalaryReportEmployee) =>
 const sumOf = (rows: any[], key: string) => rows.reduce((acc, r) => acc + num(r?.[key]), 0);
 
 // POST employeeDetails/getEmployeeSalaryReportData?page=&size=&paginate=true
-// The backend returns the employees, so we read ALL pages and then
-// apply the search bar (role / first name / last name) AND the month range (From - To)
-// here in the browser, using salaryDate of every salary row.
-// NEW: scope = { section?, medium? } of the logged-in user, also goes in the payload.
+// scope = { section?, medium? } (logged-in user ka, ya superadmin ki selected value) bhi payload me jaata hai.
 const fetchSalaryReport = async (
   filters: SearchFilters,
   monthRange: MonthRange,
@@ -166,9 +160,6 @@ const fetchSalaryReport = async (
   let totalCount = 0;
   const all: SalaryReportEmployee[] = [];
 
-  // Payload: selected dates go to the backend (YYYY-MM-DD).
-  // If your backend uses different key names, change "fromDate" / "toDate" below.
-  // Empty values are NOT sent, so the body stays {} when nothing is selected.
   const payload: Record<string, string> = {};
   if (monthRange?.[0]) payload.fromDate = monthRange[0].format("YYYY-MM-DD");
   if (monthRange?.[1]) payload.toDate = monthRange[1].format("YYYY-MM-DD");
@@ -176,7 +167,6 @@ const fetchSalaryReport = async (
   if (filters.role) payload.role = filters.role;
   if (filters.firstName?.trim()) payload.firstName = filters.firstName.trim();
   if (filters.lastName?.trim()) payload.lastName = filters.lastName.trim();
-  // NEW: logged-in user's section + medium
   if (scope.section) payload.section = scope.section;
   if (scope.medium) payload.medium = scope.medium;
 
@@ -207,8 +197,7 @@ const fetchSalaryReport = async (
       (!last || (e.lastName || "").toLowerCase().includes(last))
   );
 
-  // Date range filter (safety net, in case the backend ignores fromDate / toDate):
-  // from the start of the "From" day to the end of the "To" day
+  // Date range filter (safety net, in case the backend ignores fromDate / toDate)
   const from = monthRange?.[0] ? monthRange[0].startOf("day") : null;
   const to = monthRange?.[1] ? monthRange[1].endOf("day") : null;
 
@@ -226,8 +215,7 @@ const fetchSalaryReport = async (
   }));
 };
 
-// Builds the report in the same layout as the reference "Party Outstanding" PDF
-// and returns it as a Blob (shown in a preview popup, can be downloaded from there).
+// Builds the report PDF and returns it as a Blob
 const buildSalaryReportPdf = (
   employees: SalaryReportEmployee[],
   fromDate: Dayjs,
@@ -239,7 +227,7 @@ const buildSalaryReportPdf = (
   const pageHeight = doc.internal.pageSize.getHeight();
   const centerX = pageWidth / 2;
 
-  // ----- header (first page only, same style as the reference PDF) -----
+  // ----- header (first page only) -----
   let y = 14;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
@@ -291,14 +279,12 @@ const buildSalaryReportPdf = (
     allRows.push(...rows);
     const hasSalary = rows.length > 0;
 
-    // keep one employee block together on a page
     const estimatedHeight = ((hasSalary ? 3 : 2) + rows.length + 2) * 6.5 + 6;
     if (cursorY + estimatedHeight > pageHeight - PDF_MARGIN.bottom) {
       doc.addPage();
       cursorY = PDF_MARGIN.top;
     }
 
-    // Employee info rows (+ column titles only when the employee has salary — empty ones stay blank)
     const head: any[] = [
       [
         { content: `Employee Name: ${reportName(emp)}`, colSpan: 4, styles: { halign: "left" } },
@@ -326,7 +312,6 @@ const buildSalaryReportPdf = (
 
     const totalNet = sumOf(rows, "netSalary");
 
-    // Total row (0.00 when there is no salary)
     body.push([
       { content: "Total", styles: bold },
       { content: fix2(sumOf(rows, "basicSalary")), styles: bold },
@@ -338,7 +323,6 @@ const buildSalaryReportPdf = (
       { content: fix2(totalNet), styles: bold },
     ]);
 
-    // closing line, right aligned
     body.push([
       {
         content: `Total Net Salary: ${fix2(totalNet)}`,
@@ -449,14 +433,26 @@ const buildSalaryReportPdf = (
 /* ===================================================================== */
 
 export default function EmployeeSalary() {
-  // NEW: logged-in user's section + medium go in the payload of the employee list
+  // logged-in user's section + medium go in the payload of the employee list
   // and the salary report API (admin has none -> nothing is sent -> sees everything)
   const { user } = useAuth();
   const mySection = user?.section || "";
   const myMedium = user?.medium || "";
-  const scope: Record<string, string> = {
-    ...(mySection ? { section: mySection } : {}),
-    ...(myMedium ? { medium: myMedium } : {}),
+
+  // NEW: superadmin check
+  const normalizedRole = String(user?.role || "").toUpperCase().replace(/[^A-Z]/g, "");
+  const isSuperAdmin =
+    normalizedRole === "SUPERADMIN" ||
+    (normalizedRole === "ADMIN" && !mySection && !myMedium);
+
+  // NEW: superadmin -> dropdown ki value (khali ho to apna), baaki -> apna section/medium
+  const scopeFor = (filters?: SearchFilters): Record<string, string> => {
+    const section = isSuperAdmin ? filters?.section || mySection : mySection;
+    const medium = isSuperAdmin ? filters?.medium || myMedium : myMedium;
+    return {
+      ...(section ? { section } : {}),
+      ...(medium ? { medium } : {}),
+    };
   };
 
   // ---------- responsive (mobile) ----------
@@ -471,9 +467,9 @@ export default function EmployeeSalary() {
 
   // Edit drawer
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [savingIndex, setSavingIndex] = useState<number | null>(null); // which card is being saved
-  const [submitting, setSubmitting] = useState(false); // bottom Save/Update button
-  const snapshotRef = useRef<Record<number, string>>({}); // saved values, to detect changes
+  const [savingIndex, setSavingIndex] = useState<number | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const snapshotRef = useRef<Record<number, string>>({});
   const [activeEmployee, setActiveEmployee] = useState<{ id: number; name: string } | null>(null);
   const [form] = Form.useForm();
 
@@ -494,10 +490,27 @@ export default function EmployeeSalary() {
     lastName: "",
     role: "",
     department: "",
+    section: "", // NEW
+    medium: "", // NEW
   });
 
-  // Month range filter (From month -> To month), used by Export Report
+  // Month range filter (From -> To), used by Export Report
   const [monthRange, setMonthRange] = useState<MonthRange>(null);
+
+  // NEW: Section / Medium dropdown options (sirf superadmin ke liye load hote hain)
+  const [sectionOptions, setSectionOptions] = useState<{ label: string; value: string }[]>([]);
+  const [mediumOptions, setMediumOptions] = useState<{ label: string; value: string }[]>([]);
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    getAllStaticData()
+      .then((res) => {
+        if (res?.success) {
+          setSectionOptions((res.data["class name"] || []).map((v: string) => ({ label: v, value: v })));
+          setMediumOptions((res.data.medium || []).map((v: string) => ({ label: v, value: v })));
+        }
+      })
+      .catch((e) => console.error("Failed to load static data", e));
+  }, [isSuperAdmin]);
 
   // Role dropdown (fetched on first click, not on mount)
   const [roleOptions, setRoleOptions] = useState<{ label: string; value: string }[]>([]);
@@ -530,8 +543,6 @@ export default function EmployeeSalary() {
   const [deptLoading, setDeptLoading] = useState(false);
   const [deptFetched, setDeptFetched] = useState(false);
 
-  // finds the department list inside the static-data response, whatever the key is called
-  // (department / departments / departmentList ...) and whether items are strings or objects
   const extractDepartments = (data: any): string[] => {
     if (!data || typeof data !== "object") return [];
     const key = Object.keys(data).find((k) => k.toLowerCase().includes("department"));
@@ -563,7 +574,7 @@ export default function EmployeeSalary() {
         const emps = await fetchSalaryReport(
           { firstName: "", lastName: "", role: "" } as SearchFilters,
           null,
-          scope // NEW
+          scopeFor(searchFilters)
         );
         list = emps.map((e) => e.department || "").filter(Boolean);
       }
@@ -575,7 +586,7 @@ export default function EmployeeSalary() {
         x.localeCompare(y)
       );
       setDeptOptions(unique.map((d) => ({ label: d, value: d })));
-      if (unique.length) setDeptFetched(true); // if empty, try again on the next open
+      if (unique.length) setDeptFetched(true);
       else message.warning("No departments found");
     } catch (error: any) {
       message.error(error?.response?.data?.message || error?.message || "Failed to load departments");
@@ -586,7 +597,7 @@ export default function EmployeeSalary() {
 
   // ---------- EMPLOYEE LIST (same API as Employee Details) ----------
   // POST employeeDetails/getAllEmployeeDetailsByFilter?page=&size=&paginate=true
-  // payload: firstName / lastName / role / department (search bar) + section / medium (logged-in user)
+  // payload: firstName / lastName / role / department (search bar) + section / medium
   const fetchUsers = useCallback(
     async (pageNum: number, size: number, filters?: SearchFilters) => {
       setTableLoading(true);
@@ -596,9 +607,10 @@ export default function EmployeeSalary() {
         if (filters?.lastName?.trim()) payload.lastName = filters.lastName.trim();
         if (filters?.role) payload.role = filters.role;
         if (filters?.department) payload.department = filters.department;
-        // NEW: logged-in user's section + medium
-        if (mySection) payload.section = mySection;
-        if (myMedium) payload.medium = myMedium;
+        // CHANGED: superadmin ke liye dropdown ki value, baaki sabke liye apna section/medium
+        const sc = scopeFor(filters);
+        if (sc.section) payload.section = sc.section;
+        if (sc.medium) payload.medium = sc.medium;
 
         const res = await axiosInstance.post(apiEndpoints.getAllemployeeDetails(pageNum, size), payload);
         const response = res.data;
@@ -615,8 +627,9 @@ export default function EmployeeSalary() {
         setTableLoading(false);
       }
     },
-    // rebuilt when the user's section/medium changes -> list reloads
-    [mySection, myMedium]
+    // rebuilt when the user's section/medium/role changes -> list reloads
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mySection, myMedium, isSuperAdmin]
   );
 
   useEffect(() => {
@@ -642,7 +655,14 @@ export default function EmployeeSalary() {
   };
 
   const handleResetFilters = () => {
-    const cleared: SearchFilters = { firstName: "", lastName: "", role: "", department: "" };
+    const cleared: SearchFilters = {
+      firstName: "",
+      lastName: "",
+      role: "",
+      department: "",
+      section: "",
+      medium: "",
+    };
     setSearchFilters(cleared);
     setMonthRange(null);
     setPage(0);
@@ -650,10 +670,7 @@ export default function EmployeeSalary() {
   };
 
   // ---------- EXPORT REPORT ----------
-  // Uses whatever is selected/typed in the search bar + the month range:
-  // Role = Teacher -> only teachers, From = Jun 2026 & To = Aug 2026 -> salaries of Jun, Jul, Aug only.
   const handleExportReport = async () => {
-    // both months must be chosen together (or none)
     const hasFrom = !!monthRange?.[0];
     const hasTo = !!monthRange?.[1];
     if (hasFrom !== hasTo) {
@@ -663,20 +680,19 @@ export default function EmployeeSalary() {
 
     setExporting(true);
     try {
-      const employees = await fetchSalaryReport(searchFilters, monthRange, scope); // NEW: scope
+      const employees = await fetchSalaryReport(searchFilters, monthRange, scopeFor(searchFilters));
 
       if (!employees.length) {
         message.warning("No data found for the selected filters");
         return;
       }
 
-      // when a month range is selected, at least one salary must exist inside it
       if (hasFrom && employees.every((e) => (e.reportDataDTOList || []).length === 0)) {
         message.warning("No salary found in the selected dates");
         return;
       }
 
-      // Report period: selected months, otherwise current academic year (1 Apr – 31 Mar)
+      // Report period: selected dates, otherwise current academic year (1 Apr – 31 Mar)
       let fromDate: Dayjs;
       let toDate: Dayjs;
       if (hasFrom && hasTo) {
@@ -727,7 +743,6 @@ export default function EmployeeSalary() {
 
   // ---------- salary helpers ----------
 
-  // Prefer the employeeDetailsId on the row, else look it up through userId.
   const resolveEmployeeDetailsId = async (record: EmployeeRow): Promise<number | null> => {
     let id = (record as any).employeeDetailsId;
     if (!id && record.userId) {
@@ -745,7 +760,6 @@ export default function EmployeeSalary() {
     return id;
   };
 
-  // All salary records of one employee (list API, all pages)
   const fetchSalaryList = async (employeeDetailsId: number): Promise<EmployeeSalaryDTO[]> => {
     try {
       return await getSalariesByEmployeeDetailsId(employeeDetailsId);
@@ -789,14 +803,13 @@ export default function EmployeeSalary() {
     setViewEmployee(null);
   };
 
-  // Deletes ONLY the clicked record (DELETE .../deleteEmployeeSalary/{employeeSalaryId})
   const handleDeleteFromView = async (salary: EmployeeSalaryDTO) => {
     if (!viewEmployee || !salary.employeeSalaryId) return;
     try {
       const res = await deleteEmployeeSalary(salary.employeeSalaryId);
       if (res.success) {
         message.success(res.message);
-        setViewSalaries(await fetchSalaryList(viewEmployee.id)); // reload real data
+        setViewSalaries(await fetchSalaryList(viewEmployee.id));
       } else {
         message.error(res.message || "Failed to delete salary");
       }
@@ -821,7 +834,6 @@ export default function EmployeeSalary() {
 
     form.resetFields();
     form.setFieldsValue({
-      // no salary yet -> one blank entry ready to fill
       salaries: rows.length ? rows : [newRow()],
     });
     setDrawerOpen(true);
@@ -835,8 +847,6 @@ export default function EmployeeSalary() {
     setSubmitting(false);
   };
 
-  // Sends ONE card to the server: POST if it is new, PUT if it already has an id.
-  // Returns the API response (or null when it failed).
   const persistRow = async (index: number) => {
     if (!activeEmployee) return null;
     const s = form.getFieldValue(["salaries", index]);
@@ -853,17 +863,14 @@ export default function EmployeeSalary() {
     };
 
     const response = s.employeeSalaryId
-      ? // PUT employeeSalary/updateEmployeeSalary
-        await updateEmployeeSalary({ employeeSalaryId: s.employeeSalaryId, ...common })
-      : // POST employeeSalary/saveEmployeeSalary
-        await saveEmployeeSalary({ employeeDetailsId: activeEmployee.id, ...common });
+      ? await updateEmployeeSalary({ employeeSalaryId: s.employeeSalaryId, ...common })
+      : await saveEmployeeSalary({ employeeDetailsId: activeEmployee.id, ...common });
 
     if (!response.success) {
       message.error(response.message || "Failed to save salary");
       return null;
     }
 
-    // refresh this card with the saved data (a new card now gets its employeeSalaryId)
     if (response.data) {
       const saved = toFormRow(response.data);
       form.setFieldValue(["salaries", index], saved);
@@ -872,7 +879,6 @@ export default function EmployeeSalary() {
     return response;
   };
 
-  // Update / Save icon on a card -> ONLY this card
   const handleSaveCard = async (index: number) => {
     try {
       await form.validateFields([
@@ -894,7 +900,6 @@ export default function EmployeeSalary() {
     }
   };
 
-  // Bottom Save / Update button -> new cards are saved, only CHANGED old cards are updated
   const handleSaveAll = async () => {
     try {
       await form.validateFields();
@@ -921,7 +926,7 @@ export default function EmployeeSalary() {
     try {
       for (const { i } of pending) {
         const response = await persistRow(i);
-        if (!response) return; // error already shown, keep the drawer open
+        if (!response) return;
       }
       message.success("Employee salary saved successfully");
       closeDrawer();
@@ -932,18 +937,15 @@ export default function EmployeeSalary() {
     }
   };
 
-  // Delete ONLY this one card
   const handleDeleteCard = async (index: number, remove: (i: number) => void) => {
     const row = form.getFieldValue(["salaries", index]);
 
-    // Not saved yet -> just drop it from the form, no API call
     if (!row?.employeeSalaryId) {
       remove(index);
       return;
     }
 
     try {
-      // DELETE employeeSalary/deleteEmployeeSalary/{employeeSalaryId}
       const res = await deleteEmployeeSalary(row.employeeSalaryId);
       if (res.success) {
         message.success(res.message);
@@ -956,7 +958,7 @@ export default function EmployeeSalary() {
     }
   };
 
-  // ---------- TABLE COLUMNS (Email removed, Department added) ----------
+  // ---------- TABLE COLUMNS ----------
   const columns = [
     {
       title: "Employee Code",
@@ -1019,7 +1021,6 @@ export default function EmployeeSalary() {
     </div>
   );
 
-  // ---------- MOBILE: all employees as cards (no View / Edit buttons, same as desktop) ----------
   const renderEmployeeCards = () => (
     <Spin spinning={tableLoading}>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1110,6 +1111,32 @@ export default function EmployeeSalary() {
           />
         </Col>
 
+        {/* NEW: sirf SUPERADMIN ko dikhenge */}
+        {isSuperAdmin && (
+          <>
+            <Col xs={24} sm={12} md={4}>
+              <Select
+                placeholder="Section"
+                value={searchFilters.section || undefined}
+                onChange={(value) => handleFilterChange("section", value || "")}
+                style={{ width: "100%" }}
+                allowClear
+                options={sectionOptions}
+              />
+            </Col>
+            <Col xs={24} sm={12} md={4}>
+              <Select
+                placeholder="Medium"
+                value={searchFilters.medium || undefined}
+                onChange={(value) => handleFilterChange("medium", value || "")}
+                style={{ width: "100%" }}
+                allowClear
+                options={mediumOptions}
+              />
+            </Col>
+          </>
+        )}
+
         {/* From date -> To date (sent to backend + used by Export Report) */}
         <Col xs={24} sm={12} md={7}>
           <DatePicker.RangePicker
@@ -1166,10 +1193,8 @@ export default function EmployeeSalary() {
       {!tableLoading && users.length === 0 ? (
         <Empty description="No employees found" style={{ padding: "40px 0" }} />
       ) : isMobile ? (
-        // MOBILE: employees in card view
         renderEmployeeCards()
       ) : (
-        // DESKTOP: same table as before
         <div style={{ width: "100%", overflowX: "auto" }}>
           <CommonTable
             data={users}
@@ -1198,7 +1223,6 @@ export default function EmployeeSalary() {
         destroyOnClose
         footer={
           isMobile ? (
-            // MOBILE: Open in new tab full width, Download + Close side by side
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               <Button block onClick={openReportInNewTab} style={{ flex: "1 1 100%", margin: 0 }}>
                 Open in new tab
@@ -1300,7 +1324,6 @@ export default function EmployeeSalary() {
                             style={{ width: "100%" }}
                             format="DD-MM-YYYY"
                             onChange={(d) => {
-                              // keep academic year in sync for entries that are not saved yet
                               const saved = form.getFieldValue(["salaries", name, "employeeSalaryId"]);
                               if (!saved && d) {
                                 form.setFieldValue(["salaries", name, "academicYear"], getAcademicYear(d));
@@ -1367,7 +1390,6 @@ export default function EmployeeSalary() {
                   </Card>
                 ))}
 
-                {/* New salary entry */}
                 <Button
                   type="dashed"
                   block

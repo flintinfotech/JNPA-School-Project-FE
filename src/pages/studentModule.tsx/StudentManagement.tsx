@@ -16,6 +16,10 @@ interface StudentSearchFilters {
   gender?: string;
   category?: string;
   status?: string;
+  standard?: string;
+  division?: string;
+  section?: string; // sirf superadmin
+  medium?: string; // sirf superadmin
 }
 
 export default function StudentManagement() {
@@ -33,6 +37,20 @@ export default function StudentManagement() {
   const { user: loggedInUser } = useAuth();
   const mySection = loggedInUser?.section || undefined;
   const myMedium = loggedInUser?.medium || undefined;
+
+  // 🔍 DEBUG: role check karne ke baad ye line hata dena
+  console.log("LOGGED IN USER:", loggedInUser);
+
+  // 👈 CHANGED: SUPERADMIN role ho, YA Admin role ho jisko apna section/medium set nahi hai
+  // (aise admin ko sab data dikhta hai, wahi superadmin hai)
+  const normalizedRole = String(loggedInUser?.role || "")
+    .toUpperCase()
+    .replace(/[^A-Z]/g, "");
+
+  const isSuperAdmin =
+    normalizedRole === "SUPERADMIN" ||
+    (normalizedRole === "ADMIN" && !mySection && !myMedium);
+
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
   const [staticData, setStaticData] = useState<StaticDataResponse | null>(null);
@@ -49,6 +67,10 @@ export default function StudentManagement() {
     gender: "",
     category: "",
     status: "",
+    standard: "",
+    division: "",
+    section: "",
+    medium: "",
   });
 
   useEffect(() => {
@@ -77,8 +99,11 @@ export default function StudentManagement() {
           gender: filters?.gender || undefined,
           category: filters?.category || undefined,
           status: filters?.status || undefined,
-          section: mySection,
-          medium: myMedium,
+          standard: filters?.standard || undefined,
+          division: filters?.division || undefined,
+          // superadmin ke liye dropdown ki value, baaki sabke liye apna section/medium
+          section: isSuperAdmin ? filters?.section || mySection : mySection,
+          medium: isSuperAdmin ? filters?.medium || myMedium : myMedium,
         });
         if (response.success) {
           setStudents(response.data.Data);
@@ -92,7 +117,7 @@ export default function StudentManagement() {
         setTableLoading(false);
       }
     },
-    [mySection, myMedium]
+    [mySection, myMedium, isSuperAdmin]
   );
 
   useEffect(() => {
@@ -116,6 +141,10 @@ export default function StudentManagement() {
       gender: "",
       category: "",
       status: "",
+      standard: "",
+      division: "",
+      section: "",
+      medium: "",
     };
     setSearchFilters(cleared);
     setPage(0);
@@ -143,7 +172,7 @@ export default function StudentManagement() {
       const s: StudentDTO = response.data;
       setEditingStudent(s);
       form.setFieldsValue({
-        ...s, // 👈 studentCode (and every other field) comes along automatically
+        ...s, // studentCode (and every other field) comes along automatically
         dob: s.DOB ? dayjs(s.DOB) : null,
         parentDTO: s.parentDTO || {},
         studentDocuments: (s.studentDocuments || []).map((d) => ({
@@ -172,21 +201,53 @@ export default function StudentManagement() {
     setCredsData(null);
   };
 
-  const handleCopy = async (value: string | undefined, label: string) => {
-    if (!value) return;
-    try {
+ 
+const handleCopy = async (value: string | undefined, label: string) => {
+  if (!value) {
+    message.warning(`${label} is not available`);
+    return;
+  }
+
+  try {
+    // First try the modern Clipboard API
+    if (navigator.clipboard && window.isSecureContext) {
       await navigator.clipboard.writeText(value);
-      message.success(`${label} copied to clipboard`);
-    } catch (err) {
-      message.error(`Failed to copy ${label.toLowerCase()}`);
+    } else {
+      // Fallback for HTTP / non-secure contexts
+      const textarea = document.createElement("textarea");
+      textarea.value = value;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      textarea.style.top = "0";
+
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+
+      const copied = document.execCommand("copy");
+      document.body.removeChild(textarea);
+
+      if (!copied) {
+        throw new Error("Copy command failed");
+      }
     }
-  };
+
+    message.success(`${label} copied to clipboard`);
+  } catch (error) {
+    console.error("Clipboard copy failed:", error);
+    message.error(
+      `Could not copy ${label}. Please select and copy it manually.`
+    );
+  }
+};
+
 
   const handleFormSubmit = async (values: any) => {
     setSubmitting(true);
     try {
       if (editingStudent) {
-        // 👇 BUG FIX: the Student edit form has no Form.Item for fee data
+        // BUG FIX: the Student edit form has no Form.Item for fee data
         // (studentFeeDTOS etc.) — or for studentResultDTOS/studentAchievementsDTOS —
         // so `values` from validateFields() never contains them. Sending
         // `values` alone to the update API dropped those fields from the
@@ -263,7 +324,7 @@ export default function StudentManagement() {
       </div>
 
       {/* Search Bar */}
-      <Row gutter={[12, 12]} style={{ padding: "16px 0" }}>
+      <Row gutter={[12, 12]} style={{ padding: "16px 0 0" }}>
         <Col xs={24} sm={12} md={6} lg={4}>
           <Input
             placeholder="First Name"
@@ -334,6 +395,79 @@ export default function StudentManagement() {
           </div>
         </Col>
       </Row>
+
+      {/* Standard + Division filters (staticData se) + Section + Medium (sirf superadmin) */}
+      <Row gutter={[12, 12]} style={{ padding: "12px 0 16px" }}>
+        <Col xs={24} sm={12} md={6} lg={4}>
+          <Select
+            placeholder="Standard"
+            value={searchFilters.standard || undefined}
+            onChange={(value) => handleFilterChange("standard", value || "")}
+            style={{ width: "100%" }}
+            allowClear
+          >
+            {staticData?.standard?.map((std) => (
+              <Option key={std} value={std}>
+                {std}
+              </Option>
+            ))}
+          </Select>
+        </Col>
+
+        <Col xs={24} sm={12} md={6} lg={4}>
+          <Select
+            placeholder="Division"
+            value={searchFilters.division || undefined}
+            onChange={(value) => handleFilterChange("division", value || "")}
+            style={{ width: "100%" }}
+            allowClear
+          >
+            {staticData?.division?.map((div) => (
+              <Option key={div} value={div}>
+                {div}
+              </Option>
+            ))}
+          </Select>
+        </Col>
+
+        {/* sirf SUPERADMIN ko dikhenge */}
+        {isSuperAdmin && (
+          <>
+            <Col xs={24} sm={12} md={6} lg={4}>
+              <Select
+                placeholder="Section"
+                value={searchFilters.section || undefined}
+                onChange={(value) => handleFilterChange("section", value || "")}
+                style={{ width: "100%" }}
+                allowClear
+              >
+                {staticData?.["class name"]?.map((sec) => (
+                  <Option key={sec} value={sec}>
+                    {sec}
+                  </Option>
+                ))}
+              </Select>
+            </Col>
+
+            <Col xs={24} sm={12} md={6} lg={4}>
+              <Select
+                placeholder="Medium"
+                value={searchFilters.medium || undefined}
+                onChange={(value) => handleFilterChange("medium", value || "")}
+                style={{ width: "100%" }}
+                allowClear
+              >
+                {staticData?.medium?.map((med) => (
+                  <Option key={med} value={med}>
+                    {med}
+                  </Option>
+                ))}
+              </Select>
+            </Col>
+          </>
+        )}
+      </Row>
+
       <StudentTable
         data={students}
         loading={tableLoading}
@@ -368,47 +502,56 @@ export default function StudentManagement() {
 
       {/* Login Credentials popup — shown after a successful save
           when the backend returns a generated userName + password */}
-      <Modal
-        title="Login Credentials"
-        open={credsModalOpen}
-        onCancel={closeCredsModal}
-        footer={[
-          <Button key="ok" type="primary" onClick={closeCredsModal}>
-            OK
-          </Button>,
-        ]}
-        width={400}
-        destroyOnClose
-      >
-        <Form layout="vertical">
-          <Form.Item label="User Name">
-            <Input
-              value={credsData?.userName}
-              disabled
-              styles={{ input: { color: "#000", WebkitTextFillColor: "#000" } }}
-              suffix={
-                <CopyOutlined
-                  style={{ color: "#1677ff", cursor: "pointer" }}
-                  onClick={() => handleCopy(credsData?.userName, "User Name")}
-                />
-              }
-            />
-          </Form.Item>
-          <Form.Item label="Password">
-            <Input
-              value={credsData?.password}
-              disabled
-              styles={{ input: { color: "#000", WebkitTextFillColor: "#000" } }}
-              suffix={
-                <CopyOutlined
-                  style={{ color: "#1677ff", cursor: "pointer" }}
-                  onClick={() => handleCopy(credsData?.password, "Password")}
-                />
-              }
-            />
-          </Form.Item>
-        </Form>
-      </Modal>
+    
+<Modal
+  title="Login Credentials"
+  open={credsModalOpen}
+  onCancel={closeCredsModal}
+  footer={[
+    <Button key="ok" type="primary" onClick={closeCredsModal}>
+      OK
+    </Button>,
+  ]}
+  width={400}
+  destroyOnClose
+>
+  <Form layout="vertical">
+    <Form.Item label="User Name">
+      <Input
+        value={credsData?.userName ?? ""}
+        readOnly
+        suffix={
+          <Button
+            type="text"
+            icon={<CopyOutlined />}
+            title="Copy username"
+            onClick={() =>
+              handleCopy(credsData?.userName, "User Name")
+            }
+          />
+        }
+      />
+    </Form.Item>
+
+    <Form.Item label="Password">
+      <Input
+        value={credsData?.password ?? ""}
+        readOnly
+        suffix={
+          <Button
+            type="text"
+            icon={<CopyOutlined />}
+            title="Copy password"
+            onClick={() =>
+              handleCopy(credsData?.password, "Password")
+            }
+          />
+        }
+      />
+    </Form.Item>
+  </Form>
+</Modal>
+
     </div>
   );
 }

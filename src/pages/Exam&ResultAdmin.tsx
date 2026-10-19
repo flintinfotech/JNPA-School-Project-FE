@@ -737,7 +737,7 @@ function ExamSection({
                             name={[field.name, "section"]}
                             rules={[{ required: true, message: "Section required" }]}
                           >
-                            <Input placeholder="e.g. A" />
+                            <Input placeholder="Standard" />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -746,7 +746,7 @@ function ExamSection({
                             name={[field.name, "std"]}
                             rules={[{ required: true, message: "Standard required" }]}
                           >
-                            <Input placeholder="e.g. 10" />
+                            <Input placeholder="Division" />
                           </Form.Item>
                         </Col>
                       </Row>

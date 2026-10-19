@@ -220,6 +220,7 @@ export const extractFeesFromStudent = (
 
 export interface StudentFilter {
   standard?: string;
+  division?: string;
   section?: string;
   medium?: string;
   admissionNo?: number;

@@ -273,33 +273,62 @@ export default function UpdateUserProfile() {
     setCredsData(null);
   };
 
-  const handleCopy = async (value: string | undefined, label: string) => {
-    if (!value) return;
-    try {
-      // `navigator.clipboard` only exists in a secure context (HTTPS / localhost).
-      // Fallback uses execCommand('copy') so it also works over plain HTTP.
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(value);
-      } else {
-        const textarea = document.createElement("textarea");
-        textarea.value = value;
-        textarea.style.position = "fixed";
-        textarea.style.left = "-9999px";
-        textarea.style.top = "0";
-        document.body.appendChild(textarea);
-        textarea.focus();
-        textarea.select();
-        const successful = document.execCommand("copy");
-        document.body.removeChild(textarea);
-        if (!successful) {
-          throw new Error("execCommand copy failed");
-        }
-      }
-      message.success(`${label} copied to clipboard`);
-    } catch (err) {
-      message.error(`Failed to copy ${label.toLowerCase()}`);
+ 
+const handleCopy = async (
+  value: string | undefined,
+  label: string
+) => {
+  if (!value) {
+    message.warning(`${label} is empty`);
+    return;
+  }
+
+  try {
+    // Modern browser clipboard API
+    if (navigator.clipboard?.writeText && window.isSecureContext) {
+      await navigator.clipboard.writeText(value);
+      message.success(`${label} copied successfully`);
+      return;
     }
-  };
+
+    // Fallback for browsers where Clipboard API is unavailable
+    const textarea = document.createElement("textarea");
+    textarea.value = value;
+    textarea.setAttribute("readonly", "");
+
+    textarea.style.position = "fixed";
+    textarea.style.top = "0";
+    textarea.style.left = "0";
+    textarea.style.width = "1px";
+    textarea.style.height = "1px";
+    textarea.style.padding = "0";
+    textarea.style.border = "none";
+    textarea.style.outline = "none";
+    textarea.style.boxShadow = "none";
+    textarea.style.background = "transparent";
+
+    document.body.appendChild(textarea);
+
+    textarea.focus();
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+
+    const copied = document.execCommand("copy");
+    document.body.removeChild(textarea);
+
+    if (!copied) {
+      throw new Error("Browser could not copy the text");
+    }
+
+    message.success(`${label} copied successfully`);
+  } catch (error) {
+    console.error("Clipboard copy failed:", error);
+    message.error(
+      `Unable to copy ${label}. Please check browser permissions or use HTTPS.`
+    );
+  }
+};
+
 
   const handleDelete = async () => {
     if (!editingUser?.employeeDetailsId) {
@@ -567,12 +596,23 @@ export default function UpdateUserProfile() {
               value={credsData?.userName}
               disabled
               styles={{ input: { color: "#000", WebkitTextFillColor: "#000" } }}
+              // suffix={
+              //   <CopyOutlined
+              //     style={{ color: "#1677ff", cursor: "pointer" }}
+              //     onClick={() => handleCopy(credsData?.userName, "User Name")}
+              //   />
+              // }
               suffix={
-                <CopyOutlined
-                  style={{ color: "#1677ff", cursor: "pointer" }}
-                  onClick={() => handleCopy(credsData?.userName, "User Name")}
-                />
-              }
+  <Button
+    type="text"
+    icon={<CopyOutlined />}
+    title="Copy username"
+    onClick={() =>
+      handleCopy(credsData?.userName, "User Name")
+    }
+  />
+}
+              
             />
           </Form.Item>
           <Form.Item label="Password">
@@ -580,12 +620,22 @@ export default function UpdateUserProfile() {
               value={credsData?.password}
               disabled
               styles={{ input: { color: "#000", WebkitTextFillColor: "#000" } }}
+              // suffix={
+              //   <CopyOutlined
+              //     style={{ color: "#1677ff", cursor: "pointer" }}
+              //     onClick={() => handleCopy(credsData?.password, "Password")}
+              //   />
+              // }
               suffix={
-                <CopyOutlined
-                  style={{ color: "#1677ff", cursor: "pointer" }}
-                  onClick={() => handleCopy(credsData?.password, "Password")}
-                />
-              }
+  <Button
+    type="text"
+    icon={<CopyOutlined />}
+    title="Copy password"
+    onClick={() =>
+      handleCopy(credsData?.password, "Password")
+    }
+  />
+}
             />
           </Form.Item>
         </Form>
