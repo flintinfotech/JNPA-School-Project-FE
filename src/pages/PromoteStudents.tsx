@@ -26,6 +26,7 @@ import {
   type ResultFilters,
   type ResultStudentDTO,
 } from "../services/Resultservice";
+import { getStudentById } from "../services/studentService";
 import { useAuth } from "../hooks/useAuth";
 
 /* ---------------------------------------------------------------
@@ -86,6 +87,33 @@ const getNextAcademicYear = (): string => {
   const now = new Date();
   const start = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
   return `${start + 1}-${start + 2}`;
+};
+
+// ---------------------------------------------------------------------------
+// Java byte[].toString() looks like "[B@1a2b3c" - it is NOT base64. The backend returns that
+// text for some image fields (profileImg, document ...). When we send it back, the backend tries
+// to base64-decode it and fails with "Illegal base64 character 5b" ('[' = 0x5b).
+// This removes every such value (anywhere in the object) before the promote request.
+// ---------------------------------------------------------------------------
+const stripInvalidBase64 = (value: any, path = "", found: string[] = []): any => {
+  if (typeof value === "string") {
+    if (value.startsWith("[B@")) {
+      found.push(path);
+      return null;
+    }
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((v, i) => stripInvalidBase64(v, `${path}[${i}]`, found));
+  }
+  if (value && typeof value === "object") {
+    const out: Record<string, any> = {};
+    Object.keys(value).forEach((k) => {
+      out[k] = stripInvalidBase64(value[k], path ? `${path}.${k}` : k, found);
+    });
+    return out;
+  }
+  return value;
 };
 
 export default function PromoteStudents() {
@@ -210,27 +238,59 @@ const payload = {
   //   academicYear = next year (2027-2028), standard = the Standard chosen in the card,
   //   division / medium / section / admissionNo / admissionDate = copied from the current row,
   //   rollNo = null, no academicInformationId, auditDetails = null
-  const buildPromotePayload = (student: ResultStudentDTO) => {
-    const full: ResultStudentDTO = student;
-    const current: any = student.academicInformation?.[0] || {};
+  // base   = the FULL student record (getStudentById) - all fields + all academic rows
+  // listRow = the row shown in the table (getAllCurrentYearStudentsData)
+  const buildPromotePayload = (base: any, listRow: ResultStudentDTO) => {
+    const rows: any[] = base.academicInformation || [];
+    const listCurrent: any = listRow.academicInformation?.[0] || {};
+
+    // the student's CURRENT academic row (same year as the table row), else the first row
+    const current: any =
+      rows.find((a) => a.academicYear === listCurrent.academicYear) || rows[0] || listCurrent;
+
+    // admissionNo is NOT NULL in the backend -> take it from the current row, else any row
+    const admissionNo =
+      current.admissionNo ??
+      rows.find((a) => a.admissionNo !== null && a.admissionNo !== undefined)?.admissionNo ??
+      listCurrent.admissionNo ??
+      null;
+    const admissionDate =
+      current.admissionDate ??
+      rows.find((a) => a.admissionDate)?.admissionDate ??
+      listCurrent.admissionDate ??
+      null;
+
     return {
-      ...full,
+      ...base,
+      admissionNo, // student level too (some backends copy it from here)
       academicInformation: [
-        ...(full.academicInformation || []),
+        // old rows: make sure none of them is sent without admissionNo
+        ...rows.map((a) => ({ ...a, admissionNo: a.admissionNo ?? admissionNo })),
         {
           academicYear: targetAcademicYear,
-          admissionDate: current.admissionDate ?? null,
-          admissionNo: current.admissionNo ?? null,
+          admissionDate,
+          admissionNo,
           auditDetails: null,
-          division: current.division ?? null,
-          medium: current.medium ?? null,
-          section: current.section ?? null, // 👇 NEW: keep the section in the new row
+          division: current.division ?? listCurrent.division ?? null,
+          medium: current.medium ?? listCurrent.medium ?? null,
+          section: current.section ?? listCurrent.section ?? null, // keep the section in the new row
           rollNo: null,
           standard: targetStandard,
-          studentId: student.studentId,
+          studentId: listRow.studentId,
         },
       ],
     };
+  };
+
+  // load the full record of one student; if it fails, fall back to the table row
+  const loadFullStudent = async (row: ResultStudentDTO): Promise<any> => {
+    try {
+      const res: any = await getStudentById(row.studentId);
+      const full = res?.data?.studentId ? res.data : res?.studentId ? res : null;
+      return full || row;
+    } catch {
+      return row;
+    }
   };
 
   const handlePromote = async () => {
@@ -256,7 +316,42 @@ const payload = {
 
     setPromoting(true);
     try {
-      const payload = toPromote.map(buildPromotePayload);
+      // 1) full record of every selected student (the table row does not have all the fields)
+      const fullList = await Promise.all(toPromote.map(loadFullStudent));
+
+      // 2) build the payload: full record + ONE new academic row for the next year
+      const built = toPromote.map((row, i) => buildPromotePayload(fullList[i], row));
+
+      // 3) admissionNo is mandatory in the backend -> stop here with a clear message
+      const missing = built
+        .filter((p) => {
+          const newRow = p.academicInformation[p.academicInformation.length - 1];
+          return newRow.admissionNo === null || newRow.admissionNo === undefined || newRow.admissionNo === "";
+        })
+        .map((p: any) => `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim());
+      if (missing.length > 0) {
+        message.error(
+          `Admission No is missing for: ${missing.join(", ")}. Please add it in Students > Edit > Academic Info first.`,
+        );
+        return;
+      }
+
+      // 4) remove Java byte[] text ("[B@...") from image fields
+      const removed: string[] = [];
+      const payload = stripInvalidBase64(built, "", removed);
+      if (removed.length > 0) {
+        console.warn("Promote: removed invalid image values (Java byte[] text) from:", removed);
+      }
+      // DEBUG: copy this from the browser console if the backend rejects the request
+      // (image / document base64 values are replaced so the log stays readable)
+      console.log(
+        "PROMOTE PAYLOAD:",
+        JSON.stringify(
+          payload,
+          (k, v) => (k === "profileImg" || k === "document" ? "<base64 omitted>" : v),
+          2,
+        ),
+      );
       const res = await api.post(apiEndpoints.savePromoteStudents(), payload);
 
       // backend can send "success": false with HTTP 200 -> check before showing success
