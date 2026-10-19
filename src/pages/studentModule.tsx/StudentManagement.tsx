@@ -201,15 +201,47 @@ export default function StudentManagement() {
     setCredsData(null);
   };
 
-  const handleCopy = async (value: string | undefined, label: string) => {
-    if (!value) return;
-    try {
+ 
+const handleCopy = async (value: string | undefined, label: string) => {
+  if (!value) {
+    message.warning(`${label} is not available`);
+    return;
+  }
+
+  try {
+    // First try the modern Clipboard API
+    if (navigator.clipboard && window.isSecureContext) {
       await navigator.clipboard.writeText(value);
-      message.success(`${label} copied to clipboard`);
-    } catch (err) {
-      message.error(`Failed to copy ${label.toLowerCase()}`);
+    } else {
+      // Fallback for HTTP / non-secure contexts
+      const textarea = document.createElement("textarea");
+      textarea.value = value;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      textarea.style.top = "0";
+
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+
+      const copied = document.execCommand("copy");
+      document.body.removeChild(textarea);
+
+      if (!copied) {
+        throw new Error("Copy command failed");
+      }
     }
-  };
+
+    message.success(`${label} copied to clipboard`);
+  } catch (error) {
+    console.error("Clipboard copy failed:", error);
+    message.error(
+      `Could not copy ${label}. Please select and copy it manually.`
+    );
+  }
+};
+
 
   const handleFormSubmit = async (values: any) => {
     setSubmitting(true);
@@ -470,47 +502,56 @@ export default function StudentManagement() {
 
       {/* Login Credentials popup — shown after a successful save
           when the backend returns a generated userName + password */}
-      <Modal
-        title="Login Credentials"
-        open={credsModalOpen}
-        onCancel={closeCredsModal}
-        footer={[
-          <Button key="ok" type="primary" onClick={closeCredsModal}>
-            OK
-          </Button>,
-        ]}
-        width={400}
-        destroyOnClose
-      >
-        <Form layout="vertical">
-          <Form.Item label="User Name">
-            <Input
-              value={credsData?.userName}
-              disabled
-              styles={{ input: { color: "#000", WebkitTextFillColor: "#000" } }}
-              suffix={
-                <CopyOutlined
-                  style={{ color: "#1677ff", cursor: "pointer" }}
-                  onClick={() => handleCopy(credsData?.userName, "User Name")}
-                />
-              }
-            />
-          </Form.Item>
-          <Form.Item label="Password">
-            <Input
-              value={credsData?.password}
-              disabled
-              styles={{ input: { color: "#000", WebkitTextFillColor: "#000" } }}
-              suffix={
-                <CopyOutlined
-                  style={{ color: "#1677ff", cursor: "pointer" }}
-                  onClick={() => handleCopy(credsData?.password, "Password")}
-                />
-              }
-            />
-          </Form.Item>
-        </Form>
-      </Modal>
+    
+<Modal
+  title="Login Credentials"
+  open={credsModalOpen}
+  onCancel={closeCredsModal}
+  footer={[
+    <Button key="ok" type="primary" onClick={closeCredsModal}>
+      OK
+    </Button>,
+  ]}
+  width={400}
+  destroyOnClose
+>
+  <Form layout="vertical">
+    <Form.Item label="User Name">
+      <Input
+        value={credsData?.userName ?? ""}
+        readOnly
+        suffix={
+          <Button
+            type="text"
+            icon={<CopyOutlined />}
+            title="Copy username"
+            onClick={() =>
+              handleCopy(credsData?.userName, "User Name")
+            }
+          />
+        }
+      />
+    </Form.Item>
+
+    <Form.Item label="Password">
+      <Input
+        value={credsData?.password ?? ""}
+        readOnly
+        suffix={
+          <Button
+            type="text"
+            icon={<CopyOutlined />}
+            title="Copy password"
+            onClick={() =>
+              handleCopy(credsData?.password, "Password")
+            }
+          />
+        }
+      />
+    </Form.Item>
+  </Form>
+</Modal>
+
     </div>
   );
 }
