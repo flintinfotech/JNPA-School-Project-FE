@@ -331,52 +331,56 @@ const [selectedSalary, setSelectedSalary] = useState<EmployeeSalaryDTO | null>(n
       return;
     }
 
-    const parsedUser: LoggedInUser = JSON.parse(storedUser);
-    setLoggedInUser(parsedUser);
+   const parsedUser: LoggedInUser = JSON.parse(storedUser);
+setLoggedInUser(parsedUser);
 
-    const isTeacher = parsedUser.role?.toLowerCase() === "teacher";
+const role = parsedUser.role?.toLowerCase();
+const isTeacher = role === "teacher";
+// Principal ani Accountant la fakt Account + Salary tab, tyamule employee details lagtat
+const isSalaryRole = role === "principal" || role === "accountant";
 
-    if (!isTeacher) {
-      setLoading(false);
-      return;
+if (!isTeacher && !isSalaryRole) {
+  setLoading(false);
+  return;
+}
+
+const loadTeacherProfile = async () => {
+  try {
+    setLoading(true);
+
+    // Step 1: employee details (salary sathi employeeDetailsId pan yethunach yeto)
+    const infoResponse: any = await getEmployeeDetailsById(parsedUser.userId);
+    const info: TeacherInformation = infoResponse?.data || infoResponse;
+    setTeacherInfo(info);
+
+    // Step 2: subjects fakt teacher sathi
+    if (isTeacher && info?.employeeDetailsId) {
+      const subjectsResponse = await getSubjectsByEmployeeDetailsId(
+        info.employeeDetailsId
+      );
+
+      const data = subjectsResponse.data?.data || {};
+
+      const groups: ClassSubjectGroup[] = Object.keys(data).map((key) => {
+        const parsed = parseClassMasterKey(key);
+        return {
+          ...parsed,
+          subjects: data[key] || [],
+        };
+      });
+
+      setClassGroups(groups);
     }
+  } catch (error) {
+    console.log(error);
+    // Principal / Accountant la error toast nako, tyancha Account tab tari chalto
+    if (isTeacher) message.error("Unable to load profile details");
+  } finally {
+    setLoading(false);
+  }
+};
 
-    const loadTeacherProfile = async () => {
-      try {
-        setLoading(true);
-
-        // Step 1: get this teacher's userInformation (personal + teaching details + documents)
-        const infoResponse: any = await getEmployeeDetailsById(parsedUser.userId);
-        const info: TeacherInformation = infoResponse?.data || infoResponse;
-        setTeacherInfo(info);
-
-        // Step 2: get subjects assigned to this teacher, grouped by class
-        if (info?.employeeDetailsId) {
-          const subjectsResponse = await getSubjectsByEmployeeDetailsId(
-            info.employeeDetailsId
-          );
-
-          const data = subjectsResponse.data?.data || {};
-
-          const groups: ClassSubjectGroup[] = Object.keys(data).map((key) => {
-            const parsed = parseClassMasterKey(key);
-            return {
-              ...parsed,
-              subjects: data[key] || [],
-            };
-          });
-
-          setClassGroups(groups);
-        }
-      } catch (error) {
-        console.log(error);
-        message.error("Unable to load profile details");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadTeacherProfile();
+loadTeacherProfile();
   }, []);
 
   useEffect(() => {
@@ -652,6 +656,7 @@ const closeSalaryDetail = () => {
 
   const isTeacher = loggedInUser.role?.toLowerCase() === "teacher";
   const isPrincipal = loggedInUser.role?.toLowerCase() === "principal";
+  const isAccountant = loggedInUser.role?.toLowerCase() === "accountant";
   const fullName = [teacherInfo?.firstName, teacherInfo?.middleName, teacherInfo?.lastName]
     .filter(Boolean)
     .join(" ");
@@ -862,21 +867,23 @@ const salaryTab = (
   </TabPanel>
 );
   const items = isTeacher
+  ? [
+      { key: "account", label: "Account Details", children: accountTab },
+      { key: "teaching", label: "Teaching Details", children: teachingTab },
+      { key: "documents", label: "Documents", children: documentsTab },
+      { key: "classes", label: "Assigned Classes & Subjects", children: classesTab },
+      { key: "salary", label: "Salary", children: salaryTab },
+    ]
+  : isPrincipal || isAccountant
     ? [
         { key: "account", label: "Account Details", children: accountTab },
-        { key: "teaching", label: "Teaching Details", children: teachingTab },
-        { key: "documents", label: "Documents", children: documentsTab },
-        { key: "classes", label: "Assigned Classes & Subjects", children: classesTab },
-        { key: "salary", label:"Salary",children: salaryTab},
+        { key: "salary", label: "Salary", children: salaryTab },
       ]
     : [{ key: "account", label: "Account Details", children: accountTab }];
 
   return (
     <div className="profile-page p-4 md:p-6 max-w-4xl mx-auto">
-      {/* 👇 Same override used in ResultDrawer.tsx — keeps disabled
-          Input / Select / DatePicker / InputNumber fields dark & readable
-          instead of Ant Design's default faded/gray look. Scoped to
-          `.profile-page` so it doesn't leak elsewhere. */}
+    
       <style>{`
         .profile-page .ant-input[disabled],
         .profile-page .ant-input-disabled,

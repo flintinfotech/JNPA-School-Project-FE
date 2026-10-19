@@ -804,8 +804,9 @@ export default function RequestApproval() {
                 loading={submitting}
                 disabled={drawerLoading}
                 onClick={() => form.submit()}
+                
               >
-                Save
+                {editingId ? "Update" : "Save"} 
               </Button>
             )}
           </div>

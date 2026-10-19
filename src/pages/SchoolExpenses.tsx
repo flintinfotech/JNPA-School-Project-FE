@@ -12,16 +12,22 @@ import {
   Input,
   InputNumber,
   Pagination,
+  Popconfirm,
   Row,
   Select,
   Spin,
   Tag,
+  Upload,
   message,
+  type UploadFile,
 } from "antd";
 import {
+  DeleteOutlined,
   EditOutlined,
+  EyeOutlined,
   ProfileOutlined,
   ShoppingOutlined,
+  UploadOutlined,
   WalletOutlined,
 } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
@@ -104,6 +110,51 @@ const prettify = (v?: string) =>
 const getAcademicYear = (d: Dayjs = dayjs()) => {
   const y = d.year();
   return d.month() >= 3 ? `${y}-${y + 1}` : `${y - 1}-${y}`;
+};
+
+// ============================================================
+// DOCUMENT UPLOAD
+// ============================================================
+const DOCUMENT_ACCEPT = ".pdf,.png,.jpg,.jpeg,.doc,.docx";
+const MAX_DOCUMENT_MB = 5;
+
+// File -> base64 (without "data:...;base64," prefix)
+const readFileAsBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      resolve(result.includes(",") ? result.split(",")[1] : result);
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+
+// base64 chya suruvativer file type olkhto
+const guessMime = (b64: string) => {
+  if (b64.startsWith("JVBER")) return "application/pdf";
+  if (b64.startsWith("/9j/")) return "image/jpeg";
+  if (b64.startsWith("iVBOR")) return "image/png";
+  if (b64.startsWith("UEsDB"))
+    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  if (b64.startsWith("0M8R4")) return "application/msword";
+  return "application/octet-stream";
+};
+
+// backend ne dilela document navya tab madhe ughadto
+const openExistingDocument = (doc: string) => {
+  try {
+    // backend ne URL dila tar direct ughad
+    if (/^(https?:)?\/\//i.test(doc)) {
+      window.open(doc, "_blank");
+      return;
+    }
+    const bytes = Uint8Array.from(atob(doc), (c) => c.charCodeAt(0));
+    const blob = new Blob([bytes], { type: guessMime(doc) });
+    window.open(URL.createObjectURL(blob), "_blank");
+  } catch {
+    message.error("Could not open the document");
+  }
 };
 
 // The Product Name dropdown value (productCode, or purchaseId when there is no code)
@@ -214,6 +265,12 @@ export default function SchoolExpenses() {
   // the approved request that is being edited (its academic year is reused in the expense)
   const [editingRecord, setEditingRecord] = useState<ExpenseRow | null>(null);
   const [selectedPurchase, setSelectedPurchase] = useState<PurchaseRow | null>(null);
+  // Document: navin nivadlela file (base64) + backend kadun alela junा document
+  const [documentFileList, setDocumentFileList] = useState<UploadFile[]>([]);
+  const [documentBase64, setDocumentBase64] = useState("");
+  const [existingDocument, setExistingDocument] = useState<string | null>(null);
+  // user ne junा document delete kela ka (update vel backend la kalvayla)
+  const [documentRemoved, setDocumentRemoved] = useState(false);
   const [drawerWidth, setDrawerWidth] = useState<number | string>(
     window.innerWidth < 768 ? "100%" : 480,
   );
@@ -359,6 +416,41 @@ export default function SchoolExpenses() {
     form.setFieldsValue({ pendingAmount: Math.max(totalValue - paid, 0) });
   };
 
+  // ---------- DOCUMENT HANDLERS ----------
+  const handleDocumentBeforeUpload = async (file: File) => {
+    if (file.size > MAX_DOCUMENT_MB * 1024 * 1024) {
+      message.error(`Document must be smaller than ${MAX_DOCUMENT_MB} MB`);
+      return Upload.LIST_IGNORE;
+    }
+    try {
+      setDocumentBase64(await readFileAsBase64(file));
+      setDocumentFileList([
+        {
+          uid: `${Date.now()}`,
+          name: file.name,
+          status: "done",
+          url: URL.createObjectURL(file), // click kelyavar navin tab madhe ughadto
+        } as UploadFile,
+      ]);
+      setDocumentRemoved(false);
+    } catch {
+      message.error("Failed to read the document");
+    }
+    return false; // server var upload hou nye
+  };
+
+  // navin nivadlela file kadhun taka
+  const handleDocumentRemove = () => {
+    setDocumentBase64("");
+    setDocumentFileList([]);
+  };
+
+  // backend kadun alela junा document kadhun taka
+  const handleExistingDocumentDelete = () => {
+    setExistingDocument(null);
+    setDocumentRemoved(true);
+  };
+
   // ---------- DRAWER ----------
   // Edit click -> GET schoolExpenses/getSchoolExpenses/{schoolExpenseId}
   // and the form is filled with that expense.
@@ -375,6 +467,10 @@ export default function SchoolExpenses() {
       }
       const d: ExpenseRow = (res?.data ?? record) as ExpenseRow;
       setEditingRecord(d);
+      console.log("EXPENSE BY ID RESPONSE:", d); // backend cha document key tapasaayla (nantar kadhun taka)
+      handleDocumentRemove();
+      setDocumentRemoved(false);
+      setExistingDocument((d.document as string) || null);
 
       // find the same product in Purchase Master (by product code / id, else by category + name)
       let purchase: PurchaseRow | null =
@@ -430,6 +526,9 @@ export default function SchoolExpenses() {
     setDrawerOpen(false);
     setEditingRecord(null);
     setSelectedPurchase(null);
+    handleDocumentRemove();
+    setExistingDocument(null);
+    setDocumentRemoved(false);
     form.resetFields();
   };
 
@@ -491,8 +590,18 @@ export default function SchoolExpenses() {
           orderNumber: values.orderNumber ?? editingRecord.orderNumber,
           purchaseId,
           vendorMasterId: Number(values.vendorMasterId),
+          ...(documentBase64
+            ? { document: documentBase64 } // navin file
+            : existingDocument
+              ? { document: existingDocument } // junaa tasach rahu dya
+              : documentRemoved
+                ? { document: null } // user ne delete kela
+                : {}),
         };
-        console.log("UPDATE SCHOOL EXPENSE PAYLOAD:", payload);
+        console.log("UPDATE SCHOOL EXPENSE PAYLOAD:", {
+          ...payload,
+          document: payload.document ? "[base64 / document present]" : payload.document,
+        });
 
         const res = await updateSchoolExpenses(payload);
 
@@ -1019,6 +1128,51 @@ export default function SchoolExpenses() {
                   placeholder="Enter paid amount"
                   onChange={updatePending}
                 />
+              </Form.Item>
+
+              {/* Document */}
+              <Form.Item
+                label={<span style={{ fontWeight: 600 }}>Add Document</span>}
+                extra={`PDF, image or Word file, up to ${MAX_DOCUMENT_MB} MB`}
+              >
+                {/* navin nivadlela file: nav var click = view, X = delete */}
+                <Upload
+                  accept={DOCUMENT_ACCEPT}
+                  maxCount={1}
+                  fileList={documentFileList}
+                  beforeUpload={handleDocumentBeforeUpload}
+                  onRemove={handleDocumentRemove}
+                  showUploadList={{ showPreviewIcon: true, showRemoveIcon: true }}
+                >
+                  <Button icon={<UploadOutlined />} size="large" style={{ width: "100%" }}>
+                    {existingDocument ? "Replace Document" : "Choose Document"}
+                  </Button>
+                </Upload>
+
+                {/* backend kadun alela document: View + Delete */}
+                {existingDocument && documentFileList.length === 0 && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 8 }}>
+                    <span style={{ color: "#6b7280", fontSize: 13 }}>Current document</span>
+                    <Button
+                      type="link"
+                      icon={<EyeOutlined />}
+                      onClick={() => openExistingDocument(existingDocument)}
+                    >
+                      View
+                    </Button>
+                    <Popconfirm
+                      title="Delete this document?"
+                      okText="Yes"
+                      cancelText="No"
+                      okButtonProps={{ danger: true }}
+                      onConfirm={handleExistingDocumentDelete}
+                    >
+                      <Button type="link" danger icon={<DeleteOutlined />}>
+                        Delete
+                      </Button>
+                    </Popconfirm>
+                  </div>
+                )}
               </Form.Item>
 
               {/* LIVE SUMMARY — Total / Paid / Pending (auto calculated) */}
